@@ -198,6 +198,15 @@ def store_track_at_vertex_at_track_at_calo(graph):
     graph.ndata["pos_pxpypz_at_vertex"][tracks_at_calo] = graph.ndata["pos_pxpypz"][tracks_at_vertex]
     return remove_hittype0(graph)
 
+def create_jets_outputs(
+    output,
+    config=None,
+):
+    n_jets = int(output["n_jets"][0, 0])
+    jets_data = output["jets"][:, :n_jets]
+    return jets_data # p, eta, phi, e
+
+
 def create_graph(
     output,
     config=None,

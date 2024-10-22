@@ -19,7 +19,7 @@ from src.data.preprocess import (
     AutoStandardizer,
     WeightMaker,
 )
-from src.dataset.functions_graph import create_graph
+from src.dataset.functions_graph import create_graph, create_jets_outputs
 
 def _finalize_inputs(table, data_config):
     # transformation
@@ -82,7 +82,7 @@ def _preprocess(table, data_config, options):
 
     # else:
     indices = np.arange(
-        len(table["hit_x"])
+        len(table[table.fields[0]])
     )  # np.arange(len(table[data_config.label_names[0]]))
     # shuffle
     if options["shuffle"]:
@@ -284,6 +284,8 @@ class _SimpleIter(object):
     def get_data(self, i):
         # inputs
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
+        if self.jets:
+            return create_jets_outputs(X, self._data_config), False
         if not self.synthetic:
             [g, features_partnn], graph_empty = create_graph(
                 X, self._data_config, n_noise=self.n_noise
@@ -347,6 +349,7 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         synthetic=False,
         synthetic_npart_min=2,
         synthetic_npart_max=5,
+        jets=False
     ):
         self._iters = {} if infinity_mode or in_memory else None
         _init_args = set(self.__dict__.keys())
@@ -367,6 +370,7 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         self.synthetic_npart_max = synthetic_npart_max
         self.dataset_cap = dataset_cap  # used to cap the dataset to some fixed number of events - used for debugging purposes
         self.n_noise = n_noise
+        self.jets = jets
         # ==== sampling parameters ====
         self._sampler_options = {
             "up_sample": up_sample,

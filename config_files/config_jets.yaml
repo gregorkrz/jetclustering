@@ -1,15 +1,10 @@
 graph_config:
-   tracking_CLD: true
-
 
 
 custom_model_kwargs:
    # add custom model kwargs here
-   n_postgn_dense_blocks: 4
-   clust_space_norm: none
 
-
-#treename:
+treename: mmtree/Events;1
 selection:
    ### use `&`, `|`, `~` for logical operations on numpy arrays
    ### can use functions from `math`, `np` (numpy), and `awkward` in the expression
@@ -22,59 +17,32 @@ test_time_selection:
    #(recojet_e<5)
 
 new_variables:
-   hit_xx: hit_x
-   hit_mask: ak.ones_like(hit_xx)
-   part_mask: ak.ones_like(part_p)
+   ### [format] name: formula
+   ### can use functions from `math`, `np` (numpy), and `awkward` in the expression
+   #pfcand_mask: awkward.JaggedArray.ones_like(pfcand_etarel)
+   #sv_mask: awkward.JaggedArray.ones_like(sv_etarel)
+   #pfcand_mask: awkward.JaggedArray.ones_like(pfcand_e)
 
 preprocess:
   ### method: [manual, auto] - whether to use manually specified parameters for variable standardization
   ### [note]: `[var]_mask` will not be transformed even if `method=auto`
-  method: auto
-  ### data_fraction: fraction of events to use when calculating the mean/scale for the standardization
-  data_fraction: 0.1
 
 inputs:
-   pf_points:
-      pad_mode: wrap
-      length: 2000
-      vars:
-         - [hit_x, null]
-         - [hit_y, null]
-         - [hit_z, null]
-   pf_features:
-      pad_mode: wrap
-      length: 2000
-      vars:
-         - [hit_x, null] #VX
-         - [hit_y, null] #VX
-         - [hit_z, null] #VX
-         - [calohit_col, null] # VX DC
-
-   pf_vectors:
-      length: 2000
-      pad_mode: wrap
-      vars:
-         - [part_theta, null]  #2
-         - [part_phi, null] #3
-         - [part_m, null] #4
-         - [part_pid, null]  #15
-         - [part_p, null]  #6
-   pf_vectoronly:
-      length: 2000
-      pad_mode: wrap
-      vars:
-      - [hit_genlink, null] #2
-      - [hit_genlink, null] #2
-
-
-
-   pf_mask:
-      length: 2000
-      pad_mode: constant
-      vars:
-         - [hit_mask, null]
-         - [part_mask, null]
-
+  n_jets:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [nJet, null]
+      - [nJetId, null]
+  jets:
+    pad_mode: wrap
+    length: 100
+    vars:
+       - [Jet_pt, null]
+       - [Jet_eta, null]
+       - [Jet_phi, null]
+       - [Jet_mass, null]
+       - [Jet_area, null]
 
 labels:
    ### type can be `simple`, `custom`
@@ -94,4 +62,3 @@ observers:
    #- recojet_phi
    #- recojet_m
    #- n_pfcand
-
