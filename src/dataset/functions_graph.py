@@ -12,7 +12,10 @@ from src.dataset.functions_data import (
     get_hit_features,
     calculate_distance_to_boundary,
     concatenate_Particles_GT,
-    create_noise_label
+    create_noise_label,
+    EventJets,
+    EventPFCands,
+    EventCollection,
 )
 
 
@@ -204,8 +207,49 @@ def create_jets_outputs(
 ):
     n_jets = int(output["n_jets"][0, 0])
     jets_data = output["jets"][:, :n_jets]
-    return jets_data # p, eta, phi, e
+    n_genjets = int(output["n_genjets"][0, 0])
+    genjets_data = output["genjets"][:, :n_genjets]
+    n_pfcands = int(output["n_pfcands"][0, 0])
+    pfcands_data = output["pfcands"][:, :n_pfcands]
+    #jets_data = EventJets(jets_data[:, 0], )
+    return jets_data, genjets_data
 
+def create_jets_outputs_new(
+    output
+):
+    n_jets = int(output["n_jets"][0, 0])
+    jets_data = output["jets"][:, :n_jets]
+    n_genjets = int(output["n_genjets"][0, 0])
+    genjets_data = output["genjets"][:, :n_genjets]
+    n_pfcands = int(output["n_pfcands"][0, 0])
+    pfcands_data = output["pfcands"][:, :n_pfcands]
+    n_offline_pfcands = int(output["n_offline_pfcands"][0, 0])
+    offline_pfcands_data = output["offline_pfcands"][:, :n_offline_pfcands]
+    jets_data = jets_data.T
+    genjets_data = genjets_data.T
+    pfcands_data = pfcands_data.T
+    offline_pfcands_data = offline_pfcands_data.T
+    jets_data = EventJets(
+        jets_data[:, 0],
+        jets_data[:, 1],
+        jets_data[:, 2],
+        jets_data[:, 3],
+        jets_data[:, 4]
+    )
+    genjets_data = EventJets(
+        genjets_data[:, 0],
+        genjets_data[:, 1],
+        genjets_data[:, 2],
+        genjets_data[:, 3],
+    )
+    pfcands_data = EventPFCands(*[pfcands_data[:, i] for i in range(8)])
+    offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(8)])
+    return {
+        "jets": jets_data,
+        "genjets": genjets_data,
+        "pfcands": pfcands_data,
+        "offline_pfcands": offline_pfcands_data
+    }
 
 def create_graph(
     output,

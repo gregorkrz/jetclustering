@@ -451,6 +451,95 @@ def calculate_distance_to_boundary(g):
     return g
 
 
+class EventCollection:
+    def mask(self, mask):
+        for k in self.__dict__:
+            if getattr(self, k) is not None:
+                if type(getattr(self, k)) == list:
+                    if getattr(self, k)[0] is not None:
+                        setattr(self, k, getattr(self, k)[mask])
+                elif not type(getattr(self, k)) == dict:
+                    setattr(self, k, getattr(self, k)[mask])
+                else:
+                    raise NotImplementedError("Need to implement correct indexing")
+                    # TODO: for the mapping pfcands_idx to jet_idx
+
+    def copy(self):
+        obj = type(self).__new__(self.__class__)
+        obj.__dict__.update(self.__dict__)
+        return obj
+
+class EventPFCands(EventCollection):
+    def __init__(
+        self,
+        pt,
+        eta,
+        phi,
+        mass,
+        charge,
+        pid,
+        jet_idx,
+        pfcands_idx,
+        batch_number=None
+    ):
+        self.pt = pt
+        self.eta = eta
+        self.theta = 2 * torch.atan(torch.exp(-eta))
+        self.p = pt / torch.sin(self.theta)
+        self.pxyz = torch.stack(
+      (self.p * torch.cos(phi) * torch.sin(self.theta),
+             self.p * torch.sin(phi) * torch.sin(self.theta),
+             self.p * torch.cos(self.theta)),
+            dim=1
+        )
+        assert torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-5
+        self.phi = phi
+        self.mass = mass
+        self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
+        self.charge = charge
+        self.pid = pid
+        self.pf_cand_to_jet = {}
+        for i, pfcand_idx in enumerate(pfcands_idx):
+            assert pfcand_idx not in self.pf_cand_to_jet
+            self.pf_cand_to_jet[pfcand_idx] = jet_idx[i]
+            assert pfcand_idx < len(self.pt)
+        if batch_number is not None:
+            self.batch_number = batch_number
+    def __len__(self):
+        return len(self.pt)
+
+
+class EventJets(EventCollection):
+    def __init__(
+        self,
+        pt,
+        eta,
+        phi,
+        mass,
+        area=None,
+        batch_number=None
+    ):
+        self.pt = pt
+        self.eta = eta
+        self.theta = 2 * torch.atan(torch.exp(-eta))
+        self.p = pt / torch.sin(self.theta)
+        self.pxyz = torch.stack(
+      (self.p * torch.cos(phi) * torch.sin(self.theta),
+             self.p * torch.sin(phi) * torch.sin(self.theta),
+             self.p * torch.cos(self.theta)),
+            dim=1
+        )
+        assert torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-5
+        self.phi = phi
+        self.mass = mass
+        self.area = area
+        if batch_number is not None:
+            self.batch_number = batch_number
+
+    def __len__(self):
+        return len(self.pt)
+
+
 class Particles_GT:
     def __init__(
         self,

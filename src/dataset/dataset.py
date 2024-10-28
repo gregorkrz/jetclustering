@@ -19,7 +19,8 @@ from src.data.preprocess import (
     AutoStandardizer,
     WeightMaker,
 )
-from src.dataset.functions_graph import create_graph, create_jets_outputs
+
+from src.dataset.functions_graph import create_graph, create_jets_outputs, create_jets_outputs_new
 
 def _finalize_inputs(table, data_config):
     # transformation
@@ -285,7 +286,7 @@ class _SimpleIter(object):
         # inputs
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
         if self.jets:
-            return create_jets_outputs(X, self._data_config), False
+            return create_jets_outputs_new(X, self._data_config), False
         if not self.synthetic:
             [g, features_partnn], graph_empty = create_graph(
                 X, self._data_config, n_noise=self.n_noise

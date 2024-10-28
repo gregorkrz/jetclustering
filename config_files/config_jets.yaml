@@ -32,29 +32,65 @@ inputs:
     pad_mode: wrap
     length: 1
     vars:
-      - [nJet, null]
-      - [nJetId, null]
+      - [nFatJet, null]
+#      - [nJetId, null]
   jets:
     pad_mode: wrap
     length: 100
     vars:
-       - [Jet_pt, null]
-       - [Jet_eta, null]
-       - [Jet_phi, null]
-       - [Jet_mass, null]
-       - [Jet_area, null]
-
+       - [FatJet_pt, null]
+       - [FatJet_eta, null]
+       - [FatJet_phi, null]
+       - [FatJet_mass, null]
+       - [FatJet_area, null]
+  n_genjets:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [n_genjet, null]
+  genjets:
+    pad_mode: wrap
+    length: 100
+    vars:
+       - [GenFatJet_pt, null]
+       - [GenFatJet_eta, null]
+       - [GenFatJet_phi, null]
+       - [GenFatJet_mass, null]
+  n_pfcands:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ nPFCands, null ]
+  pfcands:
+    pad_mode: wrap
+    length: 100
+    vars:
+       - [PFCands_pt, null]
+       - [PFCands_eta, null]
+       - [PFCands_phi, null]
+       - [PFCands_mass, null]
+       - [PFCands_charge, null]
+       - [PFCands_pdgId, null]
+       - [FatJetPFCands_jetIdx, null]
+       - [FatJetPFCands_pFCandsIdx, null]
+  n_offline_pfcands:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ nOfflinePFCands, null ]
+  offline_pfcands:
+    pad_mode: wrap
+    length: 100
+    vars:
+      - [ OfflinePFCands_pt, null ]
+      - [ OfflinePFCands_eta, null ]
+      - [ OfflinePFCands_phi, null ]
+      - [ OfflinePFCands_mass, null ]
+      - [ OfflinePFCands_charge, null ]
+      - [ OfflinePFCands_pdgId, null ]
+      - [ OfflineFatJetPFCands_jetIdx, null ]
+      - [ OfflineFatJetPFCands_pFCandsIdx, null ]
 labels:
-   ### type can be `simple`, `custom`
-  ### [option 1] use `simple` for binary/multi-class classification, then `value` is a list of 0-1 labels
-   #type: simple
-   #value: [
-   #   hit_ty
-   #   ]
-   ### [option 2] otherwise use `custom` to define the label, then `value` is a map
-   # type: custom
-   # value:
-      # target_mass: np.where(fj_isQCD, fj_genjet_sdmass, fj_gen_mass)
 
 observers:
    #- recojet_e
