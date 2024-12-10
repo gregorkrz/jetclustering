@@ -36,7 +36,7 @@ inputs:
 #      - [nJetId, null]
   jets:
     pad_mode: wrap
-    length: 100
+    length: 50
     vars:
        - [FatJet_pt, null]
        - [FatJet_eta, null]
@@ -50,7 +50,7 @@ inputs:
       - [n_genjet, null]
   genjets:
     pad_mode: wrap
-    length: 100
+    length: 50
     vars:
        - [GenFatJet_pt, null]
        - [GenFatJet_eta, null]
@@ -63,7 +63,7 @@ inputs:
       - [ nPFCands, null ]
   pfcands:
     pad_mode: wrap
-    length: 100
+    length: 750
     vars:
        - [PFCands_pt, null]
        - [PFCands_eta, null]
@@ -71,8 +71,12 @@ inputs:
        - [PFCands_mass, null]
        - [PFCands_charge, null]
        - [PFCands_pdgId, null]
-       - [FatJetPFCands_jetIdx, null]
-       - [FatJetPFCands_pFCandsIdx, null]
+  pfcands_jet_mapping:
+    pad_mode: wrap
+    length: 750
+    vars:
+      - [ FatJetPFCands_jetIdx, null ]
+      - [ FatJetPFCands_pFCandsIdx, null ]
   n_offline_pfcands:
     pad_mode: wrap
     length: 1
@@ -80,7 +84,7 @@ inputs:
       - [ nOfflinePFCands, null ]
   offline_pfcands:
     pad_mode: wrap
-    length: 100
+    length: 750
     vars:
       - [ OfflinePFCands_pt, null ]
       - [ OfflinePFCands_eta, null ]
@@ -88,6 +92,10 @@ inputs:
       - [ OfflinePFCands_mass, null ]
       - [ OfflinePFCands_charge, null ]
       - [ OfflinePFCands_pdgId, null ]
+  offline_pfcands_jet_mapping:
+    pad_mode: wrap
+    length: 750
+    vars:
       - [ OfflineFatJetPFCands_jetIdx, null ]
       - [ OfflineFatJetPFCands_pFCandsIdx, null ]
 labels:
@@ -98,3 +106,4 @@ observers:
    #- recojet_phi
    #- recojet_m
    #- n_pfcand
+

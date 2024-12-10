@@ -286,7 +286,7 @@ class _SimpleIter(object):
         # inputs
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
         if self.jets:
-            return create_jets_outputs_new(X, self._data_config), False
+            return create_jets_outputs_new(X), False
         if not self.synthetic:
             [g, features_partnn], graph_empty = create_graph(
                 X, self._data_config, n_noise=self.n_noise

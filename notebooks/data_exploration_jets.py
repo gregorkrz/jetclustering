@@ -17,9 +17,7 @@ import mplhep as hep
 hep.style.use("CMS")
 import matplotlib
 matplotlib.rc('font', size=13)
-datasets = os.listdir("/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scouting_test_large/SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak")
 
-path = "/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scouting_test_large/SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak"
 
 def remove_from_list(lst):
     out = []
@@ -29,9 +27,11 @@ def remove_from_list(lst):
         out.append(item)
     return out
 
+path = "/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scouting_test_large/SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak"
 
-datasets = [os.path.join(path, x) for x in remove_from_list(datasets)]
-datasets = datasets[:1]
+datasets = os.listdir(path)
+datasets = [os.path.join(path, x) for x in datasets]
+datasets = datasets[:5]
 
 class Args:
     def __init__(self):
@@ -71,9 +71,14 @@ train_data = SimpleIterDataset(train_file_dict, args.data_config, for_training=T
                                in_memory=args.in_memory,
                                async_load=False,
                                name='train', jets=True)
-
 iterator = iter(train_data)
-data =  next(iterator)
+from time import time
+t0 = time()
+for i in range(100):
+    data = next(iterator)
+t1 = time()
+print("Took", t1-t0, "s")
 
-print("Data keys: ", data.keys())
+print("Done")
+
 

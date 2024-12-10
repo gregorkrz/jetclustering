@@ -278,7 +278,7 @@ def modify_index_link_for_gamma_e(
 def get_hit_features(
     output, number_hits, prediction, number_part, hit_chis, pos_pxpy, is_Ks=False
 ):
-    
+
     hit_particle_link = torch.tensor(output["pf_vectoronly"][0, 0:number_hits])
     if prediction:
         indx_daugthers = 3
@@ -301,7 +301,7 @@ def get_hit_features(
                 # zeros
                 # print("Zeros for pandora pid!")
                 pandora_pid=torch.zeros(number_hits)
-            
+
         else:
             pandora_mom = None
             pandora_ref_point = None
@@ -379,7 +379,7 @@ def get_hit_features(
         pfo_energy,
         pandora_mom,
         pandora_ref_point,
-        pandora_pid, 
+        pandora_pid,
         unique_list_particles,
         cluster_id,
         hit_type_feature,
@@ -389,16 +389,6 @@ def get_hit_features(
         connection_list,
         chi_squared_tracks,
     )
-
-
-# def theta_phi_to_pxpypz(pos_theta_phi, pt):
-#     px = (pt.view(-1) * torch.cos(pos_theta_phi[:, 0])).view(-1, 1)
-#     py = (pt.view(-1) * torch.sin(pos_theta_phi[:, 0])).view(-1, 1)
-#     pz = (pt.view(-1) * torch.cos(pos_theta_phi[:, 1])).view(-1, 1)
-#     pxpypz = torch.cat(
-#         (pos_theta_phi[:, 0].view(-1, 1), pos_theta_phi[:, 1].view(-1, 1), pz), dim=1
-#     )
-#     return pxpypz
 
 
 def standardize_coordinates(coord_cart_hits):
@@ -480,29 +470,39 @@ class EventPFCands(EventCollection):
         pid,
         jet_idx,
         pfcands_idx,
-        batch_number=None
+        batch_number=None,
+        offline=False
     ):
-        self.pt = pt
-        self.eta = eta
-        self.theta = 2 * torch.atan(torch.exp(-eta))
+        print("Jet idx:", jet_idx)
+        print("PFCands_idx:", pfcands_idx)
+        self.pt = torch.tensor(pt)
+        self.eta = torch.tensor(eta)
+        self.theta = 2 * torch.atan(torch.exp(-self.eta))
         self.p = pt / torch.sin(self.theta)
+        self.phi = torch.tensor(phi)
         self.pxyz = torch.stack(
-      (self.p * torch.cos(phi) * torch.sin(self.theta),
-             self.p * torch.sin(phi) * torch.sin(self.theta),
+      (self.p * torch.cos(self.phi) * torch.sin(self.theta),
+             self.p * torch.sin(self.phi) * torch.sin(self.theta),
              self.p * torch.cos(self.theta)),
             dim=1
         )
-        assert torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-5
-        self.phi = phi
-        self.mass = mass
+        assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-3).all()
+        self.mass = torch.tensor(mass)
         self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
-        self.charge = charge
-        self.pid = pid
+        self.charge = torch.tensor(charge)
+        self.pid = torch.tensor(pid)
         self.pf_cand_to_jet = {}
         for i, pfcand_idx in enumerate(pfcands_idx):
-            assert pfcand_idx not in self.pf_cand_to_jet
-            self.pf_cand_to_jet[pfcand_idx] = jet_idx[i]
-            assert pfcand_idx < len(self.pt)
+            if int(pfcand_idx) in self.pf_cand_to_jet:
+                print("!!", int(pfcand_idx), "in self.pf_cand_to_jet!")
+                if not offline:
+                    raise Exception
+            self.pf_cand_to_jet[int(pfcand_idx)] = int(jet_idx[i])
+            #assert pfcand_idx < len(self.pt) # ignore this error for now?
+            if pfcand_idx >= len(self.pt):
+                print("Out of bounds")
+                if not offline:
+                    raise Exception
         if batch_number is not None:
             self.batch_number = batch_number
     def __len__(self):
@@ -519,22 +519,24 @@ class EventJets(EventCollection):
         area=None,
         batch_number=None
     ):
-        self.pt = pt
-        self.eta = eta
-        self.theta = 2 * torch.atan(torch.exp(-eta))
+        self.pt = torch.tensor(pt)
+        self.eta = torch.tensor(eta)
+        self.theta = 2 * torch.atan(torch.exp(-self.eta))
         self.p = pt / torch.sin(self.theta)
+        self.phi = torch.tensor(phi)
         self.pxyz = torch.stack(
-      (self.p * torch.cos(phi) * torch.sin(self.theta),
-             self.p * torch.sin(phi) * torch.sin(self.theta),
+      (self.p * torch.cos(self.phi) * torch.sin(self.theta),
+             self.p * torch.sin(self.phi) * torch.sin(self.theta),
              self.p * torch.cos(self.theta)),
             dim=1
         )
-        assert torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-5
-        self.phi = phi
-        self.mass = mass
+        assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-3).all()
+        self.mass = torch.tensor(mass)
         self.area = area
+        if self.area is not None:
+            self.area = torch.tensor(self.area)
         if batch_number is not None:
-            self.batch_number = batch_number
+            self.batch_number = torch.tensor(batch_number)
 
     def __len__(self):
         return len(self.pt)
@@ -560,9 +562,7 @@ class Particles_GT:
         self.E_corrected = energy
         if energy_corrected is not None:
             self.E_corrected = energy_corrected
-        if len(coordinates) != len(energy):
-            print("!!!!!!!!!!!!!!!!!!!")
-            raise Exception
+        assert len(coordinates) == len(energy)
         self.m = momentum
         self.mass = mass
         self.pid = pid

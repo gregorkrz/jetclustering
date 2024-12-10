@@ -118,6 +118,7 @@ def main():
         entity=args.wandb_entity,
         name=args.wandb_displayname,
     )
+    wandb_logger.experiment.config.update(args)
     if training_mode:
         # wandb.init(project=args.wandb_projectname, entity=args.wandb_entity)
         # wandb.run.name = args.wandb_displayname
