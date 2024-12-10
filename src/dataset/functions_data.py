@@ -440,49 +440,6 @@ def calculate_distance_to_boundary(g):
     g.ndata["radial_distance_exp"] = weight_
     return g
 
-class Event:
-    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, n_events=1): # Add more collections here
-        self.jets = jets
-        self.genjets = genjets
-        self.pfcands = pfcands
-        self.offline_pfcands = offline_pfcands
-        self.MET = MET
-        self.init_attrs = []
-        self.n_events = n_events
-        if jets is not None:
-            self.init_attrs.append("jets")
-        if genjets is not None:
-            self.init_attrs.append("genjets")
-        if pfcands is not None:
-            self.init_attrs.append("pfcands")
-        if offline_pfcands is not None:
-            self.init_attrs.append("offline_pfcands")
-        if MET is not None:
-            self.init_attrs.append("MET")
-
-    @staticmethod
-    def deserialize(result, result_metadata, event_idx=None):
-        # 'result' arrays can be mmap-ed.
-        # If event_idx is not None and is set to a list, only the selected event_idx will be returned.
-        n_events = result_metadata["n_events"]
-        attrs = result.keys()
-        if event_idx is None:
-            event_idx = to_tensor(list(range(n_events)))
-        else:
-            event_idx = to_tensor(event_idx)
-            assert (event_idx < n_events).all()
-        return Event(**{key: result[key][torch.isin(result_metadata[key + "_batch_idx"], event_idx)] for key in attrs}, n_events=n_events)
-
-
-    def serialize(self):
-        result = {}
-        result_metadata = {"n_events": self.n_events, "attrs": self.init_attrs}
-        for key in self.init_attrs:
-            s = getattr(self, key).serialize()
-            result[key] = s[0]
-            result_metadata[key + "_batch_idx"] = s[1]
-        return result, result_metadata
-
 class EventCollection:
     def mask(self, mask):
         for k in self.__dict__:
@@ -504,7 +461,7 @@ class EventCollection:
     def serialize(self):
         # get all the self.init_attrs and concat them together. Also return batch_number
         data = torch.stack([getattr(self, attr) for attr in type(self).init_attrs]).T
-        assert data.shape[0] == len(self.batch_number)
+        assert data.shape[0] == self.batch_number.max().item()
         return data, self.batch_number
 
     @staticmethod
@@ -756,7 +713,7 @@ def add_batch_number(list_event_collections, attr):
     idx = 0
     list_y.append(idx)
     for i, el in enumerate(list_event_collections):
-        num_in_batch = el.__dict__[attr].shape[0].int().item()
+        num_in_batch = el.__dict__[attr].shape[0]
         list_y.append(idx + num_in_batch)
         idx += num_in_batch
     list_y = torch.tensor(list_y)
@@ -788,3 +745,47 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
         mask_particles = to_tensor(np.full((len(list_p)), False, dtype=bool))
     return mask.to(bool), ~mask_particles.to(bool)
 
+
+class Event:
+    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands, "offline_pfcands": EventPFCands, "MET": EventMET}
+    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, n_events=1): # Add more collections here
+        self.jets = jets
+        self.genjets = genjets
+        self.pfcands = pfcands
+        self.offline_pfcands = offline_pfcands
+        self.MET = MET
+        self.init_attrs = []
+        self.n_events = n_events
+        if jets is not None:
+            self.init_attrs.append("jets")
+        if genjets is not None:
+            self.init_attrs.append("genjets")
+        if pfcands is not None:
+            self.init_attrs.append("pfcands")
+        if offline_pfcands is not None:
+            self.init_attrs.append("offline_pfcands")
+        if MET is not None:
+            self.init_attrs.append("MET")
+
+    ''' @staticmethod
+    def deserialize(result, result_metadata, event_idx=None):
+        # 'result' arrays can be mmap-ed.
+        # If event_idx is not None and is set to a list, only the selected event_idx will be returned.
+        n_events = result_metadata["n_events"]
+        attrs = result.keys()
+        if event_idx is None:
+            event_idx = to_tensor(list(range(n_events)))
+        else:
+            event_idx = to_tensor(event_idx)
+            assert (event_idx < n_events).all()
+        return Event(**{key: result[key][torch.isin(result_metadata[key + "_batch_idx"], event_idx)] for key in attrs}, n_events=n_events)
+    '''
+
+    def serialize(self):
+        result = {}
+        result_metadata = {"n_events": self.n_events, "attrs": self.init_attrs}
+        for key in self.init_attrs:
+            s = getattr(self, key).serialize()
+            result[key] = s[0]
+            result_metadata[key + "_batch_idx"] = s[1]
+        return result, result_metadata

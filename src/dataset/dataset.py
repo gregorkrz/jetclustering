@@ -21,7 +21,7 @@ from src.data.preprocess import (
 )
 
 from src.dataset.functions_graph import create_graph, create_jets_outputs, create_jets_outputs_new
-from src.dataset.functions_data import Event
+from src.dataset.functions_data import Event, EventCollection
 
 
 def _finalize_inputs(table, data_config):
@@ -316,13 +316,17 @@ class EventDataset(torch.utils.data.IterableDataset):
         #    self.evt_idx_to_batch_idx[key] = {}
     def __len__(self):
         return self.n_events
+   # def __next__(self):
+    def get_iter(self):
+        while self.i < self.n_events:
+            start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}
+            end = {key: self.metadata[key + "_batch_idx"][self.i+1] for key in self.attrs}
+            result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
+            self.i += 1
+            result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for key in self.attrs}
+            yield Event(**result)
     def __iter__(self):
-        start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}
-        end = {key: self.metadata[key + "_batch_idx"][self.i+1] for key in self.attrs}
-        result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
-        self.i += 1
-        return Event(**result) # a single event
-
+        return self.get_iter()
 class SimpleIterDataset(torch.utils.data.IterableDataset):
     r"""Base IterableDataset.
     Handles dataloading.

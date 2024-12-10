@@ -8,6 +8,7 @@ sys.path.append("/eos/home-g/gkrzmanc/jetclustering/code")
 from src.dataset.dataset import SimpleIterDataset
 from src.utils.utils import to_filelist
 from torch.utils.data import DataLoader
+from pathlib import Path
 from tqdm import tqdm
 from torch_scatter import scatter_sum
 import matplotlib.pyplot as plt
@@ -80,15 +81,25 @@ for i in range(100):
 t1 = time()
 print("Took", t1-t0, "s")
 from src.dataset.functions_data import concat_events
-events = concat_events(data)
+events = concat_events(data) # TODO: this can be done in a nicer way, using less memory (?)
 result = events.serialize()
+save_to_dir = "/eos/user/g/gkrzmanc/jetclustering/data/torch_SVJ_std_UL2018_scouting_test_large/SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak"
+Path(save_to_dir).mkdir(parents=True, exist_ok=True)
+for key in result[0]:
+    with open(osp.join(save_to_dir, key + ".pkl"), "wb") as f:
+        #pickle.dump(result[0][key], f) #save with torch for mmap
+        torch.save(result[0][key], f)
+with open(osp.join(save_to_dir, "metadata.pkl"), "wb") as f:
+    pickle.dump(result[1], f)
+
+'''
 from src.dataset.functions_data import EventCollection, EventJets, Event
 from src.dataset.dataset import EventDataset
 t2 = time()
 data1 = []
-for event in iter(EventDataset(result)):
+for event in EventDataset(result[0], result[1]):
     data1.append(event)
 t3 = time()
 print("Took", t3-t2, "s")
-
 print("Done")
+'''
