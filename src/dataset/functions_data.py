@@ -461,14 +461,27 @@ class Event:
             self.init_attrs.append("MET")
 
     @staticmethod
-    def deserialize(data, idx):
-        # data: list of matrices (jets, genjets, pfcands, offline_pfcands, MET
-        # idx: list of number_batch of (jets, genjets, pfcands, offline_pfcands, MET)
-        pass
+    def deserialize(result, result_metadata, event_idx=None):
+        # 'result' arrays can be mmap-ed.
+        # If event_idx is not None and is set to a list, only the selected event_idx will be returned.
+        n_events = result_metadata["n_events"]
+        attrs = result.keys()
+        if event_idx is None:
+            event_idx = to_tensor(list(range(n_events)))
+        else:
+            event_idx = to_tensor(event_idx)
+            assert (event_idx < n_events).all()
+        return Event(**{key: result[key][torch.isin(result_metadata[key + "_batch_idx"], event_idx)] for key in attrs}, n_events=n_events)
+
 
     def serialize(self):
-        pass # TODO: return matrices
-
+        result = {}
+        result_metadata = {"n_events": self.n_events, "attrs": self.init_attrs}
+        for key in self.init_attrs:
+            s = getattr(self, key).serialize()
+            result[key] = s[0]
+            result_metadata[key + "_batch_idx"] = s[1]
+        return result, result_metadata
 
 class EventCollection:
     def mask(self, mask):
@@ -490,16 +503,16 @@ class EventCollection:
 
     def serialize(self):
         # get all the self.init_attrs and concat them together. Also return batch_number
-        data = torch.stack([getattr(self, attr) for attr in type(self).init_attrs])
-        assert data.shape[1] == len(self.batch_number)
+        data = torch.stack([getattr(self, attr) for attr in type(self).init_attrs]).T
+        assert data.shape[0] == len(self.batch_number)
         return data, self.batch_number
 
     @staticmethod
-    def deserialize(data_matrix, number_batch, cls):
+    def deserialize(data_matrix, batch_number, cls):
         data = {}
         for i, key in enumerate(cls.init_attrs):
-            data[key] = data_matrix[i, :]
-        return cls(**data, batch_number=number_batch)
+            data[key] = data_matrix[:, i]
+        return cls(**data, batch_number=batch_number)
 
 
 def concat_event_collection(list_event_collection):
@@ -738,15 +751,16 @@ def concatenate_Particles_GT(list_of_Particles_GT):
         vertex=list_vertex,
     )
 
-
 def add_batch_number(list_event_collections, attr):
     list_y = []
+    idx = 0
+    list_y.append(idx)
     for i, el in enumerate(list_event_collections):
-        batch_id = torch.ones(el.__dict__[attr].shape[0]).int() * i
-        list_y.append(batch_id)
-    list_y = torch.cat(list_y, dim=0)
+        num_in_batch = el.__dict__[attr].shape[0].int().item()
+        list_y.append(idx + num_in_batch)
+        idx += num_in_batch
+    list_y = torch.tensor(list_y)
     return list_y
-
 
 def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     unique_p_numbers = torch.unique(cluster_id)

@@ -75,14 +75,20 @@ iterator = iter(train_data)
 from time import time
 t0 = time()
 data = []
-for i in range(1000):
+for i in range(100):
     data.append(next(iterator))
 t1 = time()
 print("Took", t1-t0, "s")
 from src.dataset.functions_data import concat_events
 events = concat_events(data)
-result = events.jets.serialize()
-from src.dataset.functions_data import EventCollection, EventJets
-EventCollection.deserialize(result[0], result[1], EventJets)
-print("Done")
+result = events.serialize()
+from src.dataset.functions_data import EventCollection, EventJets, Event
+from src.dataset.dataset import EventDataset
+t2 = time()
+data1 = []
+for event in iter(EventDataset(result)):
+    data1.append(event)
+t3 = time()
+print("Took", t3-t2, "s")
 
+print("Done")

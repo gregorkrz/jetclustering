@@ -21,6 +21,8 @@ from src.data.preprocess import (
 )
 
 from src.dataset.functions_graph import create_graph, create_jets_outputs, create_jets_outputs_new
+from src.dataset.functions_data import Event
+
 
 def _finalize_inputs(table, data_config):
     # transformation
@@ -301,6 +303,25 @@ class _SimpleIter(object):
             )
         return [g, features_partnn], graph_empty
 
+class EventDataset(torch.utils.data.IterableDataset):
+    def __init__(self, events, metadata):
+        # events: serialized events dict
+        # metadata: dict with metadata
+        self.events = events
+        self.n_events = metadata["n_events"]
+        self.attrs = metadata["attrs"]
+        self.metadata = metadata
+        self.i = 0
+        #for key in self.attrs:
+        #    self.evt_idx_to_batch_idx[key] = {}
+    def __len__(self):
+        return self.n_events
+    def __iter__(self):
+        start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}
+        end = {key: self.metadata[key + "_batch_idx"][self.i+1] for key in self.attrs}
+        result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
+        self.i += 1
+        return Event(**result) # a single event
 
 class SimpleIterDataset(torch.utils.data.IterableDataset):
     r"""Base IterableDataset.
