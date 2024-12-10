@@ -488,6 +488,20 @@ class EventCollection:
         obj.__dict__.update(self.__dict__)
         return obj
 
+    def serialize(self):
+        # get all the self.init_attrs and concat them together. Also return batch_number
+        data = torch.stack([getattr(self, attr) for attr in type(self).init_attrs])
+        assert data.shape[1] == len(self.batch_number)
+        return data, self.batch_number
+
+    @staticmethod
+    def deserialize(data_matrix, number_batch, cls):
+        data = {}
+        for i, key in enumerate(cls.init_attrs):
+            data[key] = data_matrix[i, :]
+        return cls(**data, batch_number=number_batch)
+
+
 def concat_event_collection(list_event_collection):
     c = list_event_collection[0]
     list_of_attrs = c.init_attrs
@@ -515,6 +529,7 @@ def to_tensor(item):
     return torch.tensor(item)
 
 class EventPFCands(EventCollection):
+    init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
     def __init__(
         self,
         pt,
@@ -531,7 +546,6 @@ class EventPFCands(EventCollection):
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
-        self.init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
         self.pt = to_tensor(pt)
         self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
@@ -565,17 +579,18 @@ class EventPFCands(EventCollection):
         return len(self.pt)
 
 class EventMET(EventCollection):
+    init_attrs = ["pt", "phi"]
     # Extra info belonging to the event: MET, trigger info etc.
     def __init__(self, pt, phi, batch_number=None):
         self.pt = to_tensor(pt)
         self.phi = to_tensor(phi)
-        self.init_attrs = ["pt", "phi"]
         if batch_number is not None:
             self.batch_number = to_tensor(batch_number)
     def __len__(self):
         return len(self.pt)
 
 class EventJets(EventCollection):
+    init_attrs = ["pt", "eta", "phi", "mass"]
     def __init__(
         self,
         pt,
@@ -585,7 +600,6 @@ class EventJets(EventCollection):
         area=None,
         batch_number=None
     ):
-        self.init_attrs = ["pt", "eta", "phi", "mass"]
         self.pt = to_tensor(pt)
         self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
@@ -728,7 +742,7 @@ def concatenate_Particles_GT(list_of_Particles_GT):
 def add_batch_number(list_event_collections, attr):
     list_y = []
     for i, el in enumerate(list_event_collections):
-        batch_id = torch.ones(el.__dict__[attr].shape[0]) * i
+        batch_id = torch.ones(el.__dict__[attr].shape[0]).int() * i
         list_y.append(batch_id)
     list_y = torch.cat(list_y, dim=0)
     return list_y
