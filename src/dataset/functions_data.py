@@ -447,18 +447,18 @@ class Event:
         self.pfcands = pfcands
         self.offline_pfcands = offline_pfcands
         self.MET = MET
-        self.attributes = []
+        self.init_attrs = []
         self.n_events = n_events
         if jets is not None:
-            self.attributes.append("jets")
+            self.init_attrs.append("jets")
         if genjets is not None:
-            self.attributes.append("genjets")
+            self.init_attrs.append("genjets")
         if pfcands is not None:
-            self.attributes.append("pfcands")
+            self.init_attrs.append("pfcands")
         if offline_pfcands is not None:
-            self.attributes.append("offline_pfcands")
+            self.init_attrs.append("offline_pfcands")
         if MET is not None:
-            self.attributes.append("MET")
+            self.init_attrs.append("MET")
 
     @staticmethod
     def deserialize(data, idx):
@@ -489,12 +489,12 @@ class EventCollection:
         return obj
 
 def concat_event_collection(list_event_collection):
-    list_of_attrs = []
     c = list_event_collection[0]
-    for k in c.__dict__:
-        if getattr(c, k) is not None:
-            if isinstance(getattr(c, k), torch.Tensor):
-                list_of_attrs.append(k)
+    list_of_attrs = c.init_attrs
+    #for k in c.__dict__:
+    #    if getattr(c, k) is not None:
+    #        if isinstance(getattr(c, k), torch.Tensor):
+    #            list_of_attrs.append(k)
     result = {}
     for attr in list_of_attrs:
         result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
@@ -502,7 +502,7 @@ def concat_event_collection(list_event_collection):
     return type(c)(**result, batch_number=batch_number)
 
 def concat_events(list_events):
-    attrs = list_events[0].attributes
+    attrs = list_events[0].init_attrs
     result = {}
     for attr in attrs:
         result[attr] = concat_event_collection([getattr(e, attr) for e in list_events])
@@ -526,6 +526,7 @@ class EventPFCands(EventCollection):
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
+        self.init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
         self.pt = torch.tensor(pt)
         self.eta = torch.tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
@@ -563,6 +564,7 @@ class EventMET(EventCollection):
     def __init__(self, pt, phi, batch_number=None):
         self.pt = torch.tensor(pt)
         self.phi = torch.tensor(phi)
+        self.init_attrs = ["pt", "phi"]
         if batch_number is not None:
             self.batch_number = torch.tensor(batch_number)
     def __len__(self):
@@ -578,6 +580,7 @@ class EventJets(EventCollection):
         area=None,
         batch_number=None
     ):
+        self.init_attrs = ["pt", "eta", "phi", "mass", "area"]
         self.pt = torch.tensor(pt)
         self.eta = torch.tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
