@@ -506,8 +506,13 @@ def concat_events(list_events):
     result = {}
     for attr in attrs:
         result[attr] = concat_event_collection([getattr(e, attr) for e in list_events])
-        assert result[attr].number_batch.max() == len(list_events)
+        # assert result[attr].batch_number.max() == len(list_events)# sometimes the event is empty (e.g. no found jets)
     return Event(**result, n_events=len(list_events))
+
+def to_tensor(item):
+    if isinstance(item, torch.Tensor):
+        return item
+    return torch.tensor(item)
 
 class EventPFCands(EventCollection):
     def __init__(
@@ -527,11 +532,11 @@ class EventPFCands(EventCollection):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
         self.init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
-        self.pt = torch.tensor(pt)
-        self.eta = torch.tensor(eta)
+        self.pt = to_tensor(pt)
+        self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
         self.p = pt / torch.sin(self.theta)
-        self.phi = torch.tensor(phi)
+        self.phi = to_tensor(phi)
         self.pxyz = torch.stack(
       (self.p * torch.cos(self.phi) * torch.sin(self.theta),
              self.p * torch.sin(self.phi) * torch.sin(self.theta),
@@ -539,10 +544,10 @@ class EventPFCands(EventCollection):
             dim=1
         )
         assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-3).all()
-        self.mass = torch.tensor(mass)
+        self.mass = to_tensor(mass)
         self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
-        self.charge = torch.tensor(charge)
-        self.pid = torch.tensor(pid)
+        self.charge = to_tensor(charge)
+        self.pid = to_tensor(pid)
         if pf_cand_jet_idx is not None:
             self.pf_cand_jet_idx = pf_cand_jet_idx
         else:
@@ -562,11 +567,11 @@ class EventPFCands(EventCollection):
 class EventMET(EventCollection):
     # Extra info belonging to the event: MET, trigger info etc.
     def __init__(self, pt, phi, batch_number=None):
-        self.pt = torch.tensor(pt)
-        self.phi = torch.tensor(phi)
+        self.pt = to_tensor(pt)
+        self.phi = to_tensor(phi)
         self.init_attrs = ["pt", "phi"]
         if batch_number is not None:
-            self.batch_number = torch.tensor(batch_number)
+            self.batch_number = to_tensor(batch_number)
     def __len__(self):
         return len(self.pt)
 
@@ -580,12 +585,12 @@ class EventJets(EventCollection):
         area=None,
         batch_number=None
     ):
-        self.init_attrs = ["pt", "eta", "phi", "mass", "area"]
-        self.pt = torch.tensor(pt)
-        self.eta = torch.tensor(eta)
+        self.init_attrs = ["pt", "eta", "phi", "mass"]
+        self.pt = to_tensor(pt)
+        self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
         self.p = pt / torch.sin(self.theta)
-        self.phi = torch.tensor(phi)
+        self.phi = to_tensor(phi)
         self.pxyz = torch.stack(
       (self.p * torch.cos(self.phi) * torch.sin(self.theta),
              self.p * torch.sin(self.phi) * torch.sin(self.theta),
@@ -593,12 +598,12 @@ class EventJets(EventCollection):
             dim=1
         )
         assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-3).all()
-        self.mass = torch.tensor(mass)
+        self.mass = to_tensor(mass)
         self.area = area
         if self.area is not None:
-            self.area = torch.tensor(self.area)
+            self.area = to_tensor(self.area)
         if batch_number is not None:
-            self.batch_number = torch.tensor(batch_number)
+            self.batch_number = to_tensor(batch_number)
 
     def __len__(self):
         return len(self.pt)
@@ -723,7 +728,7 @@ def concatenate_Particles_GT(list_of_Particles_GT):
 def add_batch_number(list_event_collections, attr):
     list_y = []
     for i, el in enumerate(list_event_collections):
-        batch_id = torch.ones(el.__dict__[attr].shape[0], 1) * i
+        batch_id = torch.ones(el.__dict__[attr].shape[0]) * i
         list_y.append(batch_id)
     list_y = torch.cat(list_y, dim=0)
     return list_y
@@ -733,18 +738,18 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     unique_p_numbers = torch.unique(cluster_id)
     number_of_hits = get_number_hits(hit_energies, cluster_id)
     e_reco = get_e_reco(hit_energies, cluster_id)
-    mask_hits = torch.Tensor(number_of_hits) < 6
+    mask_hits = to_tensor(number_of_hits) < 6
     mask_p = e_reco<0.10
     mask_all = mask_hits.view(-1) + mask_p.view(-1)
     list_remove = unique_p_numbers[mask_all.view(-1)]
 
     if len(list_remove) > 0:
-        mask = torch.tensor(np.full((len(cluster_id)), False, dtype=bool))
+        mask = to_tensor(np.full((len(cluster_id)), False, dtype=bool))
         for p in list_remove:
             mask1 = cluster_id == p
             mask = mask1 + mask
     else:
-        mask = torch.tensor(np.full((len(cluster_id)), False, dtype=bool))
+        mask = to_tensor(np.full((len(cluster_id)), False, dtype=bool))
     list_p = unique_p_numbers
     if len(list_remove) > 0:
         mask_particles = np.full((len(list_p)), False, dtype=bool)
@@ -752,6 +757,6 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
             mask_particles1 = list_p == p
             mask_particles = mask_particles1 + mask_particles
     else:
-        mask_particles = torch.tensor(np.full((len(list_p)), False, dtype=bool))
+        mask_particles = to_tensor(np.full((len(list_p)), False, dtype=bool))
     return mask.to(bool), ~mask_particles.to(bool)
 

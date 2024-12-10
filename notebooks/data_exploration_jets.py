@@ -75,7 +75,7 @@ iterator = iter(train_data)
 from time import time
 t0 = time()
 data = []
-for i in range(100):
+for i in range(10):
     data.append(next(iterator))
 t1 = time()
 print("Took", t1-t0, "s")
