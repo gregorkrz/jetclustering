@@ -74,11 +74,12 @@ train_data = SimpleIterDataset(train_file_dict, args.data_config, for_training=T
 iterator = iter(train_data)
 from time import time
 t0 = time()
+data = []
 for i in range(100):
-    data = next(iterator)
+    data.append(next(iterator))
 t1 = time()
 print("Took", t1-t0, "s")
-
+from src.dataset.functions_data import concat_events
+events = concat_events(data)
 print("Done")
-
 

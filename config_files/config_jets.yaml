@@ -71,6 +71,7 @@ inputs:
        - [PFCands_mass, null]
        - [PFCands_charge, null]
        - [PFCands_pdgId, null]
+
   pfcands_jet_mapping:
     pad_mode: wrap
     length: 750
@@ -98,6 +99,12 @@ inputs:
     vars:
       - [ OfflineFatJetPFCands_jetIdx, null ]
       - [ OfflineFatJetPFCands_pFCandsIdx, null ]
+  MET:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ MET_pt, null ]
+      - [ MET_phi, null ]
 labels:
 
 observers:

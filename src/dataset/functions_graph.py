@@ -16,6 +16,8 @@ from src.dataset.functions_data import (
     EventJets,
     EventPFCands,
     EventCollection,
+    Event,
+    EventMET,
 )
 
 
@@ -224,14 +226,18 @@ def create_jets_outputs_new(
     n_pfcands = int(output["n_pfcands"][0, 0])
     pfcands_data = output["pfcands"][:, :n_pfcands]
     pfcands_jets_mapping = output["pfcands_jet_mapping"]
+    output_MET = output["MET"]
     num_mapping = np.argmax(pfcands_jets_mapping[1]) + 1
+    if n_jets == 0:
+        num_mapping = 0
     pfcands_jets_mapping = pfcands_jets_mapping[:, :num_mapping]
-    n_offline_pfcands = int(output["n_offline_pfcands"][0, 0])
-    offline_pfcands_data = output["offline_pfcands"][:, :n_offline_pfcands]
+    #n_offline_pfcands = int(output["n_offline_pfcands"][0, 0])
+    #offline_pfcands_data = output["offline_pfcands"][:, :n_offline_pfcands]
     #offline_jets_mapping = output["offline_pfcands_jet_mapping"]
     #num_mapping_offline = np.argmax(offline_jets_mapping[1]) + 1
     #assert offline_jets_mapping[1].max() < n_offline_pfcands
-    assert pfcands_jets_mapping[1].max() < n_pfcands
+    if len(pfcands_jets_mapping[1]):
+        assert pfcands_jets_mapping[1].max() < n_pfcands
     #offline_jets_mapping = offline_jets_mapping[:, :num_mapping_offline]
     jets_data = jets_data.T
     genjets_data = genjets_data.T
@@ -253,13 +259,15 @@ def create_jets_outputs_new(
     pfcands_jets_mapping = list(pfcands_jets_mapping)
     #offline_jets_mapping = list(offline_jets_mapping)
     pfcands_data = EventPFCands(*[pfcands_data[:, i] for i in range(6)] + pfcands_jets_mapping)
+    MET_data = EventMET(pt=output_MET[0], phi=output_MET[1])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
-    return {
-        "jets": jets_data,
-        "genjets": genjets_data,
-        "pfcands": pfcands_data,
-        #"offline_pfcands": offline_pfcands_data
-    }
+    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data)
+    #return {
+    #    "jets": jets_data,
+    #    "genjets": genjets_data,
+    #    "pfcands": pfcands_data,
+    #    # "offline_pfcands": offline_pfcands_data
+    #}
 
 def create_graph(
     output,

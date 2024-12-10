@@ -440,6 +440,35 @@ def calculate_distance_to_boundary(g):
     g.ndata["radial_distance_exp"] = weight_
     return g
 
+class Event:
+    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, n_events=1): # Add more collections here
+        self.jets = jets
+        self.genjets = genjets
+        self.pfcands = pfcands
+        self.offline_pfcands = offline_pfcands
+        self.MET = MET
+        self.attributes = []
+        self.n_events = n_events
+        if jets is not None:
+            self.attributes.append("jets")
+        if genjets is not None:
+            self.attributes.append("genjets")
+        if pfcands is not None:
+            self.attributes.append("pfcands")
+        if offline_pfcands is not None:
+            self.attributes.append("offline_pfcands")
+        if MET is not None:
+            self.attributes.append("MET")
+
+    @staticmethod
+    def deserialize(data, idx):
+        # data: list of matrices (jets, genjets, pfcands, offline_pfcands, MET
+        # idx: list of number_batch of (jets, genjets, pfcands, offline_pfcands, MET)
+        pass
+
+    def serialize(self):
+        pass # TODO: return matrices
+
 
 class EventCollection:
     def mask(self, mask):
@@ -459,6 +488,27 @@ class EventCollection:
         obj.__dict__.update(self.__dict__)
         return obj
 
+def concat_event_collection(list_event_collection):
+    list_of_attrs = []
+    c = list_event_collection[0]
+    for k in c.__dict__:
+        if getattr(c, k) is not None:
+            if isinstance(getattr(c, k), torch.Tensor):
+                list_of_attrs.append(k)
+    result = {}
+    for attr in list_of_attrs:
+        result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
+    batch_number = add_batch_number(list_event_collection, attr=list_of_attrs[0])
+    return type(c)(**result, batch_number=batch_number)
+
+def concat_events(list_events):
+    attrs = list_events[0].attributes
+    result = {}
+    for attr in attrs:
+        result[attr] = concat_event_collection([getattr(e, attr) for e in list_events])
+        assert result[attr].number_batch.max() == len(list_events)
+    return Event(**result, n_events=len(list_events))
+
 class EventPFCands(EventCollection):
     def __init__(
         self,
@@ -468,13 +518,14 @@ class EventPFCands(EventCollection):
         mass,
         charge,
         pid,
-        jet_idx,
-        pfcands_idx,
+        jet_idx=None,
+        pfcands_idx=None,
         batch_number=None,
-        offline=False
+        offline=False,
+        pf_cand_jet_idx=None # optional: provide either this or pfcands_idx & jet_idx
     ):
-        print("Jet idx:", jet_idx)
-        print("PFCands_idx:", pfcands_idx)
+        #print("Jet idx:", jet_idx)
+        #print("PFCands_idx:", pfcands_idx)
         self.pt = torch.tensor(pt)
         self.eta = torch.tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
@@ -491,23 +542,31 @@ class EventPFCands(EventCollection):
         self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
         self.charge = torch.tensor(charge)
         self.pid = torch.tensor(pid)
-        self.pf_cand_to_jet = {}
-        for i, pfcand_idx in enumerate(pfcands_idx):
-            if int(pfcand_idx) in self.pf_cand_to_jet:
-                print("!!", int(pfcand_idx), "in self.pf_cand_to_jet!")
-                if not offline:
-                    raise Exception
-            self.pf_cand_to_jet[int(pfcand_idx)] = int(jet_idx[i])
-            #assert pfcand_idx < len(self.pt) # ignore this error for now?
-            if pfcand_idx >= len(self.pt):
-                print("Out of bounds")
-                if not offline:
-                    raise Exception
+        if pf_cand_jet_idx is not None:
+            self.pf_cand_jet_idx = pf_cand_jet_idx
+        else:
+            self.pf_cand_jet_idx = torch.ones(len(self.pt)).int() * -1
+            for i, pfcand_idx in enumerate(pfcands_idx):
+                if int(pfcand_idx) >= len(self.pt):
+                    print("Out of bounds")
+                    if not offline:
+                        raise Exception
+                else:
+                    self.pf_cand_jet_idx[int(pfcand_idx)] = int(jet_idx[i])
         if batch_number is not None:
             self.batch_number = batch_number
     def __len__(self):
         return len(self.pt)
 
+class EventMET(EventCollection):
+    # Extra info belonging to the event: MET, trigger info etc.
+    def __init__(self, pt, phi, batch_number=None):
+        self.pt = torch.tensor(pt)
+        self.phi = torch.tensor(phi)
+        if batch_number is not None:
+            self.batch_number = torch.tensor(batch_number)
+    def __len__(self):
+        return len(self.pt)
 
 class EventJets(EventCollection):
     def __init__(
@@ -658,17 +717,13 @@ def concatenate_Particles_GT(list_of_Particles_GT):
     )
 
 
-def add_batch_number(list_graphs):
+def add_batch_number(list_event_collections, attr):
     list_y = []
-    for i, el in enumerate(list_graphs):
-        y = el[1]
-        batch_id = torch.ones(y.E.shape[0], 1) * i
+    for i, el in enumerate(list_event_collections):
+        batch_id = torch.ones(el.__dict__[attr].shape[0], 1) * i
         list_y.append(batch_id)
     list_y = torch.cat(list_y, dim=0)
     return list_y
-
-
-
 
 
 def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
@@ -696,3 +751,4 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     else:
         mask_particles = torch.tensor(np.full((len(list_p)), False, dtype=bool))
     return mask.to(bool), ~mask_particles.to(bool)
+
