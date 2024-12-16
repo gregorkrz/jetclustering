@@ -28,13 +28,13 @@ preprocess:
   ### [note]: `[var]_mask` will not be transformed even if `method=auto`
 
 inputs:
-  n_jets:
+  n_fat_jets:
     pad_mode: wrap
     length: 1
     vars:
       - [nFatJet, null]
 #      - [nJetId, null]
-  jets:
+  fat_jets:
     pad_mode: wrap
     length: 50
     vars:
@@ -43,6 +43,20 @@ inputs:
        - [FatJet_phi, null]
        - [FatJet_mass, null]
        - [FatJet_area, null]
+  n_jets:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ nJet, null ]
+  jets:
+    pad_mode: wrap
+    length: 50
+    vars:
+      - [ Jet_pt, null ]
+      - [ Jet_eta, null ]
+      - [ Jet_phi, null ]
+      - [ Jet_mass, null ]
+      - [ Jet_area, null ]
   n_genjets:
     pad_mode: wrap
     length: 1

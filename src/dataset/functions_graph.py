@@ -212,9 +212,10 @@ def create_jets_outputs(
     n_genjets = int(output["n_genjets"][0, 0])
     genjets_data = output["genjets"][:, :n_genjets]
     n_pfcands = int(output["n_pfcands"][0, 0])
-    pfcands_data = output["pfcands"][:, :n_pfcands]
+    n_fat_jets = int(output["n_fat_jets"][0, 0])
+    fat_jets_data = output["fat_jets"][:, :n_fat_jets]
     #jets_data = EventJets(jets_data[:, 0], )
-    return jets_data, genjets_data
+    return jets_data, genjets_data, fat_jets_data
 
 def create_jets_outputs_new(
     output
@@ -227,6 +228,9 @@ def create_jets_outputs_new(
     pfcands_data = output["pfcands"][:, :n_pfcands]
     pfcands_jets_mapping = output["pfcands_jet_mapping"]
     output_MET = output["MET"]
+    n_fat_jets = int(output["n_fat_jets"][0, 0])
+    fat_jets_data = output["fat_jets"][:, :n_fat_jets]
+
     num_mapping = np.argmax(pfcands_jets_mapping[1]) + 1
     if n_jets == 0:
         num_mapping = 0
@@ -242,6 +246,7 @@ def create_jets_outputs_new(
     jets_data = jets_data.T
     genjets_data = genjets_data.T
     pfcands_data = pfcands_data.T
+    fat_jets_data = fat_jets_data.T
     #offline_pfcands_data = offline_pfcands_data.T
     jets_data = EventJets(
         jets_data[:, 0],
@@ -256,12 +261,19 @@ def create_jets_outputs_new(
         genjets_data[:, 2],
         genjets_data[:, 3],
     )
+    fatjets_data = EventJets(
+        fat_jets_data[:, 0],
+        fat_jets_data[:, 1],
+        fat_jets_data[:, 2],
+        fat_jets_data[:, 3],
+        fat_jets_data[:, 4]
+    )
     pfcands_jets_mapping = list(pfcands_jets_mapping)
     #offline_jets_mapping = list(offline_jets_mapping)
     pfcands_data = EventPFCands(*[pfcands_data[:, i] for i in range(6)] + pfcands_jets_mapping)
     MET_data = EventMET(pt=output_MET[0], phi=output_MET[1])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
-    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data)
+    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data)
     #return {
     #    "jets": jets_data,
     #    "genjets": genjets_data,

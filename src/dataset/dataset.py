@@ -5,6 +5,7 @@ import numpy as np
 import awkward as ak
 import torch.utils.data
 import time
+import pickle
 
 from functools import partial
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -287,23 +288,20 @@ class _SimpleIter(object):
     def get_data(self, i):
         # inputs
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
-        if self.jets:
-            return create_jets_outputs_new(X), False
-        if not self.synthetic:
-            [g, features_partnn], graph_empty = create_graph(
-                X, self._data_config, n_noise=self.n_noise
-            )
-        else:
-            npart_min, npart_max = self.synthetic_npart_min, self.synthetic_npart_max
-            [g, features_partnn], graph_empty = create_graph_synthetic(
-                self._data_config,
-                n_noise=self.n_noise,
-                npart_min=npart_min,
-                npart_max=npart_max,
-            )
-        return [g, features_partnn], graph_empty
+        return create_jets_outputs_new(X), False
 
 class EventDataset(torch.utils.data.IterableDataset):
+    @staticmethod
+    def from_directory(dir, mmap=False):
+        result = {}
+        for file in os.listdir(dir):
+            if file == "metadata.pkl":
+                metadata = pickle.load(open(os.path.join(dir, file), "rb"))
+            else:
+                result[file.split(".")[0]] = torch.load(
+                    open(os.path.join(dir, file), "rb"), map_location="cpu"
+                )
+        return EventDataset(result, metadata)
     def __init__(self, events, metadata):
         # events: serialized events dict
         # metadata: dict with metadata
@@ -327,6 +325,8 @@ class EventDataset(torch.utils.data.IterableDataset):
             yield Event(**result)
     def __iter__(self):
         return self.get_iter()
+
+
 class SimpleIterDataset(torch.utils.data.IterableDataset):
     r"""Base IterableDataset.
     Handles dataloading.

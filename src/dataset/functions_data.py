@@ -747,13 +747,14 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
 
 
 class Event:
-    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands, "offline_pfcands": EventPFCands, "MET": EventMET}
-    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, n_events=1): # Add more collections here
+    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands, "offline_pfcands": EventPFCands, "MET": EventMET, "fatjets": EventJets}
+    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, fatjets=None, n_events=1): # Add more collections here
         self.jets = jets
         self.genjets = genjets
         self.pfcands = pfcands
         self.offline_pfcands = offline_pfcands
         self.MET = MET
+        self.fatjets = fatjets
         self.init_attrs = []
         self.n_events = n_events
         if jets is not None:
@@ -766,6 +767,8 @@ class Event:
             self.init_attrs.append("offline_pfcands")
         if MET is not None:
             self.init_attrs.append("MET")
+        if fatjets is not None:
+            self.init_attrs.append("fatjets")
 
     ''' @staticmethod
     def deserialize(result, result_metadata, event_idx=None):
