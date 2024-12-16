@@ -114,8 +114,8 @@ default_prefix = "/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scoutin
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--path", type=str)
-parser.add_argument("--output-path", type=str)
+parser.add_argument("--output", type=str)
 args = parser.parse_args()
 path = args.path
 for dir in os.listdir(path):
-    preprocess_dataset(os.path.join(path, dir), args.output_path)
+    preprocess_dataset(os.path.join(path, dir), args.output)
