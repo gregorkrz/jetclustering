@@ -86,7 +86,6 @@ def preprocess_dataset(path, output_path, config_file='/eos/home-g/gkrzmanc/jetc
     from src.dataset.functions_data import concat_events
     events = concat_events(data) # TODO: This can be done in a nicer way, using less memory (?)
     result = events.serialize()
-    #save_to_dir = "/eos/user/g/gkrzmanc/jetclustering/data-preprocessed/SVJ_std_UL2018_scouting_test_large/SVJ_mMed-700GeV_mDark-20GeV_rinv-0.7_alpha-peak"
     dir_name = path.split("/")[-1]
     save_to_dir = os.path.join(output_path, dir_name)
     Path(save_to_dir).mkdir(parents=True, exist_ok=True)
@@ -110,7 +109,7 @@ def preprocess_dataset(path, output_path, config_file='/eos/home-g/gkrzmanc/jetc
     print("Done")
     '''
 
-default_prefix = "/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scouting_test_large"
+#default_prefix = "/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scouting_test_large"
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--path", type=str)
