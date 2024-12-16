@@ -9,7 +9,10 @@ The repo has evolved from [here](https://github.com/selvaggi/mlpf) - mainly, we 
 ### Preprocess data
 
 #### First version without dark quarks
+
 `python -m src.preprocessing.preprocess_dataset --input SVJ_std_UL2018_scouting_test_large --output SVJ_std_UL2018_scouting_test_large`
+
+Or, run it on slurm: `sbatch jobs/preprocess_v0.slurm` (make sure to update your local `env.sh` file!)
 
 ### Training models
 
