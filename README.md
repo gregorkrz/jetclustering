@@ -8,6 +8,9 @@ The repo has evolved from [here](https://github.com/selvaggi/mlpf) - mainly, we 
 
 ### Preprocess data
 
+#### First version without dark quarks
+
+
 ### Training models
 
 ### Evaluation

@@ -1,24 +1,12 @@
 import torch
-import sys
 import os.path as osp
 import os
 import sys
-import numpy as np
-sys.path.append("/eos/home-g/gkrzmanc/jetclustering/code")
 from src.dataset.dataset import SimpleIterDataset
 from src.utils.utils import to_filelist
-from torch.utils.data import DataLoader
 from pathlib import Path
-from tqdm import tqdm
-from torch_scatter import scatter_sum
-import matplotlib.pyplot as plt
 import pickle
-import numpy as np
-import mplhep as hep
-hep.style.use("CMS")
-import matplotlib
-matplotlib.rc('font', size=13)
-
+from src.utils.paths import get_path
 
 def remove_from_list(lst):
     out = []
@@ -28,7 +16,7 @@ def remove_from_list(lst):
         out.append(item)
     return out
 
-def preprocess_dataset(path, output_path, config_file='/eos/home-g/gkrzmanc/jetclustering/code/config_files/config_jets.yaml'):
+def preprocess_dataset(path, output_path, config_file=get_path('config_files/config_jets.yaml', 'code')):
     datasets = os.listdir(path)
     datasets = [os.path.join(path, x) for x in datasets]
     datasets = datasets
@@ -109,12 +97,12 @@ def preprocess_dataset(path, output_path, config_file='/eos/home-g/gkrzmanc/jetc
     print("Done")
     '''
 
-#default_prefix = "/eos/user/g/gkrzmanc/jetclustering/data/SVJ_std_UL2018_scouting_test_large"
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--path", type=str)
+parser.add_argument("--input", type=str)
 parser.add_argument("--output", type=str)
 args = parser.parse_args()
-path = args.path
+path = get_path(args.input, "data")
+output = get_path(args.output, "preprocessed_data")
 for dir in os.listdir(path):
-    preprocess_dataset(os.path.join(path, dir), args.output)
+    preprocess_dataset(os.path.join(path, dir), output)
