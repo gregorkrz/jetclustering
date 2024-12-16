@@ -4,8 +4,8 @@
 #SBATCH --mem=10000                   # Request 10GB of memory
 #SBATCH --time=01:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=preprocess_svj_dataset  # Name the job
-#SBATCH --output=job_output.log       # Redirect stdout to a log file
-#SBATCH --error=job_error.log         # Redirect stderr to a log file
+#SBATCH --output=jobs/preprocess_v0_output.log       # Redirect stdout to a log file
+#SBATCH --error=jobs/preprocess_v0_error.log         # Redirect stderr to a log file
 
 # Load the Singularity environment
 
