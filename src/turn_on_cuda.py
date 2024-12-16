@@ -18,8 +18,8 @@ import torch
 
 def main():
 
-    print(torch.cuda.is_available())
-    print(torch.cuda.device_count())
+    print("CUDA is available?: ", torch.cuda.is_available())
+    print("CUDA device count:", torch.cuda.device_count())
 
 
 if __name__ == "__main__":

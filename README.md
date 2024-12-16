@@ -1,41 +1,11 @@
-# MLPF FCC
-particle-flow with ml 
+# SVJ clustering
+The repo has evolved from [here](https://github.com/selvaggi/mlpf) - mainly, we use the dataloader and code for reading  the root files for the previous MLPF project
 
-## ML pipeline:
-- The dataloaders, train scripts and tools are currently based on [Weaver](https://github.com/hqucms/weaver-core/tree/main), the reason for this is that we are importing a root file that contains the dataset and these files can be large. Weaver has all the tools to read and load from the rootfile and also develops and iterable dataloader that prefetches some data. Currently this dataset includes events. One event is formed by hits (which can be tracks or calo hits). An input is an event in the form of a graph, and the output is a single particle (in coming versions of the dataset there will be more). 
-- Models: The goal of the current taks is to regress the particle's information (coordinates and energy). Currently the best approach is the [object condensation]([https://link-url-here.org](https://github.com/hqucms/weaver-core/tree/main](https://arxiv.org/abs/2002.03605), since it allows to regress a variable number of particles. 
-- Training: To train a model run the following command 
-`python -m src.train --data-train /eos/user/m/mgarciam/datasets/pflow/tree_mlpf2.root --data-config config_files/config_2_newlinks.yaml --network-config src/models/wrapper/example_gravnet_model.py --model-prefix models_trained/ --num-workers 0 --gpus --batch-size 100 --start-lr 1e-3 --num-epochs 1000 --optimizer ranger --fetch-step 1 --log logs/train.log --log-wandb --wandb-displayname test --wandb-projectname mlpf --condensation`
+## Setup
 
-Currently this model does not train because we need to remove from the dataset the events where there are no links between all of the hits and the particles (i.e all hits are noise)
-## Debugging the model, experimenting with (some) hyperparameters etc.
+### Preprocess data
 
-You can add parameters that get passed as kwargs to the model wrapper in the config file:
-```
-custom_model_kwargs:
-   # add custom model kwargs here
-   # ...
-   n_postgn_dense_blocks: 4
+### Training models
 
-```
+### Evaluation
 
-## Visualization 
-Runs for this project can be found in the following work space: https://wandb.ai/imdea_dolo/mlpf?workspace=user-imdea_dolo
-
-## Environment 
-To set up the env create a conda env following the instructions from [Weaver](https://github.com/hqucms/weaver-core/tree/main) and also install the packages in the requirements.sh script above 
-
-Alternatively, you can try to use a pre-built environment from [this link](https://cernbox.cern.ch/s/Rwz2S35BUePbwG4) - the .tar.gz file was built using conda-pack on fcc-gpu-04v2.cern.ch.
-
-## Energy correction
-
-A bit hacky for now, but the dataset is extracted from the training dataloader by adding `--save-features` to the training command. The dataframes used for training are saved into the `cluster_features` directory.
-Firstly a simple neural network is trained to perform energy correction. We train two models separately for neutral and charged particles.
-
-```python notebooks/13_NNs.py --prefix /eos/user/g/gkrzmanc/2024/EC_basic_model_charged --wandb_name NN_EC_train_charged --loss default --PIDs 211,-211,2212,-2212,11 --dataset-path /eos/user/g/gkrzmanc/2024/ft_ec_saved_f_230424/cluster_features/ --batch-size 8 --corrected-energy --gnn-features-placeholders 32```
-
-```python notebooks/13_NNs.py --prefix /eos/user/g/gkrzmanc/2024/EC_basic_model_neutral --wandb_name NN_EC_train_neutral --loss default --PIDs 130,2112,22            --dataset-path /eos/user/g/gkrzmanc/2024/ft_ec_saved_f_230424/cluster_features/ --batch-size 8 --corrected-energy --gnn-features-placeholders 32```
-
-The produced models are then loaded in `src/models/GATr/Gatr_pf_e.py`.
-
-Evaluation / further training: `--ec-model gat-concat` or `--ec-model dnn`.
