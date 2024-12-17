@@ -750,7 +750,9 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
 
 
 class Event:
-    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands, "offline_pfcands": EventPFCands, "MET": EventMetadataAndMET, "fatjets": EventJets, "special_pfcands": EventPFCands}
+    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands,
+                       "offline_pfcands": EventPFCands, "MET": EventMetadataAndMET, "fatjets": EventJets,
+                       "special_pfcands": EventPFCands, "matrix_element_gen_particles": EventPFCands}
     def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, fatjets=None, special_pfcands=None, n_events=1): # Add more collections here
         self.jets = jets
         self.genjets = genjets

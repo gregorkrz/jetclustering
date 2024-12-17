@@ -240,6 +240,7 @@ def create_jets_outputs_new(
     muons_data = output["muons"][:, :n_muons]
     n_photons = int(output["n_photons"][0, 0])
     photons_data = output["photons"][:, :n_photons]
+    matrix_element_gen_particles_data = output["matrix_element_gen_particles"]
 
     pfcands_jets_mapping = pfcands_jets_mapping[:, :num_mapping]
     #n_offline_pfcands = int(output["n_offline_pfcands"][0, 0])
@@ -254,6 +255,7 @@ def create_jets_outputs_new(
     genjets_data = genjets_data.T
     pfcands_data = pfcands_data.T
     fat_jets_data = fat_jets_data.T
+    matrix_element_gen_particles_data = matrix_element_gen_particles_data.T
     #offline_pfcands_data = offline_pfcands_data.T
     electrons_data = electrons_data.T
     muons_data = muons_data.T

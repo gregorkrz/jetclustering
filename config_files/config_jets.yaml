@@ -152,7 +152,15 @@ inputs:
       - [ Photon_pt, null ]
       - [ Photon_eta, null ]
       - [ Photon_phi, null ]
-
+  matrix_element_gen_particles:
+    pad_mode: wrap
+    length: 2
+    vars:
+      - [MatrixElementGenParticle_pt, null]
+      - [MatrixElementGenParticle_eta, null]
+      - [MatrixElementGenParticle_phi, null]
+      - [MatrixElementGenParticle_mass, null]
+      - [MatrixElementGenParticle_pdgId, null]
 labels:
 
 observers:
