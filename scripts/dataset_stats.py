@@ -1,9 +1,9 @@
 import os
 from src.dataset.dataset import EventDataset
-
 from src.utils.paths import get_path
 import argparse
 
+# This script attempts to open dataset files and prints the number of events in each one.
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str)

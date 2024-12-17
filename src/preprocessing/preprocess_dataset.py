@@ -28,11 +28,11 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
             #self.data_train = files_train
             self.data_config = config_file
             self.extra_selection = None
-            self.train_val_split = 0.8
+            self.train_val_split = 1.0
             self.data_fraction = 1
             self.file_fraction = 1
             self.fetch_by_files = False
-            self.fetch_step = 0.2
+            self.fetch_step = 0.05
             self.steps_per_epoch = None
             self.in_memory = False
             self.local_rank = None
@@ -101,8 +101,16 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str)
 parser.add_argument("--output", type=str)
+parser.add_argument("--overwrite", action="store_true")
+
+
 args = parser.parse_args()
 path = get_path(args.input, "data")
 output = get_path(args.output, "preprocessed_data")
 for dir in os.listdir(path):
-    preprocess_dataset(os.path.join(path, dir), output)
+    if args.overwrite or not os.path.exists(os.path.join(output, dir)):
+        preprocess_dataset(os.path.join(path, dir), output)
+    else:
+        print("Skipping", dir + ", already exists")
+        # flush
+        sys.stdout.flush()

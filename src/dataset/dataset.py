@@ -299,7 +299,7 @@ class EventDataset(torch.utils.data.IterableDataset):
                 metadata = pickle.load(open(os.path.join(dir, file), "rb"))
             else:
                 result[file.split(".")[0]] = torch.load(
-                    open(os.path.join(dir, file), "rb"), map_location="cpu"
+                    os.path.join(dir, file)#, mmap=mmap
                 )
         return EventDataset(result, metadata)
     def __init__(self, events, metadata):
