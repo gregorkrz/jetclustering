@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 
 def plot_event(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
+    eta_dq = event.matrix_element_gen_particles.eta
+    phi_dq = event.matrix_element_gen_particles.phi
+    pt_dq = event.matrix_element_gen_particles.pt
+
     eta = event.pfcands.eta
     phi = event.pfcands.phi
     pt = event.pfcands.pt
@@ -17,6 +21,7 @@ def plot_event(event, ax=None, special_pfcands_size=1, special_pfcands_color="gr
     for i in range(len(eta)):
         colors.append(colorlist[mapping[i]])
     ax[0].scatter(eta, phi, s=pt, c=colors)
+    ax[0].scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=1.0)
     ax[0].scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=1.0)
     eta_special = event.special_pfcands.eta
     phi_special = event.special_pfcands.phi
@@ -38,6 +43,7 @@ def plot_event(event, ax=None, special_pfcands_size=1, special_pfcands_color="gr
         for i in range(len(eta)):
             colors.append(colorlist[mapping[i]])
         ax[1].scatter(eta, phi, s=pt, c=colors)
+        ax[1].scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=1.0)
         ax[1].scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=1.0)
         ax[1].set_xlabel(r"$\eta$")
         ax[1].set_ylabel(r"$\phi$")
@@ -53,5 +59,6 @@ def plot_event(event, ax=None, special_pfcands_size=1, special_pfcands_color="gr
             ax[1].set_aspect("equal")
         ax[0].set_aspect("equal")
     if ax is not None:
+        fig.tight_layout()
         return fig
 

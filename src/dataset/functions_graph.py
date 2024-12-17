@@ -256,6 +256,14 @@ def create_jets_outputs_new(
     pfcands_data = pfcands_data.T
     fat_jets_data = fat_jets_data.T
     matrix_element_gen_particles_data = matrix_element_gen_particles_data.T
+    matrix_element_gen_particles_data = EventPFCands(pt=matrix_element_gen_particles_data[:, 0],
+                                                     eta=matrix_element_gen_particles_data[:, 1],
+                                                     phi=matrix_element_gen_particles_data[:, 2],
+                                                     mass=matrix_element_gen_particles_data[:, 3],
+                                                     charge=np.sign(matrix_element_gen_particles_data[:, 4]),
+                                                     pid=matrix_element_gen_particles_data[:, 4],
+                                                     pf_cand_jet_idx=-1*np.ones_like(matrix_element_gen_particles_data[:, 0]))
+
     #offline_pfcands_data = offline_pfcands_data.T
     electrons_data = electrons_data.T
     muons_data = muons_data.T
@@ -300,7 +308,8 @@ def create_jets_outputs_new(
     special_pfcands_data = EventPFCands(*[special_pfcands_data[:, i] for i in range(6)], pf_cand_jet_idx=-1*np.ones_like(special_pfcands_data[:, 0]))
     MET_data = EventMetadataAndMET(pt=output_MET[0], phi=output_MET[1], scouting_trig=output_MET[2], offline_trig=output_MET[3], veto_trig=output_MET[4])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
-    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data, special_pfcands=special_pfcands_data)
+    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data,
+                 special_pfcands=special_pfcands_data, matrix_element_gen_particles=matrix_element_gen_particles_data)
     #return {
     #    "jets": jets_data,
     #    "genjets": genjets_data,
