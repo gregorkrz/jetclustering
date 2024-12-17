@@ -533,7 +533,7 @@ class EventPFCands(EventCollection):
         self.charge = to_tensor(charge)
         self.pid = to_tensor(pid)
         if pf_cand_jet_idx is not None:
-            self.pf_cand_jet_idx = pf_cand_jet_idx
+            self.pf_cand_jet_idx = to_tensor(pf_cand_jet_idx)
         else:
             self.pf_cand_jet_idx = torch.ones(len(self.pt)).int() * -1
             for i, pfcand_idx in enumerate(pfcands_idx):

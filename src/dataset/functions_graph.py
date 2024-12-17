@@ -282,6 +282,8 @@ def create_jets_outputs_new(
     photons_data = np.column_stack((photons_data[:, 0], photons_data[:, 1], photons_data[:, 2],
                                     photons_mass, photons_charge, photons_pid))
     special_pfcands_data = np.concatenate((electrons_data, muons_data, photons_data), axis=0)
+    special_pfcands_data = torch.tensor(special_pfcands_data)
+    # is there
     jets_data = EventJets(
         jets_data[:, 0],
         jets_data[:, 1],
@@ -305,7 +307,7 @@ def create_jets_outputs_new(
     pfcands_jets_mapping = list(pfcands_jets_mapping)
     #offline_jets_mapping = list(offline_jets_mapping)
     pfcands_data = EventPFCands(*[pfcands_data[:, i] for i in range(6)] + pfcands_jets_mapping)
-    special_pfcands_data = EventPFCands(*[special_pfcands_data[:, i] for i in range(6)], pf_cand_jet_idx=-1*np.ones_like(special_pfcands_data[:, 0]))
+    special_pfcands_data = EventPFCands(*[special_pfcands_data[:, i] for i in range(6)], pf_cand_jet_idx=-1*torch.ones_like(special_pfcands_data[:, 0]))
     MET_data = EventMetadataAndMET(pt=output_MET[0], phi=output_MET[1], scouting_trig=output_MET[2], offline_trig=output_MET[3], veto_trig=output_MET[4])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
     return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data,
