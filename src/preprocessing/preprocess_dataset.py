@@ -7,6 +7,7 @@ from src.utils.utils import to_filelist
 from pathlib import Path
 import pickle
 from src.utils.paths import get_path
+import argparse
 
 def remove_from_list(lst):
     out = []
@@ -97,7 +98,6 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
     print("Done")
     '''
 
-import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str)
 parser.add_argument("--output", type=str)

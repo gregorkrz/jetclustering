@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def plot_event(event, ax=None):
+def plot_event(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
     eta = event.pfcands.eta
     phi = event.pfcands.phi
     pt = event.pfcands.pt
@@ -18,7 +18,13 @@ def plot_event(event, ax=None):
         colors.append(colorlist[mapping[i]])
     ax[0].scatter(eta, phi, s=pt, c=colors)
     ax[0].scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=1.0)
-    # display the jets as a circ+le with R=0.5
+    eta_special = event.special_pfcands.eta
+    phi_special = event.special_pfcands.phi
+    pt_special = event.special_pfcands.pt
+    print("N special PFCands:", len(eta_special))
+    ax[0].scatter(eta_special, phi_special, s=pt_special*special_pfcands_size, c=special_pfcands_color, marker="v")
+    # "special" PFCands - electrons, muons, photons satisfying certain criteria
+    # Display the jets as a circle with R=0.5
     jet_eta = event.jets.eta
     jet_phi = event.jets.phi
     for i in range(len(jet_eta)):

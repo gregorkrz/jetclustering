@@ -512,7 +512,7 @@ class EventPFCands(EventCollection):
         pfcands_idx=None,
         batch_number=None,
         offline=False,
-        pf_cand_jet_idx=None # optional: provide either this or pfcands_idx & jet_idx
+        pf_cand_jet_idx=None, # optional: provide either this or pfcands_idx & jet_idx
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
@@ -548,12 +548,15 @@ class EventPFCands(EventCollection):
     def __len__(self):
         return len(self.pt)
 
-class EventMET(EventCollection):
-    init_attrs = ["pt", "phi"]
+class EventMetadataAndMET(EventCollection):
+    init_attrs = ["pt", "phi", "scouting_trig", "offline_trig", "veto_trig"]
     # Extra info belonging to the event: MET, trigger info etc.
-    def __init__(self, pt, phi, batch_number=None):
+    def __init__(self, pt, phi, scouting_trig, offline_trig, veto_trig, batch_number=None):
         self.pt = to_tensor(pt)
         self.phi = to_tensor(phi)
+        self.scouting_trig = to_tensor(scouting_trig)
+        self.offline_trig = to_tensor(offline_trig)
+        self.veto_trig = to_tensor(veto_trig)
         if batch_number is not None:
             self.batch_number = to_tensor(batch_number)
     def __len__(self):
@@ -747,14 +750,15 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
 
 
 class Event:
-    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands, "offline_pfcands": EventPFCands, "MET": EventMET, "fatjets": EventJets}
-    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, fatjets=None, n_events=1): # Add more collections here
+    evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands, "offline_pfcands": EventPFCands, "MET": EventMetadataAndMET, "fatjets": EventJets, "special_pfcands": EventPFCands}
+    def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, fatjets=None, special_pfcands=None, n_events=1): # Add more collections here
         self.jets = jets
         self.genjets = genjets
         self.pfcands = pfcands
         self.offline_pfcands = offline_pfcands
         self.MET = MET
         self.fatjets = fatjets
+        self.special_pfcands = special_pfcands
         self.init_attrs = []
         self.n_events = n_events
         if jets is not None:
@@ -769,6 +773,8 @@ class Event:
             self.init_attrs.append("MET")
         if fatjets is not None:
             self.init_attrs.append("fatjets")
+        if special_pfcands is not None:
+            self.init_attrs.append("special_pfcands")
 
     ''' @staticmethod
     def deserialize(result, result_metadata, event_idx=None):

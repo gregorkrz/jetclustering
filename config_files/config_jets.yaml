@@ -1,9 +1,3 @@
-graph_config:
-
-
-custom_model_kwargs:
-   # add custom model kwargs here
-
 treename: mmtree/Events;1
 selection:
    ### use `&`, `|`, `~` for logical operations on numpy arrays
@@ -42,7 +36,6 @@ inputs:
        - [FatJet_eta, null]
        - [FatJet_phi, null]
        - [FatJet_mass, null]
-       - [FatJet_area, null]
   n_jets:
     pad_mode: wrap
     length: 1
@@ -56,7 +49,6 @@ inputs:
       - [ Jet_eta, null ]
       - [ Jet_phi, null ]
       - [ Jet_mass, null ]
-      - [ Jet_area, null ]
   n_genjets:
     pad_mode: wrap
     length: 1
@@ -92,33 +84,75 @@ inputs:
     vars:
       - [ FatJetPFCands_jetIdx, null ]
       - [ FatJetPFCands_pFCandsIdx, null ]
-  n_offline_pfcands:
-    pad_mode: wrap
-    length: 1
-    vars:
-      - [ nOfflinePFCands, null ]
-  offline_pfcands:
-    pad_mode: wrap
-    length: 750
-    vars:
-      - [ OfflinePFCands_pt, null ]
-      - [ OfflinePFCands_eta, null ]
-      - [ OfflinePFCands_phi, null ]
-      - [ OfflinePFCands_mass, null ]
-      - [ OfflinePFCands_charge, null ]
-      - [ OfflinePFCands_pdgId, null ]
-  offline_pfcands_jet_mapping:
-    pad_mode: wrap
-    length: 750
-    vars:
-      - [ OfflineFatJetPFCands_jetIdx, null ]
-      - [ OfflineFatJetPFCands_pFCandsIdx, null ]
+  #n_offline_pfcands:
+  #  pad_mode: wrap
+  #  length: 1
+  #  vars:
+  #    - [ nOfflinePFCands, null ]
+  #offline_pfcands:
+  #  pad_mode: wrap
+  #  length: 750
+  #  vars:
+  #    - [ OfflinePFCands_pt, null ]
+  #    - [ OfflinePFCands_eta, null ]
+  #    - [ OfflinePFCands_phi, null ]
+  #    - [ OfflinePFCands_mass, null ]
+  #    - [ OfflinePFCands_charge, null ]
+  #    - [ OfflinePFCands_pdgId, null ]
+  #offline_pfcands_jet_mapping:
+  #  pad_mode: wrap
+  #  length: 750
+  #  vars:
+  #    - [ OfflineFatJetPFCands_jetIdx, null ]
+  #    - [ OfflineFatJetPFCands_pFCandsIdx, null ]
   MET:
     pad_mode: wrap
     length: 1
     vars:
       - [ MET_pt, null ]
       - [ MET_phi, null ]
+      - [ scouting_trig, null]
+      - [ offline_trig, null]
+      - [ veto_trig, null ]
+  n_electrons:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ nElectron, null ]
+  n_photons:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ nPhotons, null ]
+  n_muons:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ nMuons, null ]
+  electrons:
+    pad_mode: wrap
+    length: 10
+    vars:
+      - [ Electron_pt, null ]
+      - [ Electron_eta, null ]
+      - [ Electron_phi, null ]
+      - [ Electron_charge, null ]
+  muons:
+    pad_mode: wrap
+    length: 10
+    vars:
+      - [ Muon_pt, null ]
+      - [ Muon_eta, null ]
+      - [ Muon_phi, null ]
+      - [ Muon_charge, null ]
+  photons:
+    pad_mode: wrap
+    length: 10
+    vars:
+      - [ Photon_pt, null ]
+      - [ Photon_eta, null ]
+      - [ Photon_phi, null ]
+
 labels:
 
 observers:

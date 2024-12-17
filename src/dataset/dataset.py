@@ -315,6 +315,9 @@ class EventDataset(torch.utils.data.IterableDataset):
     def __len__(self):
         return self.n_events
    # def __next__(self):
+    def get_indices(self, i):
+        # i is a list of indices that we want to get from the dataset
+        raise NotImplementedError # TODO
     def get_iter(self):
         while self.i < self.n_events:
             start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}

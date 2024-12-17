@@ -17,7 +17,7 @@ from src.dataset.functions_data import (
     EventPFCands,
     EventCollection,
     Event,
-    EventMET,
+    EventMetadataAndMET,
 )
 
 
@@ -230,10 +230,17 @@ def create_jets_outputs_new(
     output_MET = output["MET"]
     n_fat_jets = int(output["n_fat_jets"][0, 0])
     fat_jets_data = output["fat_jets"][:, :n_fat_jets]
-
     num_mapping = np.argmax(pfcands_jets_mapping[1]) + 1
     if n_jets == 0:
         num_mapping = 0
+
+    n_electrons = int(output["n_electrons"][0, 0])
+    electrons_data = output["electrons"][:, :n_electrons]
+    n_muons = int(output["n_muons"][0, 0])
+    muons_data = output["muons"][:, :n_muons]
+    n_photons = int(output["n_photons"][0, 0])
+    photons_data = output["photons"][:, :n_photons]
+
     pfcands_jets_mapping = pfcands_jets_mapping[:, :num_mapping]
     #n_offline_pfcands = int(output["n_offline_pfcands"][0, 0])
     #offline_pfcands_data = output["offline_pfcands"][:, :n_offline_pfcands]
@@ -248,12 +255,29 @@ def create_jets_outputs_new(
     pfcands_data = pfcands_data.T
     fat_jets_data = fat_jets_data.T
     #offline_pfcands_data = offline_pfcands_data.T
+    electrons_data = electrons_data.T
+    muons_data = muons_data.T
+    photons_data = photons_data.T
+    electrons_mass = np.ones_like(electrons_data[:, 0]) * 0.511
+    muons_mass = np.ones_like(muons_data[:, 0]) * 105.7
+    photons_mass = np.zeros_like(photons_data[:, 0])
+    electrons_pid = np.ones_like(electrons_data[:, 0]) * 0
+    muons_pid = np.ones_like(muons_data[:, 0]) * 1
+    photons_pid = np.ones_like(photons_data[:, 0]) * 2
+    photons_charge = np.zeros_like(photons_data[:, 0])
+    electrons_data = np.column_stack((electrons_data[:, 0], electrons_data[:, 1], electrons_data[:, 2],
+                                      electrons_mass, electrons_data[:, 3], electrons_pid))
+    muons_data = np.column_stack((muons_data[:, 0], muons_data[:, 1], muons_data[:, 2],
+                                    muons_mass, muons_data[:, 3], muons_pid))
+    photons_data = np.column_stack((photons_data[:, 0], photons_data[:, 1], photons_data[:, 2],
+                                    photons_mass, photons_charge, photons_pid))
+    special_pfcands_data = np.concatenate((electrons_data, muons_data, photons_data), axis=0)
     jets_data = EventJets(
         jets_data[:, 0],
         jets_data[:, 1],
         jets_data[:, 2],
         jets_data[:, 3],
-        jets_data[:, 4]
+        #jets_data[:, 4]
     )
     genjets_data = EventJets(
         genjets_data[:, 0],
@@ -266,14 +290,15 @@ def create_jets_outputs_new(
         fat_jets_data[:, 1],
         fat_jets_data[:, 2],
         fat_jets_data[:, 3],
-        fat_jets_data[:, 4]
+        #fat_jets_data[:, 4]
     )
     pfcands_jets_mapping = list(pfcands_jets_mapping)
     #offline_jets_mapping = list(offline_jets_mapping)
     pfcands_data = EventPFCands(*[pfcands_data[:, i] for i in range(6)] + pfcands_jets_mapping)
-    MET_data = EventMET(pt=output_MET[0], phi=output_MET[1])
+    special_pfcands_data = EventPFCands(*[special_pfcands_data[:, i] for i in range(6)], pf_cand_jet_idx=-1*np.ones_like(special_pfcands_data[:, 0]))
+    MET_data = EventMetadataAndMET(pt=output_MET[0], phi=output_MET[1], scouting_trig=output_MET[2], offline_trig=output_MET[3], veto_trig=output_MET[4])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
-    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data)
+    return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data, special_pfcands=special_pfcands_data)
     #return {
     #    "jets": jets_data,
     #    "genjets": genjets_data,
