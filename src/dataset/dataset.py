@@ -6,7 +6,7 @@ import awkward as ak
 import torch.utils.data
 import time
 import pickle
-
+from collections import OrderedDict
 from functools import partial
 from concurrent.futures.thread import ThreadPoolExecutor
 from src.logger.logger import _logger, warn_once
@@ -290,16 +290,35 @@ class _SimpleIter(object):
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
         return create_jets_outputs_new(X), False
 
+class EventDatasetCollection(torch.utils.data.IterableDataset):
+    def __init__(self, dir_list):
+        self.event_collections_dict = OrderedDict()
+        for dir in dir_list:
+            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True)
+        self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
+        self.event_thresholds = [0] + [x.n_events for x in self.event_collections_dict.values()]
+        self.dir_list = dir_list
+    def __len__(self):
+        return self.n_events
+    def get_idx(self, i):
+        for j, threshold in enumerate(self.event_thresholds):
+            if i < threshold:
+                return self.event_collections_dict[self.dir_list[j]][i - self.event_thresholds[j-1]]
+    def getitem(self, i):
+        return self.get_idx(i)
+    # A collection of EventDatasets.
+    # You should use a sampler together with this, as by default it just concatenates the EventDatasets together!
+
 class EventDataset(torch.utils.data.IterableDataset):
     @staticmethod
-    def from_directory(dir, mmap=False):
+    def from_directory(dir, mmap=True):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
                 metadata = pickle.load(open(os.path.join(dir, file), "rb"))
             else:
-                result[file.split(".")[0]] = torch.load(
-                    os.path.join(dir, file)#, mmap=mmap
+                result[file.split(".")[0]] = np.load(
+                    os.path.join(dir, file), mmap_mode="r" if mmap else None
                 )
         return EventDataset(result, metadata)
     def __init__(self, events, metadata):
@@ -315,9 +334,15 @@ class EventDataset(torch.utils.data.IterableDataset):
     def __len__(self):
         return self.n_events
    # def __next__(self):
-    def get_indices(self, i):
+    def get_idx(self, i):
         # i is a list of indices that we want to get from the dataset
-        raise NotImplementedError # TODO
+        start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
+        end = {key: self.metadata[key + "_batch_idx"][i + 1] for key in self.attrs}
+        result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
+        result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
+                  key in self.attrs}
+        return Event(**result)
+
     def get_iter(self):
         while self.i < self.n_events:
             start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}
@@ -328,6 +353,8 @@ class EventDataset(torch.utils.data.IterableDataset):
             yield Event(**result)
     def __iter__(self):
         return self.get_iter()
+    def __getitem__(self, i):
+        return self.get_idx(i)
 
 
 class SimpleIterDataset(torch.utils.data.IterableDataset):

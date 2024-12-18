@@ -10,9 +10,15 @@ The repo has evolved from [here](https://github.com/selvaggi/mlpf) - mainly, we 
 
 #### First version without dark quarks
 
-`python -m src.preprocessing.preprocess_dataset --input SVJ_std_UL2018_scouting_test_large --output SVJ_std_UL2018_scouting_test_large`
+`python -m src.preprocessing.preprocess_dataset --input scouting_PFNano_signals/SVJ_hadronic_std --output scouting_PFNano_signals/SVJ_hadronic_std`
 
 Or, run it on slurm: `sbatch jobs/preprocess_v0.slurm` (make sure to update your local `env.sh` file!)
+
+#### Evaluation of AK8 clustering
+
+`python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --dataset-cap 1000` (only run it on 1000 events)
+
+The script produces output in the `results` folder.
 
 ### Training models
 

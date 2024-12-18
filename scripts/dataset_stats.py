@@ -15,3 +15,4 @@ for dataset in sorted(os.listdir(path)):
     ds = EventDataset.from_directory(os.path.join(path, dataset))
     print(dataset + ":" , len(ds), "events")
 
+print("------------------")
