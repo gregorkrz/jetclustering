@@ -8,6 +8,7 @@ from pathlib import Path
 import pickle
 from src.utils.paths import get_path
 import argparse
+import numpy as np
 
 def remove_from_list(lst):
     out = []
@@ -81,7 +82,8 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
     for key in result[0]:
         with open(osp.join(save_to_dir, key + ".pkl"), "wb") as f:
             #pickle.dump(result[0][key], f) #save with torch for mmap
-            torch.save(result[0][key], f)
+            #torch.save(result[0][key], f)
+            np.save(f, result[0][key].numpy())
     with open(osp.join(save_to_dir, "metadata.pkl"), "wb") as f:
         pickle.dump(result[1], f)
     print("Saved to", save_to_dir)

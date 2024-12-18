@@ -17,6 +17,6 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 #python -m src.preprocessing.preprocess_dataset --input SVJ_std_UL2018_scouting_test_large --output SVJ_std_UL2018_scouting_test_large
 #singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m src.preprocessing.preprocess_dataset --input scouting_PFNano_signals/SVJ_hadronic_std --output scouting_PFNano_signals/SVJ_hadronic_std
 #singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m src.preprocessing.preprocess_dataset --input scouting_PFNano_signals/SVJ_hadronic_std2 --output scouting_PFNano_signals/SVJ_hadronic_std2
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m src.preprocessing.preprocess_dataset --input scouting_PFNano_signals/SVJ_hadronic_std3 --output scouting_PFNano_signals/SVJ_hadronic_std3
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m src.preprocessing.preprocess_dataset --input scouting_PFNano_signals/SVJ_hadronic_std3 --output scouting_PFNano_signals1/SVJ_hadronic_std3
 
 # Run the job: sbatch jobs/preprocess_v0.slurm
