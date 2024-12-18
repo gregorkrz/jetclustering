@@ -82,23 +82,25 @@ from src.utils.nn.tools_condensation import evaluate_regression as evaluate
 
 training_mode = not args.predict
 if training_mode:
-    train_loader, val_loader, data_config, train_input_names = train_load(args)
+    # val_loaders and test_loaders are a dictionary file -> dataloader with only one dataset
+    # train_loader is a single dataloader of all the files
+    train_loader, val_loaders = train_load(args)
 else:
-    test_loaders, data_config = test_load(args)
+    test_loaders = test_load(args)
+
 # device
 if args.gpus:
     if args.backend is not None:
         # distributed training
-
         local_rank = args.local_rank
         print("localrank", local_rank)
         torch.cuda.set_device(local_rank)
         gpus = [local_rank]
         dev = torch.device(local_rank)
-        print("initizaing group process", dev)
+        print("initializing group process", dev)
         torch.distributed.init_process_group(backend=args.backend)
         _logger.info(f"Using distributed PyTorch with {args.backend} backend")
-        print("ended initizaing group process")
+        print("ended initializing group process")
     else:
         gpus = [int(i) for i in args.gpus.split(",")]
         dev = torch.device(gpus[0])
@@ -113,19 +115,9 @@ from src.utils.train_utils import count_parameters
 
 num_parameters_counted = count_parameters(model)
 
-# note: we should always save/load the state_dict of the original model, not the one wrapped by nn.DataParallel
-# so we do not convert it to nn.DataParallel now
 orig_model = model
 training_mode = not args.predict
 if training_mode:
-    if args.log_wandb and local_rank == 0:
-        import wandb
-        from src.utils.logger_wandb import log_wandb_init
-
-        wandb.init(project=args.wandb_projectname, entity=args.wandb_entity)
-        wandb.run.name = args.wandb_displayname
-        log_wandb_init(args, data_config)
-
     model = orig_model.to(dev)
     if args.model_pretrained:
         model_path = args.model_pretrained
@@ -238,7 +230,7 @@ if training_mode:
 if args.data_test:
     tb = None
     if args.backend is not None and local_rank != 0:
-        return
+        sys.exit(0)
     if args.log_wandb and local_rank == 0:
         import wandb
         from src.utils.logger_wandb import log_wandb_init
