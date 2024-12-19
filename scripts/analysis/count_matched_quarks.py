@@ -52,7 +52,7 @@ if not args.plot_only:
             #min_distance = np.min(distance_matrix, axis=1)
             if len(data.fatjets):
                 quark_to_jet = np.min(distance_matrix, axis=1)
-                quark_to_jet[quark_to_jet < R] = -1
+                quark_to_jet[quark_to_jet > R] = -1
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                 filt = quark_to_jet == -1
             else:
