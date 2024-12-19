@@ -34,32 +34,24 @@ def debug(*args, **kwargs):
 def calc_LV_Lbeta(
     original_coords,
     g,
-    y,
     distance_threshold,
-    energy_correction,
     beta: torch.Tensor,
     cluster_space_coords: torch.Tensor,  # Predicted by model
-    cluster_index_per_event: torch.Tensor,  # Truth hit->cluster index
-    batch: torch.Tensor,
-    predicted_pid=None,  # predicted PID embeddings - will be aggregated by summing up the clusters and applying the post_pid_pool_module MLP afterwards
-    post_pid_pool_module=None,  # MLP to apply to the pooled embeddings to get the PID predictions torch.nn.Module
+    cluster_index_per_event: torch.Tensor,  # Truth hit->cluster index, e.g. [0, 1, 1, 0, 1, -1, 0, 1, 1]
+    batch: torch.Tensor, # E.g. [0, 0, 0, 0, 1, 1, 1, 1, 1]
     # From here on just parameters
     qmin: float = 0.1,
     s_B: float = 1.0,
-    noise_cluster_index: int = 0,  # cluster_index entries with this value are noise/noise
+    noise_cluster_index: int = -1,  # cluster_index entries with this value are noise/noise
     beta_stabilizing="soft_q_scaling",
     huberize_norm_for_V_attractive=False,
     beta_term_option="paper",
-    return_components=False,
-    return_regression_resolution=False,
-    clust_space_dim=3,
     frac_combinations=0,  # fraction of the all possible pairs to be used for the clustering loss
     attr_weight=1.0,
     repul_weight=1.0,
     fill_loss_weight=0.0,
     use_average_cc_pos=0.0,
     loss_type="hgcalimplementation",
-    hit_energies=None,
     tracking=False,
     dis=False,
 ) -> Union[Tuple[torch.Tensor, torch.Tensor], dict]:
@@ -465,9 +457,6 @@ def calc_LV_Lbeta(
         + L_V_repulsive2 / 300
         # + L_V_attractive_2 / 600
     )
-    
- 
-
     n_noise_hits_per_event = scatter_count(batch[is_noise])
     n_noise_hits_per_event[n_noise_hits_per_event == 0] = 1
     L_beta_noise = (
@@ -513,7 +502,6 @@ def calc_LV_Lbeta(
         # L_exp = torch.mean(scatter_add(beta_exp, batch) / n_hits_per_event)
 
     elif beta_term_option == "short-range-potential":
-
         # First collect the norms: We only want norms of hits w.r.t. the object they
         # belong to (like in V_attractive)
         # Apply transformation first, and then apply mask to keep only the norms we want,
@@ -565,9 +553,7 @@ def calc_LV_Lbeta(
         print(L_beta, batch_size)
         print("L_beta_noise", L_beta_noise)
         print("L_beta_sig", L_beta_sig)
-   
     L_exp = L_beta
-    # print("looooses", L_V, L_beta, L_beta_sig, L_beta_noise, L_V_attractive, L_V_repulsive)
     if loss_type == "hgcalimplementation" or loss_type == "vrepweighted":
         return (
             L_V,  # 0
@@ -590,8 +576,6 @@ def calc_LV_Lbeta(
             norms_att,  # 17
             L_V_repulsive2,
         )
-
-
 
 def formatted_loss_components_string(components: dict) -> str:
     """
@@ -1077,53 +1061,69 @@ def L_clusters_calc(batch, cluster_space_coords, cluster_index, frac_combination
     return L_clusters
 
 
-## deprecated code:
+def object_condensation_loss2(
+        batch,
+        pred,
+        labels,
+        batch_numbers,
+        q_min=0.1,
+        frac_clustering_loss=0.1,
+        attr_weight=1.0,
+        repul_weight=1.0,
+        fill_loss_weight=1.0,
+        use_average_cc_pos=0.0,
+        loss_type="hgcalimplementation",
+        clust_space_norm="none",
+        dis=False,
+):
+    """
+    :param batch: Model input
+    :param pred: Model output, containing regressed coordinates + betas
+    :param clust_space_dim: Number of dimensions in the cluster space
+    :return:
+    """
+    _, S = pred.shape
+    clust_space_dim = S - 1
+    bj = torch.sigmoid(torch.reshape(pred[:, clust_space_dim], [-1, 1])) # betas
+    original_coords = batch.ndata["h"][:, :3] # TODO: change to the current data format
+    if dis:
+        distance_threshold = torch.reshape(pred[:, -1], [-1, 1])
+    else:
+        distance_threshold = 0
+    xj = pred[:, :clust_space_dim] # Coordinates in clustering space
+    if clust_space_norm == "twonorm":
+        xj = torch.nn.functional.normalize(xj, dim=1)
+    elif clust_space_norm == "tanh":
+        xj = torch.tanh(xj)
+    elif clust_space_norm == "none":
+        pass
+    else:
+        raise NotImplementedError
 
+    dev = batch.device
+    clustering_index_l = labels
 
+    a = calc_LV_Lbeta(
+        original_coords,
+        batch,
+        distance_threshold,
+        beta=bj.view(-1),
+        cluster_space_coords=xj,  # Predicted by model
+        cluster_index_per_event=clustering_index_l.view(
+            -1
+        ).long(),  # Truth hit->cluster index
+        batch=batch_numbers.long(),
+        qmin=q_min,
+        clust_space_dim=clust_space_dim,
+        frac_combinations=frac_clustering_loss,
+        attr_weight=attr_weight,
+        repul_weight=repul_weight,
+        fill_loss_weight=fill_loss_weight,
+        use_average_cc_pos=use_average_cc_pos,
+        loss_type=loss_type,
+        dis=dis,
+    )
 
+    loss = attr_weight * a[0] + repul_weight * a[1]
 
-
-    # if not tracking:
-    #     # x_particles = y[:, 0:3]
-    #     # e_particles = y[:, 3]
-    #     # mom_particles_true = y[:, 4]
-    #     # mass_particles_true = y[:, 5]
-    #     # # particles_mask = y[:, 6]
-    #     # mom_particles_true = mom_particles_true.to(device)
-    #     # mass_particles_pred = e_particles_pred**2 - mom_particles_pred**2
-    #     # mass_particles_true = mass_particles_true.to(device)
-    #     # mass_particles_pred[mass_particles_pred < 0] = 0.0
-    #     # mass_particles_pred = torch.sqrt(mass_particles_pred)
-    #     # loss_mass = torch.nn.MSELoss()(
-    #     #     mass_particles_true, mass_particles_pred
-    #     # )  # only logging this, not using it in the loss func
-
-    #     e_particles_pred_per_object = scatter_add(
-    #         g.ndata["e_hits"][is_sig].view(-1), object_index
-    #     )  # *energy_correction[is_sig][index_alpha].view(-1)).view(-1,1)
-    #     ##e_particle_pred_per_particle = e_particles_pred_per_object[
-    #     #    object_index
-    #     # ] * energy_correction.view(-1)
-    #     # e_true = y.E.clone()  # y[:, 3].clone()
-    #     # e_true = e_true.to(e_particles_pred_per_object.device)
-    #     # e_true_particle = e_true[object_index]
-    #     # L_i = (e_particle_pred_per_particle - e_true_particle) ** 2 / e_true_particle
-    #     B_i = (beta[is_sig].arctanh() / 1.01) ** 2 + 1e-3
-    #     # loss_E = torch.sum(L_i * B_i) / torch.sum(B_i)
-    #     # loss_E = torch.sum(L_i) / len(L_i)
-
-    #     # loss_E = torch.mean(
-    #     #     torch.square(
-    #     #         (e_particles_pred.to(device) - e_particles.to(device))
-    #     #         / e_particles.to(device)
-    #     #     )
-    #     # )
-    #     # loss_momentum = torch.mean(
-    #     #     torch.square(
-    #     #         (mom_particles_pred.to(device) - mom_particles_true.to(device))
-    #     #         / mom_particles_true.to(device)
-    #     #     )
-    #     # )
-    #     # loss_ce = torch.nn.BCELoss()
-    #     loss_mse = torch.nn.MSELoss()
-    #     # loss_x = loss_mse(positions_particles_pred.to(device), x_particles.to(device))
+    return loss, a

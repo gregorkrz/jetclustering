@@ -28,7 +28,7 @@ from src.utils.train_utils import (
     onnx,
     test_load,
     iotest,
-    model_setup,
+    get_model,
     profile,
     optim,
     save_root,
@@ -63,7 +63,7 @@ def _main(args, radius=0.6, batches=15):
         gpus = None
         local_rank = 0
         dev = torch.device("cpu")
-    model, model_info, loss_func = model_setup(args, data_config)
+    model, model_info, loss_func = get_model(args, data_config)
     from src.utils.train_utils import count_parameters
     num_parameters_counted = count_parameters(model)
     print(num_parameters_counted)

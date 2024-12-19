@@ -272,7 +272,7 @@ def optim(args, model, device):
     return opt, scheduler
 
 
-def model_setup(args, data_config):
+def get_model(args):
     """
     Loads the model
     :param args:
@@ -333,21 +333,50 @@ def model_setup(args, data_config):
         if args.copy_core_for_beta:
             model.mod.create_separate_beta_core()
             print("Created separate beta core")
-    # _logger.info(model)
-    # flops(model, model_info) # commented before it adds lodel to gpu
-    # loss function
-    try:
-        loss_func = network_module.get_loss(data_config, **network_options)
-        _logger.info(
-            "Using loss function %s with options %s" % (loss_func, network_options)
-        )
-    except AttributeError:
-        loss_func = torch.nn.CrossEntropyLoss()
-        _logger.warning(
-            "Loss function not defined in %s. Will use `torch.nn.CrossEntropyLoss()` by default.",
-            args.network_config,
-        )
-    return model, model_info, loss_func
+    return model
+
+def get_loss_func(args):
+    # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
+
+    def loss(model_output, gt_labels):
+
+
+def get_gt_func(args):
+    # Gets the GT function: the function accepts an Event batch
+    # and returns the ground truth labels (GT idx of a dark quark it belongs to, or -1 for noise)
+    # By default, it returns the dark quark that is closest to the event, IF it's closer than R.
+    R = 0.8
+    def get_idx_for_event(obj, i):
+        return obj.batch_number[i], obj.batch_number[i + 1]
+    def get_labels(b, pfcands):
+        # b: Batch of events
+        labels = torch.zeros(len(pfcands)).long()
+        for i in range(len(b)):
+            s, e = get_idx_for_event(b.matrix_element_gen_particles, i)
+            dq_eta = b.matrix_element_gen_particles.eta[s:e]
+            dq_phi = b.matrix_element_gen_particles.phi[s:e]
+            # dq_pt = b.matrix_element_gen_particles.pt[s:e] # Maybe we can somehow weigh the loss by pt?
+            s, e = get_idx_for_event(pfcands, i)
+            pfcands_eta = pfcands.eta[s:e]
+            pfcands_phi = pfcands.phi[s:e]
+            # calculate the distance matrix between each dark quark and pfcands
+            dist_matrix = torch.cdist(
+                torch.stack([dq_eta, dq_phi], dim=1),
+                torch.stack([pfcands_eta, pfcands_phi], dim=1),
+                p=2
+            )
+            dist_matrix = dist_matrix.T
+            closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
+            closest_quark_idx[closest_quark_dist > R] = -1
+            labels[s:e] = closest_quark_idx
+        return labels
+    def gt(events):
+        #return {
+        #    "pfcands": get_labels(events, events.pfcands),
+        #    "special_pfcands": get_labels(events, events.special_pfcands)
+        #}
+        return torch.cat([get_labels(events, events.pfcands), get_labels(events, events.special_pfcands)])
+    return gt
 
 
 def iotest(args, data_loader):

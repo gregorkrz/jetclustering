@@ -24,7 +24,7 @@ from src.utils.train_utils import (
     onnx,
     test_load,
     iotest,
-    model_setup,
+    get_model,
     profile,
     optim,
     save_root,
@@ -88,7 +88,7 @@ if training_mode:
 else:
     test_loaders = test_load(args)
 
-# device
+
 if args.gpus:
     if args.backend is not None:
         # distributed training
@@ -110,22 +110,21 @@ else:
     local_rank = 0
     dev = torch.device("cpu")
 
-model, model_info, loss_func = model_setup(args, data_config)
+model, model_info, loss_func = get_model(args)
 from src.utils.train_utils import count_parameters
-
 num_parameters_counted = count_parameters(model)
+print("Number of parameters:", num_parameters_counted)
 
 orig_model = model
 training_mode = not args.predict
 if training_mode:
     model = orig_model.to(dev)
-    if args.model_pretrained:
-        model_path = args.model_pretrained
+    if args.load_model_weights:
+        model_path = args.load_model_weights
         _logger.info("Loading model %s for training from there on" % model_path)
         model.load_state_dict(torch.load(model_path, map_location=dev))
     print("MODEL DEVICE", next(model.parameters()).is_cuda)
 
-    # DistributedDataParallel
     if args.backend is not None:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         print("device_ids = gpus", gpus)
@@ -136,7 +135,6 @@ if training_mode:
             find_unused_parameters=True,
         )
 
-    # optimizer & learning rate
     opt, scheduler = optim(args, model, dev)
 
     # DataParallel

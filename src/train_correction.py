@@ -26,7 +26,7 @@ from src.utils.train_utils import (
     onnx,
     test_load,
     iotest,
-    model_setup,
+    get_model,
     model_setup1,
     profile,
     optim,
@@ -96,7 +96,7 @@ def _main(args):
         local_rank = 0
         dev = torch.device("cpu")
 
-    model, model_info, loss_func = model_setup(args, data_config)
+    model, model_info, loss_func = get_model(args, data_config)
     model1, model_info, loss_func = model_setup1(args, data_config)
     from src.utils.train_utils import count_parameters
 

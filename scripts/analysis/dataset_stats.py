@@ -7,7 +7,6 @@ import pickle
 from src.dataset.get_dataset import get_iter
 from src.utils.paths import get_path
 from pathlib import Path
-import torch
 
 # This script attempts to open dataset files and prints the number of events in each one.
 
@@ -26,7 +25,6 @@ Path(output_path).mkdir(parents=True, exist_ok=True)
 
 if not args.plot_only:
     n_matched_quarks = {}
-    unmatched_quarks = {}
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
@@ -48,23 +46,13 @@ if not args.plot_only:
             # row-wise argmin
             distance_matrix = distance_matrix.T
             #min_distance = np.min(distance_matrix, axis=1)
-
             if len(data.fatjets):
                 quark_to_jet = np.min(distance_matrix, axis=1)
                 R = 0.8
                 quark_to_jet[quark_to_jet < R] = -1
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
-                filt = quark_to_jet == -1
-
             else:
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [0]
-                filt = torch.ones(len(data.matrix_element_gen_particles)).bool()
-            if subdataset not in unmatched_quarks:
-                unmatched_quarks[subdataset] = {"pt": [], "eta": [], "phi": [], "pt_all": []}
-            unmatched_quarks[subdataset]["pt"] += data.matrix_element_gen_particles.pt[filt].tolist()
-            unmatched_quarks[subdataset]["pt_all"] += data.matrix_element_gen_particles.pt.tolist()
-            unmatched_quarks[subdataset]["eta"] += data.matrix_element_gen_particles.eta[filt].tolist()
-            unmatched_quarks[subdataset]["phi"] += data.matrix_element_gen_particles.phi[filt].tolist()
             #print("Number of matched quarks:", np.sum(quark_to_jet != -1))
 
     avg_n_matched_quarks = {}
@@ -79,22 +67,17 @@ if not args.plot_only:
         return mMed, mDark, rinv
 
     result = {}
-    result_unmatched = {}
     for key in avg_n_matched_quarks:
         mMed, mDark, rinv = get_properties(key)
         if mMed not in result:
             result[mMed] = {}
-            result_unmatched[mMed] = {}
         if mDark not in result[mMed]:
             result[mMed][mDark] = {}
-            result_unmatched[mMed][mDark] = {}
         result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
-        result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
-    pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
 if args.plot_only:
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
-    result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
+
 import matplotlib.pyplot as plt
 # heatmap plots
 mediator_masses = sorted(list(result.keys()))
@@ -123,32 +106,4 @@ for i, mDark in enumerate(dark_masses):
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"))
 print("Done")
-
-
-fig, ax = plt.subplots(len(r_invs), len(mediator_masses), figsize=(3*len(mediator_masses), 3 * len(r_invs)))
-for i in range(len(r_invs)):
-    for j in range(len(mediator_masses)):
-        data = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["pt"]
-        ax[i, j].hist(data, bins=50, histtype="step", label="Unmatched")
-        ax[i, j].hist(result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["pt_all"], bins=50, histtype="step", label="All")
-        ax[i, j].set_title(f"mMed = {mediator_masses[j]}, rinv = {r_invs[i]}")
-        ax[i, j].set_xlabel("pt")
-        ax[i, j].legend()
-
-fig.tight_layout()
-fig.savefig(os.path.join(output_path, "unmatched_dark_quarks_pt.pdf"))
-
-fig, ax = plt.subplots(len(r_invs), len(mediator_masses), figsize=(3*len(mediator_masses), 3 * len(r_invs)))
-for i in range(len(r_invs)):
-    for j in range(len(mediator_masses)):
-        data_x = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["eta"]
-        data_y = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["phi"]
-        # 2d histogram
-        ax[i, j].hist2d(data_x, data_y, bins=10, cmap="Blues")
-        ax[i, j].set_title(f"mMed = {mediator_masses[j]}, rinv = {r_invs[i]}")
-        ax[i, j].set_xlabel("unmatched dark quark eta")
-        ax[i, j].set_ylabel("unmatched dark quark phi")
-
-fig.tight_layout()
-fig.savefig(os.path.join(output_path, "unmatched_dark_quarks_eta_phi.pdf"))
 

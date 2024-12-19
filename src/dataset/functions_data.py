@@ -792,7 +792,8 @@ class Event:
             assert (event_idx < n_events).all()
         return Event(**{key: result[key][torch.isin(result_metadata[key + "_batch_idx"], event_idx)] for key in attrs}, n_events=n_events)
     '''
-
+    def __len__(self):
+        return self.n_events
     def serialize(self):
         result = {}
         result_metadata = {"n_events": self.n_events, "attrs": self.init_attrs}
