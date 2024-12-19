@@ -9,8 +9,8 @@
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std3
-# --dataset-cap 500
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std3 --dataset-cap 2000
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.dataset_stats --input scouting_PFNano_signals/SVJ_hadronic_std3 --dataset-cap 2000
 
 # Run the job:
 # sbatch jobs/analysis_0.slurm

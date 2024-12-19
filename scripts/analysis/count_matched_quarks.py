@@ -4,12 +4,14 @@ import argparse
 import numpy as np
 import pandas as pd
 import pickle
+
 from src.dataset.get_dataset import get_iter
 from src.utils.paths import get_path
 from pathlib import Path
 import torch
 
 # This script attempts to open dataset files and prints the number of events in each one.
+R = 0.8
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=True)
@@ -48,23 +50,33 @@ if not args.plot_only:
             # row-wise argmin
             distance_matrix = distance_matrix.T
             #min_distance = np.min(distance_matrix, axis=1)
-
             if len(data.fatjets):
                 quark_to_jet = np.min(distance_matrix, axis=1)
-                R = 0.8
                 quark_to_jet[quark_to_jet < R] = -1
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                 filt = quark_to_jet == -1
-
             else:
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [0]
                 filt = torch.ones(len(data.matrix_element_gen_particles)).bool()
+                quark_to_jet = torch.ones(len(data.matrix_element_gen_particles)).long() * -1
             if subdataset not in unmatched_quarks:
-                unmatched_quarks[subdataset] = {"pt": [], "eta": [], "phi": [], "pt_all": []}
+                unmatched_quarks[subdataset] = {"pt": [], "eta": [], "phi": [], "pt_all": [], "frac_evt_E_matched": [], "frac_evt_E_unmatched": []}
             unmatched_quarks[subdataset]["pt"] += data.matrix_element_gen_particles.pt[filt].tolist()
             unmatched_quarks[subdataset]["pt_all"] += data.matrix_element_gen_particles.pt.tolist()
             unmatched_quarks[subdataset]["eta"] += data.matrix_element_gen_particles.eta[filt].tolist()
             unmatched_quarks[subdataset]["phi"] += data.matrix_element_gen_particles.phi[filt].tolist()
+            visible_E_event = torch.sum(data.pfcands.E) + torch.sum(data.special_pfcands.E)
+            matched_quarks = np.where(quark_to_jet != -1)[0]
+            for i in range(len(data.matrix_element_gen_particles)):
+                dq_coords = [dq[0][i], dq[1][i]]
+                cone_filter = torch.sqrt((data.pfcands.eta - dq_coords[0])**2 + (data.pfcands.phi - dq_coords[1])**2) < R
+                cone_filter_special = torch.sqrt(
+                    (data.special_pfcands.eta - dq_coords[0]) ** 2 + (data.special_pfcands.phi - dq_coords[1]) ** 2) < R
+                E_in_cone = data.pfcands.E[cone_filter].sum() + data.special_pfcands.E[cone_filter_special].sum()
+                if i in matched_quarks:
+                    unmatched_quarks[subdataset]["frac_evt_E_matched"].append(E_in_cone / visible_E_event)
+                else:
+                    unmatched_quarks[subdataset]["frac_evt_E_unmatched"].append(E_in_cone / visible_E_event)
             #print("Number of matched quarks:", np.sum(quark_to_jet != -1))
 
     avg_n_matched_quarks = {}
@@ -152,3 +164,31 @@ for i in range(len(r_invs)):
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "unmatched_dark_quarks_eta_phi.pdf"))
 
+
+fig, ax = plt.subplots(len(r_invs), len(mediator_masses), figsize=(3*len(mediator_masses), 3 * len(r_invs)))
+for i in range(len(r_invs)):
+    for j in range(len(mediator_masses)):
+        data = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["frac_evt_E_matched"]
+        data_unmatched = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["frac_evt_E_unmatched"]
+        bins = np.linspace(0, 1, 100)
+        ax[i, j].hist(data_unmatched, bins=bins, histtype="step", label="Unmatched")
+        ax[i, j].hist(data, bins=bins, histtype="step", label="Matched")
+        ax[i, j].set_title(f"mMed = {mediator_masses[j]}, rinv = {r_invs[i]}")
+        ax[i, j].set_xlabel("E (R<0.8) / event E")
+        ax[i, j].legend()
+fig.tight_layout()
+fig.savefig(os.path.join(output_path, "frac_E_in_cone.pdf"))
+
+fig, ax = plt.subplots(len(r_invs), len(mediator_masses), figsize=(3*len(mediator_masses), 3 * len(r_invs)))
+for i in range(len(r_invs)):
+    for j in range(len(mediator_masses)):
+        data = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["frac_evt_E_matched"]
+        data_unmatched = result_unmatched[mediator_masses[j]][dark_masses[0]][r_invs[i]]["frac_evt_E_unmatched"]
+        bins = np.linspace(0, 1, 100)
+        ax[i, j].hist(data_unmatched, bins=bins, histtype="step", label="Unmatched dark quark", density=True)
+        ax[i, j].hist(data, bins=bins, histtype="step", label="Matched dark quark", density=True)
+        ax[i, j].set_title(f"mMed = {mediator_masses[j]}, rinv = {r_invs[i]}")
+        ax[i, j].set_xlabel("E (R<0.8) / event E")
+        ax[i, j].legend()
+fig.tight_layout()
+fig.savefig(os.path.join(output_path, "frac_E_in_cone_density.pdf"))
