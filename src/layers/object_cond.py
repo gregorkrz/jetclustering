@@ -49,7 +49,6 @@ def calc_LV_Lbeta(
     frac_combinations=0,  # fraction of the all possible pairs to be used for the clustering loss
     attr_weight=1.0,
     repul_weight=1.0,
-    fill_loss_weight=0.0,
     use_average_cc_pos=0.0,
     loss_type="hgcalimplementation",
     tracking=False,
@@ -452,10 +451,7 @@ def calc_LV_Lbeta(
         ).sum()
 
     L_V = (
-        attr_weight * L_V_attractive
-        # + repul_weight * L_V_repulsive
-        + L_V_repulsive2 / 300
-        # + L_V_attractive_2 / 600
+        attr_weight * L_V_attractive + repul_weight * L_V_repulsive
     )
     n_noise_hits_per_event = scatter_count(batch[is_noise])
     n_noise_hits_per_event[n_noise_hits_per_event == 0] = 1
@@ -465,9 +461,6 @@ def calc_LV_Lbeta(
             (scatter_add(beta[is_noise], batch[is_noise])) / n_noise_hits_per_event
         ).sum()
     )
-    # print("L_beta_noise", L_beta_noise / batch_size)
-    # -------
-    # L_beta signal term
     if loss_type == "hgcalimplementation":
         beta_per_object_c = scatter_add(beta[is_sig], object_index)
         beta_alpha = beta[is_sig][index_alpha]
@@ -555,213 +548,15 @@ def calc_LV_Lbeta(
         print("L_beta_sig", L_beta_sig)
     L_exp = L_beta
     if loss_type == "hgcalimplementation" or loss_type == "vrepweighted":
-        return (
-            L_V,  # 0
-            L_beta,
-            L_beta_sig,
-            L_beta_noise,  # loss_x
-            None,  # loss_particle_ids0,  # 4
-            0,  # loss_momentum
-            0,  # loss mass
-            None,  # pid_true,
-            None,  # pid_pred,
-            0,  # resolutions
-            L_clusters,  # 10
-            0,  # fill_loss
-            L_V_attractive,
-            L_V_repulsive,
-            L_alpha_coordinates,
-            L_exp,
-            norms_rep,  # 16
-            norms_att,  # 17
-            L_V_repulsive2,
-        )
+        return {
+            "loss_potential": L_V,  # 0
+            "loss_beta": L_beta,
+            "loss_beta_sig": L_beta_sig, # signal part of the betas
+            "loss_beta_noise": L_beta_noise, # noise part of the betas
+            "loss_attractive": L_V_attractive,
+            "loss_repulsive": L_V_repulsive
+        }
 
-def formatted_loss_components_string(components: dict) -> str:
-    """
-    Formats the components returned by calc_LV_Lbeta
-    """
-    total_loss = components["L_V"] + components["L_beta"]
-    fractions = {k: v / total_loss for k, v in components.items()}
-    fkey = lambda key: f"{components[key]:+.4f} ({100.*fractions[key]:.1f}%)"
-    s = (
-        "  L_V                 = {L_V}"
-        "\n    L_V_attractive      = {L_V_attractive}"
-        "\n    L_V_repulsive       = {L_V_repulsive}"
-        "\n  L_beta              = {L_beta}"
-        "\n    L_beta_noise        = {L_beta_noise}"
-        "\n    L_beta_sig          = {L_beta_sig}".format(
-            L=total_loss, **{k: fkey(k) for k in components}
-        )
-    )
-    if "L_beta_norms_term" in components:
-        s += (
-            "\n      L_beta_norms_term   = {L_beta_norms_term}"
-            "\n      L_beta_logbeta_term = {L_beta_logbeta_term}".format(
-                **{k: fkey(k) for k in components}
-            )
-        )
-    if "L_noise_filter" in components:
-        s += f'\n  L_noise_filter = {fkey("L_noise_filter")}'
-    return s
-
-
-def calc_simple_clus_space_loss(
-    cluster_space_coords: torch.Tensor,  # Predicted by model
-    cluster_index_per_event: torch.Tensor,  # Truth hit->cluster index
-    batch: torch.Tensor,
-    # From here on just parameters
-    noise_cluster_index: int = 0,  # cluster_index entries with this value are noise/noise
-    huberize_norm_for_V_attractive=True,
-    pred_edc: torch.Tensor = None,
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Isolating just the V_attractive and V_repulsive parts of object condensation,
-    w.r.t. the geometrical mean of truth cluster centers (rather than the highest
-    beta point of the truth cluster).
-    Most of this code is copied from `calc_LV_Lbeta`, so it's easier to try out
-    different scalings for the norms without breaking the main OC function.
-    `pred_edc`: Predicted estimated distance-to-center.
-    This is an optional column, that should be `n_hits` long. If it is
-    passed, a third loss component is calculated based on the truth distance-to-center
-    w.r.t. predicted distance-to-center. This quantifies how close a hit is to it's center,
-    which provides an ansatz for the clustering.
-    See also the 'Concepts' in the doc of `calc_LV_Lbeta`.
-    """
-    # ________________________________
-    # Calculate a bunch of needed counts and indices locally
-
-    # cluster_index: unique index over events
-    # E.g. cluster_index_per_event=[ 0, 0, 1, 2, 0, 0, 1], batch=[0, 0, 0, 0, 1, 1, 1]
-    #      -> cluster_index=[ 0, 0, 1, 2, 3, 3, 4 ]
-    cluster_index, n_clusters_per_event = batch_cluster_indices(
-        cluster_index_per_event, batch
-    )
-    n_hits, cluster_space_dim = cluster_space_coords.size()
-    batch_size = batch.max() + 1
-    n_hits_per_event = scatter_count(batch)
-
-    # Index of cluster -> event (n_clusters,)
-    batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
-
-    # Per-hit boolean, indicating whether hit is sig or noise
-    is_noise = cluster_index_per_event == noise_cluster_index
-    is_sig = ~is_noise
-    n_hits_sig = is_sig.sum()
-
-    # Per-cluster boolean, indicating whether cluster is an object or noise
-    is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
-
-    # # FIXME: This assumes noise_cluster_index == 0!!
-    # # Not sure how to do this in a performant way in case noise_cluster_index != 0
-    # if noise_cluster_index != 0: raise NotImplementedError
-    # object_index_per_event = cluster_index_per_event[is_sig] - 1
-    batch_object = batch_cluster[is_object]
-    n_objects = is_object.sum()
-
-    # ________________________________
-    # Build the masks
-
-    # Connectivity matrix from hit (row) -> cluster (column)
-    # Index to matrix, e.g.:
-    # [1, 3, 1, 0] --> [
-    #     [0, 1, 0, 0],
-    #     [0, 0, 0, 1],
-    #     [0, 1, 0, 0],
-    #     [1, 0, 0, 0]
-    #     ]
-    M = torch.nn.functional.one_hot(cluster_index).long()
-
-    # Anti-connectivity matrix; be sure not to connect hits to clusters in different events!
-    M_inv = get_inter_event_norms_mask(batch, n_clusters_per_event) - M
-
-    # Throw away noise cluster columns; we never need them
-    M = M[:, is_object]
-    M_inv = M_inv[:, is_object]
-    assert M.size() == (n_hits, n_objects)
-    assert M_inv.size() == (n_hits, n_objects)
-
-    # ________________________________
-    # Loss terms
-
-    # First calculate all cluster centers, then throw out the noise clusters
-    cluster_centers = scatter_mean(cluster_space_coords, cluster_index, dim=0)
-    object_centers = cluster_centers[is_object]
-
-    # Calculate all norms
-    # Warning: Should not be used without a mask!
-    # Contains norms between hits and objects from different events
-    # (n_hits, 1, cluster_space_dim) - (1, n_objects, cluster_space_dim)
-    #   gives (n_hits, n_objects, cluster_space_dim)
-    norms = (cluster_space_coords.unsqueeze(1) - object_centers.unsqueeze(0)).norm(
-        dim=-1
-    )
-    assert norms.size() == (n_hits, n_objects)
-
-    # -------
-    # Attractive loss
-
-    # First get all the relevant norms: We only want norms of signal hits
-    # w.r.t. the object they belong to, i.e. no noise hits and no noise clusters.
-    # First select all norms of all signal hits w.r.t. all objects (filtering out
-    # the noise), mask out later
-    norms_att = norms[is_sig]
-
-    # Power-scale the norms
-    if huberize_norm_for_V_attractive:
-        # Huberized version (linear but times 4)
-        # Be sure to not move 'off-diagonal' away from zero
-        # (i.e. norms of hits w.r.t. clusters they do _not_ belong to)
-        norms_att = huber(norms_att + 1e-5, 4.0)
-    else:
-        # Paper version is simply norms squared (no need for mask)
-        norms_att = norms_att**2
-    assert norms_att.size() == (n_hits_sig, n_objects)
-
-    # Now apply the mask to keep only norms of signal hits w.r.t. to the object
-    # they belong to (throw away norms w.r.t. cluster they do *not* belong to)
-    norms_att *= M[is_sig]
-
-    # Sum norms_att over hits (dim=0), then sum per event, then divide by n_hits_per_event,
-    # then sum over events
-    L_attractive = (
-        scatter_add(norms_att.sum(dim=0), batch_object) / n_hits_per_event
-    ).sum()
-
-    # -------
-    # Repulsive loss
-
-    # Get all the relevant norms: We want norms of any hit w.r.t. to
-    # objects they do *not* belong to, i.e. no noise clusters.
-    # We do however want to keep norms of noise hits w.r.t. objects
-    # Power-scale the norms: Gaussian scaling term instead of a cone
-    # Mask out the norms of hits w.r.t. the cluster they belong to
-    norms_rep = torch.exp(-4.0 * norms**2) * M_inv
-
-    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum up events
-    L_repulsive = (
-        scatter_add(norms_rep.sum(dim=0), batch_object) / n_hits_per_event
-    ).sum()
-
-    L_attractive /= batch_size
-    L_repulsive /= batch_size
-
-    # -------
-    # Optional: edc column
-
-    if pred_edc is not None:
-        n_hits_per_cluster = scatter_count(cluster_index)
-        cluster_centers_expanded = torch.index_select(cluster_centers, 0, cluster_index)
-        assert cluster_centers_expanded.size() == (n_hits, cluster_space_dim)
-        truth_edc = (cluster_space_coords - cluster_centers_expanded).norm(dim=-1)
-        assert pred_edc.size() == (n_hits,)
-        d_per_hit = (pred_edc - truth_edc) ** 2
-        d_per_object = scatter_add(d_per_hit, cluster_index)[is_object]
-        assert d_per_object.size() == (n_objects,)
-        L_edc = (scatter_add(d_per_object, batch_object) / n_hits_per_event).sum()
-        return L_attractive, L_repulsive, L_edc
-
-    return L_attractive, L_repulsive
 
 
 def huber(d, delta):
@@ -1061,8 +856,8 @@ def L_clusters_calc(batch, cluster_space_coords, cluster_index, frac_combination
     return L_clusters
 
 
-def object_condensation_loss2(
-        batch,
+def object_condensation_loss(
+        batch, # input event
         pred,
         labels,
         batch_numbers,
@@ -1085,7 +880,7 @@ def object_condensation_loss2(
     _, S = pred.shape
     clust_space_dim = S - 1
     bj = torch.sigmoid(torch.reshape(pred[:, clust_space_dim], [-1, 1])) # betas
-    original_coords = batch.ndata["h"][:, :3] # TODO: change to the current data format
+    original_coords = batch.input_points
     if dis:
         distance_threshold = torch.reshape(pred[:, -1], [-1, 1])
     else:
@@ -1100,7 +895,6 @@ def object_condensation_loss2(
     else:
         raise NotImplementedError
 
-    dev = batch.device
     clustering_index_l = labels
 
     a = calc_LV_Lbeta(
@@ -1114,16 +908,13 @@ def object_condensation_loss2(
         ).long(),  # Truth hit->cluster index
         batch=batch_numbers.long(),
         qmin=q_min,
-        clust_space_dim=clust_space_dim,
-        frac_combinations=frac_clustering_loss,
         attr_weight=attr_weight,
         repul_weight=repul_weight,
-        fill_loss_weight=fill_loss_weight,
         use_average_cc_pos=use_average_cc_pos,
         loss_type=loss_type,
         dis=dis,
     )
 
-    loss = attr_weight * a[0] + repul_weight * a[1]
+    loss = a["loss_potential"] + a["loss_beta"]
 
     return loss, a

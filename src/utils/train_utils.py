@@ -12,6 +12,7 @@ from src.utils.import_tools import import_module
 from src.dataset.functions_graph import graph_batch_func
 from src.dataset.functions_data import concat_events
 from src.utils.paths import get_path
+from src.layers.object_cond import object_condensation_loss
 
 def to_filelist(args, mode="train"):
     if mode == "train":
@@ -338,7 +339,10 @@ def get_model(args):
 def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
 
-    def loss(model_output, gt_labels):
+    def loss(model_input, model_output, gt_labels, batch_numbers):
+        return object_condensation_loss(model_input, model_output, gt_labels, batch_numbers)
+        # TODO: add other arguments (i.e. attractive loss weight etc.)
+    return loss
 
 
 def get_gt_func(args):
@@ -371,10 +375,6 @@ def get_gt_func(args):
             labels[s:e] = closest_quark_idx
         return labels
     def gt(events):
-        #return {
-        #    "pfcands": get_labels(events, events.pfcands),
-        #    "special_pfcands": get_labels(events, events.special_pfcands)
-        #}
         return torch.cat([get_labels(events, events.pfcands), get_labels(events, events.special_pfcands)])
     return gt
 

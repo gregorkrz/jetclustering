@@ -491,6 +491,36 @@ def concat_events(list_events):
         # assert result[attr].batch_number.max() == len(list_events)# sometimes the event is empty (e.g. no found jets)
     return Event(**result, n_events=len(list_events))
 
+def get_batch(event, batch_config):
+    # Returns the EventBatch class, with correct scalars etc.
+    batch_idx_pfcands = torch.zeros(len(event.pfcands)).long()
+    batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
+    for i in range(len(event.pfcands.number_batch)):
+        batch_idx_pfcands[event.pfcands.number_batch[i]:event.pfcands.number_batch[i+1]] = i
+    for i in range(len(event.special_pfcands.number_batch)):
+        batch_idx_special_pfcands[event.special_pfcands.number_batch[i]:event.special_pfcands.number_batch[i+1]] = i
+    batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
+    batch_idx = batch_idx.to(event.pfcands.pt.device)
+    if batch_config.get("use_p_xyz", False):
+        batch_vectors = torch.cat([event.pfcands.pxyz, event.special_pfcands.pxyz], dim=0)
+    else:
+        raise NotImplementedError
+    pids = [11, 13, 22, 130, 211, 0, 1, 2, 3] # 0, 1, 2, 3 are the special PFcands
+    # onehot encode pids of event.pfcands.pid
+    pids_onehot = torch.zeros(len(event.pfcands), len(pids))
+    for i, pid in enumerate(pids):
+        pids_onehot[:, i] = (event.pfcands.pid == pid).float()
+    assert (pids_onehot.sum(dim=1) == 1).all()
+    batch_scalars_pfcands = torch.cat([event.pfcands.charge, pids_onehot], dim=1)
+    batch_scalars_special_pfcands = torch.cat([event.special_pfcands.charge, event.special_pfcands.pid.float().unsqueeze(1)], dim=1)
+    batch_scalars = torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
+    assert batch_idx.max() == event.n_events - 1
+    return EventBatch(
+        input_vectors=batch_vectors,
+        input_scalars=batch_scalars,
+        batch_idx=batch_idx,
+    )
+
 def to_tensor(item):
     if isinstance(item, torch.Tensor):
         return item
@@ -746,6 +776,11 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
         mask_particles = to_tensor(np.full((len(list_p)), False, dtype=bool))
     return mask.to(bool), ~mask_particles.to(bool)
 
+class EventBatch:
+    def __init__(self, input_vectors, input_scalars, batch_idx):
+        self.input_vectors = input_vectors
+        self.input_scalars = input_scalars
+        self.batch_idx = batch_idx
 
 class Event:
     evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands,
