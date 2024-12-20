@@ -26,7 +26,7 @@ from src.utils.train_utils import (
     iotest,
     get_model,
     profile,
-    optim,
+    get_optimizer_and_scheduler,
     save_root,
     save_parquet,
 )
@@ -110,7 +110,7 @@ else:
     local_rank = 0
     dev = torch.device("cpu")
 
-model, model_info, loss_func = get_model(args)
+model = get_model(args)
 from src.utils.train_utils import count_parameters
 num_parameters_counted = count_parameters(model)
 print("Number of parameters:", num_parameters_counted)
@@ -119,12 +119,6 @@ orig_model = model
 training_mode = not args.predict
 if training_mode:
     model = orig_model.to(dev)
-    if args.load_model_weights:
-        model_path = args.load_model_weights
-        _logger.info("Loading model %s for training from there on" % model_path)
-        model.load_state_dict(torch.load(model_path, map_location=dev))
-    print("MODEL DEVICE", next(model.parameters()).is_cuda)
-
     if args.backend is not None:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         print("device_ids = gpus", gpus)
@@ -135,7 +129,7 @@ if training_mode:
             find_unused_parameters=True,
         )
 
-    opt, scheduler = optim(args, model, dev)
+    opt, scheduler = get_optimizer_and_scheduler(args, model, dev)
 
     # DataParallel
     if args.backend is None:
@@ -144,7 +138,6 @@ if training_mode:
             model = torch.nn.DataParallel(model, device_ids=gpus)
     if args.log_wandb and local_rank == 0:
         wandb.watch(model, log="all", log_freq=10)
-        # model = model.to(dev)
 
     # training loop
     best_valid_metric = np.inf

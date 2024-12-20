@@ -68,7 +68,7 @@ def test_load(args):
         )
     return test_loaders
 
-def optim(args, model, device):
+def get_optimizer_and_scheduler(args, model, device):
     """
     Optimizer and scheduler.
     :param args:
@@ -152,7 +152,6 @@ def optim(args, model, device):
 
     if args.optimizer == "ranger":
         from src.utils.nn.optimizer.ranger import Ranger
-
         opt = Ranger(parameters, lr=args.start_lr, **optimizer_options)
     elif args.optimizer == "adam":
         opt = torch.optim.Adam(parameters, lr=args.start_lr, **optimizer_options)
@@ -161,184 +160,114 @@ def optim(args, model, device):
     elif args.optimizer == "radam":
         opt = torch.optim.RAdam(parameters, lr=args.start_lr, **optimizer_options)
 
-    # load previous training and resume if `--load-epoch` is set
-    if args.load_epoch is not None:
-        _logger.info("Resume training from epoch %d" % args.load_epoch)
+    if args.load_model_weights is not None:
+        _logger.info("Resume training from file %d" % args.load_model_weights)
         model_state = torch.load(
-            args.model_prefix + "_epoch-%d_state.pt" % args.load_epoch,
+            args.model_prefix + args.load_model_weights,
             map_location=device,
         )
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-            model.module.load_state_dict(model_state)
+            model.module.load_state_dict(model_state["model"])
         else:
-            model.load_state_dict(model_state)
-        opt_state_file = args.model_prefix + "_epoch-%d_optimizer.pt" % args.load_epoch
-        if os.path.exists(opt_state_file):
-            opt_state = torch.load(opt_state_file, map_location=device)
-            opt.load_state_dict(opt_state)
-        else:
-            _logger.warning("Optimizer state file %s NOT found!" % opt_state_file)
-
+            model.load_state_dict(model_state["model"])
+        opt_state = model_state["optimizer"]
+        opt.load_state_dict(opt_state)
     scheduler = None
-    if args.lr_finder is None:
-        if args.lr_scheduler == "steps":
-            lr_step = round(args.num_epochs / 3)
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(
-                opt,
-                milestones=[10],  # [lr_step, 2 * lr_step],
-                gamma=0.20,
-                last_epoch=-1 if args.load_epoch is None else args.load_epoch,
-            )
-        elif args.lr_scheduler == "flat+decay":
-            num_decay_epochs = max(1, int(args.num_epochs * 0.3))
-            milestones = list(
-                range(args.num_epochs - num_decay_epochs, args.num_epochs)
-            )
-            gamma = 0.01 ** (1.0 / num_decay_epochs)
-            if len(names_lr_mult):
+    if args.lr_scheduler == "steps":
+        lr_step = round(args.num_epochs / 3)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            opt,
+            milestones=[10],
+            gamma=0.20,
+            last_epoch=-1
+        )
+    elif args.lr_scheduler == "flat+decay":
+        num_decay_epochs = max(1, int(args.num_epochs * 0.3))
+        milestones = list(
+            range(args.num_epochs - num_decay_epochs, args.num_epochs)
+        )
+        gamma = 0.01 ** (1.0 / num_decay_epochs)
+        if len(names_lr_mult):
 
-                def get_lr(epoch):
-                    return gamma ** max(0, epoch - milestones[0] + 1)  # noqa
-
-                scheduler = torch.optim.lr_scheduler.LambdaLR(
-                    opt,
-                    (lambda _: 1, lambda _: 1, get_lr, get_lr),
-                    last_epoch=-1 if args.load_epoch is None else args.load_epoch,
-                    verbose=True,
-                )
-            else:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(
-                    opt,
-                    milestones=milestones,
-                    gamma=gamma,
-                    last_epoch=-1 if args.load_epoch is None else args.load_epoch,
-                )
-        elif args.lr_scheduler == "flat+linear" or args.lr_scheduler == "flat+cos":
-            total_steps = args.num_epochs * args.steps_per_epoch
-            warmup_steps = args.warmup_steps
-            flat_steps = total_steps * 0.7 - 1
-            min_factor = 0.001
-
-            def lr_fn(step_num):
-                if step_num > total_steps:
-                    raise ValueError(
-                        "Tried to step {} times. The specified number of total steps is {}".format(
-                            step_num + 1, total_steps
-                        )
-                    )
-                if step_num < warmup_steps:
-                    return 1.0 * step_num / warmup_steps
-                if step_num <= flat_steps:
-                    return 1.0
-                pct = (step_num - flat_steps) / (total_steps - flat_steps)
-                if args.lr_scheduler == "flat+linear":
-                    return max(min_factor, 1 - pct)
-                else:
-                    return max(min_factor, 0.5 * (math.cos(math.pi * pct) + 1))
+            def get_lr(epoch):
+                return gamma ** max(0, epoch - milestones[0] + 1)  # noqa
 
             scheduler = torch.optim.lr_scheduler.LambdaLR(
                 opt,
-                lr_fn,
-                last_epoch=-1
-                if args.load_epoch is None
-                else args.load_epoch * args.steps_per_epoch,
+                (lambda _: 1, lambda _: 1, get_lr, get_lr),
+                last_epoch=-1 if args.load_epoch is None else args.load_epoch,
+                verbose=True,
             )
-            scheduler._update_per_step = (
-                True  # mark it to update the lr every step, instead of every epoch
-            )
-        elif args.lr_scheduler == "one-cycle":
-            scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        else:
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
                 opt,
-                max_lr=args.start_lr,
-                epochs=args.num_epochs,
-                steps_per_epoch=args.steps_per_epoch,
-                pct_start=0.3,
-                anneal_strategy="cos",
-                div_factor=25.0,
+                milestones=milestones,
+                gamma=gamma,
                 last_epoch=-1 if args.load_epoch is None else args.load_epoch,
             )
-            scheduler._update_per_step = (
-                True  # mark it to update the lr every step, instead of every epoch
-            )
-        elif args.lr_scheduler == "reduceplateau":
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                opt, patience=2, threshold=0.01
-            )
-            # scheduler._update_per_step = (
-            #     True  # mark it to update the lr every step, instead of every epoch
-            # )
-            scheduler._update_per_step = (
-                False  # mark it to update the lr every step, instead of every epoch
-            )
-    return opt, scheduler
+    elif args.lr_scheduler == "flat+linear" or args.lr_scheduler == "flat+cos":
+        total_steps = args.num_epochs * args.steps_per_epoch
+        warmup_steps = args.warmup_steps
+        flat_steps = total_steps * 0.7 - 1
+        min_factor = 0.001
 
+        def lr_fn(step_num):
+            if step_num > total_steps:
+                raise ValueError(
+                    "Tried to step {} times. The specified number of total steps is {}".format(
+                        step_num + 1, total_steps
+                    )
+                )
+            if step_num < warmup_steps:
+                return 1.0 * step_num / warmup_steps
+            if step_num <= flat_steps:
+                return 1.0
+            pct = (step_num - flat_steps) / (total_steps - flat_steps)
+            if args.lr_scheduler == "flat+linear":
+                return max(min_factor, 1 - pct)
+            else:
+                return max(min_factor, 0.5 * (math.cos(math.pi * pct) + 1))
 
-def get_model(args):
-    """
-    Loads the model
-    :param args:
-    :param data_config:
-    :return: model, model_info, network_module, network_options
-    """
-    network_module = import_module(args.network_config, name="_network_module")
-    network_options = {k: ast.literal_eval(v) for k, v in args.network_option}
-    if args.export_onnx:
-        network_options["for_inference"] = True
-    if args.use_amp:
-        network_options["use_amp"] = True
-    if args.clustering_loss_only:
-        network_options["output_dim"] = args.clustering_space_dim + 1
-    else:
-        network_options["output_dim"] = args.clustering_space_dim + 28
-    network_options["input_dim"] = 9 + args.n_noise
-    network_options.update(data_config.custom_model_kwargs)
-    if args.use_heads:
-        network_options["separate_heads"] = True
-    _logger.info("Network options: %s" % str(network_options))
-    if args.gpus:
-        gpus = [int(i) for i in args.gpus.split(",")]  # ?
-        dev = torch.device(gpus[0])
-    else:
-        gpus = None
-        local_rank = 0
-        dev = torch.device("cpu")
-    model, model_info = network_module.get_model(
-        data_config, args=args, dev=dev, **network_options
-    )
-
-    if args.freeze_core:
-        model.mod.freeze("core")
-        print("Frozen core parameters")
-    if args.freeze_beta:
-        model.mod.freeze("beta")
-        print("Frozen beta parameters")
-        assert model.mod.beta_weight == 1.0
-        model.mod.beta_weight = 0.0
-    if args.beta_zeros:
-        model.mod.beta_exp_weight = 1.0
-        print("Set beta_exp_weight to 1.0")
-    if args.freeze_coords:
-        model.mod.freeze("coords")
-        print("Frozen coordinates parameters")
-    if args.load_model_weights:
-        print("Loading model state from %s" % args.load_model_weights)
-        model_state = torch.load(args.load_model_weights, map_location="cpu")
-        model_dict = model.state_dict()
-        model_state = {k: v for k, v in model_state.items() if k in model_dict}
-        model_dict.update(model_state)
-        missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False)
-        _logger.info(
-            "Model initialized with weights from %s\n ... Missing: %s\n ... Unexpected: %s"
-            % (args.load_model_weights, missing_keys, unexpected_keys)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            opt,
+            lr_fn,
+            last_epoch=-1
+            if args.load_epoch is None
+            else args.load_epoch * args.steps_per_epoch,
         )
-        if args.copy_core_for_beta:
-            model.mod.create_separate_beta_core()
-            print("Created separate beta core")
-    return model
+        scheduler._update_per_step = (
+            True  # mark it to update the lr every step, instead of every epoch
+        )
+    elif args.lr_scheduler == "one-cycle":
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            opt,
+            max_lr=args.start_lr,
+            epochs=args.num_epochs,
+            steps_per_epoch=args.steps_per_epoch,
+            pct_start=0.3,
+            anneal_strategy="cos",
+            div_factor=25.0,
+            last_epoch=-1 if args.load_epoch is None else args.load_epoch,
+        )
+        scheduler._update_per_step = (
+            True  # mark it to update the lr every step, instead of every epoch
+        )
+    elif args.lr_scheduler == "reduceplateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            opt, patience=2, threshold=0.01
+        )
+        # scheduler._update_per_step = (
+        #     True  # mark it to update the lr every step, instead of every epoch
+        # )
+        scheduler._update_per_step = (
+            False  # mark it to update the lr every step, instead of every epoch
+        )
+    if args.load_model_weights is not None:
+       scheduler.load_state_dict(model_state["scheduler"])
+    return opt, scheduler
 
 def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
-
     def loss(model_input, model_output, gt_labels, batch_numbers):
         return object_condensation_loss(model_input, model_output, gt_labels, batch_numbers)
         # TODO: add other arguments (i.e. attractive loss weight etc.)
@@ -379,85 +308,22 @@ def get_gt_func(args):
     return gt
 
 
-def iotest(args, data_loader):
-    """
-    Io test
-    :param args:
-    :param data_loader:
-    :return:
-    """
-    from tqdm.auto import tqdm
-    from collections import defaultdict
-    from src.data.tools import _concat
-
-    _logger.info("Start running IO test")
-    monitor_info = defaultdict(list)
-
-    for X, y, Z in tqdm(data_loader):
-        for k, v in Z.items():
-            monitor_info[k].append(v.cpu().numpy())
-    monitor_info = {k: _concat(v) for k, v in monitor_info.items()}
-    if monitor_info:
-        monitor_output_path = "weaver_monitor_info.pkl"
-        import pickle
-
-        with open(monitor_output_path, "wb") as f:
-            pickle.dump(monitor_info, f)
-        _logger.info("Monitor info written to %s" % monitor_output_path)
-
-
-
-
-def save_parquet(args, output_path, scores, labels, observers):
-    """
-    Saves as parquet file
-    :param scores:
-    :param labels:
-    :param observers:
-    :return:
-    """
-    import awkward as ak
-
-    output = {"scores": scores}
-    output.update(labels)
-    output.update(observers)
-    ak.to_parquet(ak.Array(output), output_path, compression="LZ4", compression_level=4)
-
-
 def count_parameters(model):
     return sum(p.numel() for p in model.mod.parameters() if p.requires_grad)
 
-
-def model_setup1(args, data_config):
-    """
-    Loads the model
-    :param args:
-    :param data_config:
-    :return: model, model_info, network_module, network_options
-    """
-    network_module = import_module(args.network_config1, name="_network_module")
-    network_options = {k: ast.literal_eval(v) for k, v in args.network_option}
-    network_options.update(data_config.custom_model_kwargs)
-    if args.gpus:
-        gpus = [int(i) for i in args.gpus.split(",")]  # ?
-        dev = torch.device(gpus[0])
-    else:
-        gpus = None
-        local_rank = 0
-        dev = torch.device("cpu")
-    model, model_info = network_module.get_model(
-        data_config, args=args, dev=dev, **network_options
-    )
+def get_model(args, dev):
+    network_options = {}  # TODO: implement network options
+    network_module = import_module(args.network_config, name="_network_module")
+    model = network_module.get_model(args=args, dev=dev, **network_options)
 
     if args.load_model_weights_1:
-        print("Loading model state from %s" % args.load_model_weights_1)
-        model_state = torch.load(args.load_model_weights_1, map_location="cpu")
+        print("Loading model state dict from %s" % args.load_model_weights_1)
+        model_state = torch.load(args.load_model_weights_1, map_location=dev)
         missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False)
         _logger.info(
             "Model initialized with weights from %s\n ... Missing: %s\n ... Unexpected: %s"
             % (args.load_model_weights, missing_keys, unexpected_keys)
         )
-
-    loss_func = torch.nn.CrossEntropyLoss()
-
-    return model, model_info, loss_func
+        assert len(missing_keys) == 0
+        assert len(unexpected_keys) == 0
+    return model

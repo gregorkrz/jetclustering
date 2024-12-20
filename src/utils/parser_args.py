@@ -38,7 +38,7 @@ parser.add_argument(
 ######### Model and training-related arguments #########
 
 parser.add_argument(
-    "-n",
+    "-net",
     "--network-config",
     type=str,
     help="network architecture configuration file; the path must be relative to the current dir",
@@ -75,12 +75,6 @@ parser.add_argument(
     "--wandb-projectname", type=str, help="project where the run is stored inside wandb", default="svj_clustering"
 )
 
-parser.add_argument(
-    "--load-epoch",
-    type=int,
-    default=None,
-    help="used to resume interrupted training, load model and optimizer state saved in the `epoch-%d_state.pt` and `epoch-%d_optimizer.pt` files",
-)
 
 parser.add_argument("--batch-size", type=int, default=128, help="batch size")
 parser.add_argument("--num-epochs", type=int, default=20, help="number of epochs")

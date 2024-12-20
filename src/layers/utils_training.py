@@ -16,7 +16,7 @@ class FreezeClustering(BaseFinetuning):
         # freeze any module you want
         # Here, we are freezing `feature_extractor`
 
-        self.freeze(pl_module.ScaledGooeyBatchNorm2_1)
+        self.freeze(pl_module.batch_norm)
         # self.freeze(pl_module.Dense_1)
         self.freeze(pl_module.gatr)
         # self.freeze(pl_module.postgn_dense)

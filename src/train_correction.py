@@ -29,7 +29,7 @@ from src.utils.train_utils import (
     get_model,
     model_setup1,
     profile,
-    optim,
+    get_optimizer_and_scheduler,
     save_root,
     save_parquet,
 )
@@ -135,8 +135,8 @@ def _main(args):
             )
 
         # optimizer & learning rate
-        opt, scheduler = optim(args, model, dev)
-        opt1, scheduler1 = optim(args, model1, dev)
+        opt, scheduler = get_optimizer_and_scheduler(args, model, dev)
+        opt1, scheduler1 = get_optimizer_and_scheduler(args, model1, dev)
 
         # DataParallel
         if args.backend is None:
