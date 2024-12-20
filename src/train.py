@@ -132,7 +132,7 @@ if training_mode:
         if gpus is not None and len(gpus) > 1:
             # model becomes `torch.nn.DataParallel` w/ model.module being the original `torch.nn.Module`
             model = torch.nn.DataParallel(model, device_ids=gpus)
-    if args.log_wandb and local_rank == 0:
+    if local_rank == 0:
         wandb.watch(model, log="all", log_freq=10)
 
     # training loop
@@ -140,9 +140,6 @@ if training_mode:
     grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
     steps = 0
     for epoch in range(args.num_epochs):
-        if args.load_epoch is not None:
-            if epoch <= args.load_epoch:
-                continue
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
         steps += train_epoch(

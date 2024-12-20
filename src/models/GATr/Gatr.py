@@ -49,8 +49,8 @@ class GATrModel(torch.nn.Module):
             )
         else:
             inputs = self.batch_norm(inputs_v)
-            embedded_inputs = embed_point(inputs) #+ embed_scalar(inputs_scalar)
-        embedded_inputs = embedded_inputs.unsqueeze(-2)  # (batch_size*num_points, 1, 16)
+            embedded_inputs = embed_point(inputs)
+        embedded_inputs = embedded_inputs.unsqueeze(-2) # (batch_size*num_points, 1, 16)
         mask = self.build_attention_mask(data.batch_idx)
         embedded_outputs, output_scalars = self.gatr(
             embedded_inputs, scalars=inputs_scalar, attention_mask=mask
@@ -72,7 +72,7 @@ class GATrModel(torch.nn.Module):
 
 def get_model(args):
     return GATrModel(
-        n_scalars=3,
+        n_scalars=10,
         hidden_mv_channels=16,
         hidden_s_channels=64,
         blocks=10,

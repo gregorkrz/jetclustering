@@ -195,7 +195,7 @@ def get_optimizer_and_scheduler(args, model, device):
             scheduler = torch.optim.lr_scheduler.LambdaLR(
                 opt,
                 (lambda _: 1, lambda _: 1, get_lr, get_lr),
-                last_epoch=-1 if args.load_epoch is None else args.load_epoch,
+                last_epoch=-1,
                 verbose=True,
             )
         else:
@@ -203,7 +203,7 @@ def get_optimizer_and_scheduler(args, model, device):
                 opt,
                 milestones=milestones,
                 gamma=gamma,
-                last_epoch=-1 if args.load_epoch is None else args.load_epoch,
+                last_epoch=-1
             )
     elif args.lr_scheduler == "flat+linear" or args.lr_scheduler == "flat+cos":
         total_steps = args.num_epochs * args.steps_per_epoch

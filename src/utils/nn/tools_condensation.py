@@ -27,7 +27,7 @@ from src.utils.nn.tools import (
     update_and_log_scheduler,
 )
 from src.utils.nn.tools import log_losses_wandb, update_dict
-
+from src.dataset.functions_data import get_batch
 # class_names = ["other"] + [str(i) for i in onehot_particles_arr]  # quick fix
 
 
@@ -51,15 +51,14 @@ def train_epoch(
     prev_time = time.time()
     for event_batch in tqdm.tqdm(train_loader):
         y = gt_func(event_batch)
+        batch = get_batch(event_batch, {})
         step_count += 1
-        num_examples = label.shape[0]
-        label = label.to(dev)
         opt.zero_grad()
         torch.autograd.set_detect_anomaly(True)
         with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
-            event_batch = event_batch.to(dev)
-        y_pred = model(event_batch)
-        loss, loss_dict = loss_func(event_batch, y_pred)
+            batch.to(dev)
+        y_pred = model(batch)
+        loss, loss_dict = loss_func(batch, y_pred, y)
         if grad_scaler is None:
             loss.backward()
             opt.step()
@@ -141,7 +140,6 @@ def evaluate_regression(
                 batch_g = batch_g.to(dev)
                 label = y
                 num_examples = label.shape[0]
-                label = label.to(dev)
                 if args.loss_regularization:
                     model_output, loss_regularizing_neig, loss_ll = model(batch_g)
                 else:

@@ -296,16 +296,21 @@ class EventDatasetCollection(torch.utils.data.IterableDataset):
         for dir in dir_list:
             self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
-        self.event_thresholds = [0] + [x.n_events for x in self.event_collections_dict.values()]
+        self.event_thresholds = [x.n_events for x in self.event_collections_dict.values()]
         self.dir_list = dir_list
     def __len__(self):
         return self.n_events
     def get_idx(self, i):
+        prev_threshold = 0
         for j, threshold in enumerate(self.event_thresholds):
             if i < threshold:
-                return self.event_collections_dict[self.dir_list[j]][i - self.event_thresholds[j-1]]
+                return self.event_collections_dict[self.dir_list[j]][prev_threshold + i]
+            prev_threshold += threshold
     def getitem(self, i):
         return self.get_idx(i)
+    def __iter__(self):
+        for i in range(self.n_events):
+            yield self.get_idx(i)
     # A collection of EventDatasets.
     # You should use a sampler together with this, as by default it just concatenates the EventDatasets together!
 

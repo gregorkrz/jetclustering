@@ -149,3 +149,9 @@ parser.add_argument(
     default="",
     help="path to the log file; `{auto}` can be used as part of the path to auto-generate a name, based on the timestamp and network configuration",
 )
+parser.add_argument(
+    "--use-amp",
+    action="store_true",
+    default=False,
+    help="use mixed precision training (fp16)",
+)
