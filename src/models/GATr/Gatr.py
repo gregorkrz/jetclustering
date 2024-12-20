@@ -9,24 +9,25 @@ from gatr.interface import (
 )
 import torch
 import torch.nn as nn
-from pydantic.v1.main import Model
 import dgl
 from xformers.ops.fmha import BlockDiagonalMask
 
 
 class GATrModel(torch.nn.Module):
-    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors):
+    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out):
         super().__init__()
         self.n_scalars = n_scalars
         self.hidden_mv_channels = hidden_mv_channels
         self.hidden_s_channels = hidden_s_channels
         self.blocks = blocks
         self.embed_as_vectors = embed_as_vectors
+        self.input_dim = 3
         self.gatr = GATr(
             in_mv_channels=1,
             out_mv_channels=1,
             hidden_mv_channels=hidden_mv_channels,
             in_s_channels=n_scalars,
+            out_s_channels=n_scalars_out,
             hidden_s_channels=hidden_s_channels,
             num_blocks=blocks,
             attention=SelfAttentionConfig(),  # Use default parameters for attention
@@ -34,7 +35,7 @@ class GATrModel(torch.nn.Module):
         )
         self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
-        self.beta = nn.Linear(n_scalars + 1, 1)
+        self.beta = nn.Linear(n_scalars_out + 1, 1)
 
     def forward(self, data):
         # data: instance of EventBatch
@@ -76,4 +77,5 @@ def get_model(args):
         hidden_s_channels=64,
         blocks=10,
         embed_as_vectors=False,
+        n_scalars_out=8
     )

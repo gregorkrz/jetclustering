@@ -31,172 +31,71 @@ from src.utils.nn.tools import log_losses_wandb, update_dict
 # class_names = ["other"] + [str(i) for i in onehot_particles_arr]  # quick fix
 
 
-def train_regression(
+def train_epoch(
+    args,
     model,
     loss_func,
+    gt_func,
     opt,
     scheduler,
     train_loader,
     dev,
     epoch,
-    steps_per_epoch=None,
     grad_scaler=None,
-    tb_helper=None,
-    logwandb=False,
     local_rank=0,
-    current_step=0,  # current_step: used for logging correctly
-    loss_terms=[],  # whether to only optimize the clustering loss
-    args=None,
-    args_model=None,
-    alternate_steps=None,  # alternate_steps: after how many steps to switch between beta and clustering loss
-    finetune_model=False,
+    current_step=0,
 ):
     model.train()
-    if finetune_model:
-        model = turn_grads_off(model)
-
-    clust_loss_only = loss_terms[0]
-    add_energy_loss = loss_terms[1]  # whether to add energy loss to the clustering loss
-    total_loss = 0
-    num_batches = 0
-    sum_abs_err = 0
-    sum_sqr_err = 0
-    count = 0
     step_count = current_step
     start_time = time.time()
     prev_time = time.time()
-    loss_epoch_total, losses_epoch_total = [], []
+    for event_batch in tqdm.tqdm(train_loader):
+        y = gt_func(event_batch)
+        step_count += 1
+        num_examples = label.shape[0]
+        label = label.to(dev)
+        opt.zero_grad()
+        torch.autograd.set_detect_anomaly(True)
+        with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
+            event_batch = event_batch.to(dev)
+        y_pred = model(event_batch)
+        loss, loss_dict = loss_func(event_batch, y_pred)
+        if grad_scaler is None:
+            loss.backward()
+            opt.step()
+        else:
+            grad_scaler.scale(loss).backward()
+            grad_scaler.step(opt)
+            grad_scaler.update()
+        step_end_time = time.time()
+        loss = loss.item()
+        wandb.log({key: value.detach().cpu().item() for key, value in loss_dict.items()}, step=step_count)
+        wandb.log({"loss": loss}, step=step_count)
 
-    with tqdm.tqdm(train_loader) as tq:
-        for batch_g, y in tq:
-            label = y
-            load_end_time = time.time()
-            step_count += 1
-            num_examples = label.shape[0]
-            label = label.to(dev)
-            opt.zero_grad()
-            torch.autograd.set_detect_anomaly(True)
-            with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
-                batch_g = batch_g.to(dev)
-                if args.loss_regularization:
-                    model_output, loss_regularizing_neig, loss_ll = model(batch_g)
-                else:
-                    if local_rank == 0:
-                        model_output, e_cor, loss_ll = model(batch_g, step_count)
-                    else:
-                        model_output, e_cor, loss_ll = model(batch_g, 1)
-                preds = model_output.squeeze()
-
-                (loss, losses, loss_E, loss_E_frac_true,) = object_condensation_loss2(
-                    batch_g,
-                    model_output,
-                    e_cor,
-                    y,
-                    clust_loss_only=clust_loss_only,
-                    add_energy_loss=add_energy_loss,
-                    calc_e_frac_loss=False,
-                    q_min=args.qmin,
-                    frac_clustering_loss=args.frac_cluster_loss,
-                    attr_weight=args.L_attractive_weight,
-                    repul_weight=args.L_repulsive_weight,
-                    fill_loss_weight=args.fill_loss_weight,
-                    use_average_cc_pos=args.use_average_cc_pos,
-                    hgcalloss=args.hgcalloss,
+        if (local_rank == 0) and (step_count % 500) == 0:
+            dirname = args.run_path
+            model_state_dict = (
+                model.module.state_dict()
+                if isinstance(
+                    model,
+                    (
+                        torch.nn.DataParallel,
+                        torch.nn.parallel.DistributedDataParallel,
+                    ),
                 )
-                loss = (
-                    loss + 0.01 * loss_ll
-                )  # + 1 / 20 * loss_E  # add energy loss # loss +
-                if args.loss_regularization:
-                    loss = loss + loss_regularizing_neig + loss_ll
-                betas = (
-                    torch.sigmoid(
-                        torch.reshape(preds[:, args.clustering_space_dim], [-1, 1])
-                    )
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-                log_betas_hist(logwandb, local_rank, num_batches, betas, args)
-
-            if grad_scaler is None:
-                loss.backward()
-                opt.step()
-            else:
-                grad_scaler.scale(loss).backward()
-                grad_scaler.step(opt)
-                grad_scaler.update()
-            step_end_time = time.time()
-
-            log_step_time(
-                logwandb,
-                num_batches,
-                local_rank,
-                load_end_time,
-                prev_time,
-                step_end_time,
+                else model.state_dict()
             )
-            loss = loss.item()
-
-            num_batches += 1
-            count += num_examples
-            total_loss += loss
-
-            update_and_log_scheduler(scheduler, args, loss, logwandb, local_rank, opt)
-
-            log_losses_wandb(logwandb, num_batches, local_rank, losses, loss, loss_ll)
-            if (local_rank == 0) and (num_batches % 500) == 0:
-                dirname = os.path.dirname(args.model_prefix)
-                if dirname and not os.path.exists(dirname):
-                    os.makedirs(dirname)
-                state_dict = (
-                    model.module.state_dict()
-                    if isinstance(
-                        model,
-                        (
-                            torch.nn.DataParallel,
-                            torch.nn.parallel.DistributedDataParallel,
-                        ),
-                    )
-                    else model.state_dict()
-                )
-                PATH = args.model_prefix + "_checkpoint-%d.pt" % num_batches
-
-                torch.save(
-                    {
-                        "model_state_dict": state_dict,
-                        "optimizer_state_dict": opt.state_dict(),
-                        "loss": loss,
-                        "epoch": epoch,
-                    },
-                    PATH,
-                )
-            if steps_per_epoch is not None and num_batches >= steps_per_epoch:
-                break
-            prev_time = time.time()
-
+            state_dict = {"model": model_state_dict, "optimizer": opt.state_dict(), "scheduler": scheduler.state_dict()}
+            path = os.path.join(dirname, "step_%d_epoch_%d.ckpt" % (step_count, epoch))
+            torch.save(
+                state_dict,
+                path
+            )
+        #_logger.info(
+        #    "Epoch %d, step %d: loss=%.5f, time=%.2fs"
+        #    % (epoch, step_count, loss, step_end_time - prev_time)
+        #)
     time_diff = time.time() - start_time
-    _logger.info(
-        "Processed %d entries in total (avg. speed %.1f entries/s)"
-        % (count, count / time_diff)
-    )
-    if count > 0 and num_batches > 0:
-        _logger.info(
-            "Train AvgLoss: %.5f, AvgMSE: %.5f, AvgMAE: %.5f"
-            % (total_loss / num_batches, sum_sqr_err / count, sum_abs_err / count)
-        )
-
-        if scheduler and getattr(scheduler, "_update_per_step") == False:
-            if args.lr_scheduler == "reduceplateau":
-                scheduler.step(total_loss / num_batches)  # loss
-                if logwandb and local_rank == 0:
-                    wandb.log({"total_loss batch": total_loss / num_batches})
-            else:
-                scheduler.step()  # loss
-            if logwandb and local_rank == 0:
-                if args.lr_scheduler == "reduceplateau":
-                    wandb.log({"lr": opt.param_groups[0]["lr"]})
-                else:
-                    wandb.log({"lr": scheduler.get_last_lr()[0]})
     return step_count
 
 

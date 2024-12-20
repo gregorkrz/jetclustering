@@ -501,11 +501,11 @@ def get_batch(event, batch_config):
         batch_idx_special_pfcands[event.special_pfcands.number_batch[i]:event.special_pfcands.number_batch[i+1]] = i
     batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
     batch_idx = batch_idx.to(event.pfcands.pt.device)
-    if batch_config.get("use_p_xyz", False):
+    if batch_config.get("use_p_xyz", True):
         batch_vectors = torch.cat([event.pfcands.pxyz, event.special_pfcands.pxyz], dim=0)
     else:
         raise NotImplementedError
-    pids = [11, 13, 22, 130, 211, 0, 1, 2, 3] # 0, 1, 2, 3 are the special PFcands
+    pids = batch_config.get("pids", [11, 13, 22, 130, 211, 0, 1, 2, 3]) # 0, 1, 2, 3 are the special PFcands
     # onehot encode pids of event.pfcands.pid
     pids_onehot = torch.zeros(len(event.pfcands), len(pids))
     for i, pid in enumerate(pids):
@@ -781,6 +781,10 @@ class EventBatch:
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx
+    def to(self, device):
+        self.input_vectors = self.input_vectors.to(device)
+        self.input_scalars = self.input_scalars.to(device)
+        self.batch_idx = self.batch_idx.to(device)
 
 class Event:
     evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands,

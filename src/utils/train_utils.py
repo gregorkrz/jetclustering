@@ -34,9 +34,9 @@ def train_load(args):
         batch_size=args.batch_size,
         drop_last=True,
         pin_memory=True,
-        num_workers=min(args.num_workers, int(len(train_files) * args.file_fraction)),
+        num_workers=args.num_workers,
         collate_fn=concat_events,
-        persistent_workers=args.num_workers > 0 and args.steps_per_epoch is not None,
+        persistent_workers=args.num_workers > 0,
     )
     val_loaders = {}
     for filename in val_files:
@@ -47,8 +47,8 @@ def train_load(args):
             drop_last=True,
             pin_memory=True,
             collate_fn=concat_events,
-            num_workers=min(args.num_workers, int(len(val_files) * args.file_fraction)),
-            persistent_workers=args.num_workers > 0 and args.steps_per_epoch_val is not None,
+            num_workers=args.num_workers,
+            persistent_workers=args.num_workers > 0,
         )
     return train_loader, val_loaders
 
@@ -63,8 +63,8 @@ def test_load(args):
             drop_last=True,
             pin_memory=True,
             collate_fn=concat_events,
-            num_workers=min(args.num_workers, int(len(test_files) * args.file_fraction)),
-            persistent_workers=args.num_workers > 0 and args.steps_per_epoch_val is not None,
+            num_workers=args.num_workers,
+            persistent_workers=args.num_workers > 0,
         )
     return test_loaders
 
@@ -268,7 +268,8 @@ def get_optimizer_and_scheduler(args, model, device):
 
 def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
-    def loss(model_input, model_output, gt_labels, batch_numbers):
+    def loss(model_input, model_output, gt_labels):
+        batch_numbers = model_input.batch_idx
         return object_condensation_loss(model_input, model_output, gt_labels, batch_numbers)
         # TODO: add other arguments (i.e. attractive loss weight etc.)
     return loss
@@ -309,14 +310,14 @@ def get_gt_func(args):
 
 
 def count_parameters(model):
-    return sum(p.numel() for p in model.mod.parameters() if p.requires_grad)
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def get_model(args, dev):
     network_options = {}  # TODO: implement network options
     network_module = import_module(args.network_config, name="_network_module")
-    model = network_module.get_model(args=args, dev=dev, **network_options)
+    model = network_module.get_model(args=args, **network_options)
 
-    if args.load_model_weights_1:
+    if args.load_model_weights:
         print("Loading model state dict from %s" % args.load_model_weights_1)
         model_state = torch.load(args.load_model_weights_1, map_location=dev)
         missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False)

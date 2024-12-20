@@ -15,20 +15,16 @@ from pathlib import Path
 
 torch.autograd.set_detect_anomaly(True)
 
+from src.utils.train_utils import count_parameters, get_gt_func, get_loss_func
 from src.logger.logger import _logger, _configLogger
 from src.dataset.dataset import SimpleIterDataset
 from src.utils.import_tools import import_module
 from src.utils.train_utils import (
     to_filelist,
     train_load,
-    onnx,
     test_load,
-    iotest,
     get_model,
-    profile,
     get_optimizer_and_scheduler,
-    save_root,
-    save_parquet,
 )
 from src.dataset.functions_graph import graph_batch_func
 from src.utils.parser_args import parser
@@ -56,8 +52,9 @@ if args.load_model_weights:
 run_path = os.path.join(args.prefix, "train", args.run_name)
 run_path = get_path(run_path, "results")
 Path(run_path).mkdir(parents=True, exist_ok=False)
+args.run_path = run_path
 wandb.init(project=args.wandb_projectname, entity=os.environ["SVJ_WANDB_ENTITY"])
-wandb.run.name = args.wandb_displayname
+wandb.run.name = args.run_name
 wandb.config.run_path = run_path
 wandb.config.update(args.__dict__)
 wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_")}
@@ -77,7 +74,7 @@ if args.local_rank is not None:
 _configLogger("weaver", stdout=stdout, filename=args.log)
 
 warnings.filterwarnings("ignore")
-from src.utils.nn.tools_condensation import train_regression as train
+from src.utils.nn.tools_condensation import train_epoch
 from src.utils.nn.tools_condensation import evaluate_regression as evaluate
 
 training_mode = not args.predict
@@ -110,8 +107,7 @@ else:
     local_rank = 0
     dev = torch.device("cpu")
 
-model = get_model(args)
-from src.utils.train_utils import count_parameters
+model = get_model(args, dev)
 num_parameters_counted = count_parameters(model)
 print("Number of parameters:", num_parameters_counted)
 
@@ -149,49 +145,20 @@ if training_mode:
                 continue
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
-        if args.clustering_and_energy_loss and epoch > args.energy_loss_delay:
-            print("Switching on energy loss!")
-            add_energy_loss = True
-        steps += train(
+        steps += train_epoch(
+            args,
             model,
-            opt,
-            scheduler,
-            train_loader,
-            dev,
-            epoch,
-            steps_per_epoch=args.steps_per_epoch,
-            current_step=steps,
+            loss_func=get_loss_func(args),
+            gt_func=get_gt_func(args),
+            opt=opt,
+            scheduler=scheduler,
+            train_loader=train_loader,
+            dev=dev,
+            epoch=epoch,
             grad_scaler=grad_scaler,
             local_rank=local_rank,
-            args=args,
+            current_step=steps
         )
-
-        if args.model_prefix and (args.backend is None or local_rank == 0):
-            dirname = os.path.dirname(args.model_prefix)
-            if dirname and not os.path.exists(dirname):
-                os.makedirs(dirname)
-
-            state_dict = (
-                model.module.state_dict()
-                if isinstance(
-                    model,
-                    (
-                        torch.nn.DataParallel,
-                        torch.nn.parallel.DistributedDataParallel,
-                    ),
-                )
-                else model.state_dict()
-            )
-
-            torch.save(state_dict, args.model_prefix + "_epoch-%d_state.pt" % epoch)
-            torch.save(
-                opt.state_dict(),
-                args.model_prefix + "_epoch-%d_optimizer.pt" % epoch,
-            )
-        # if args.backend is not None and local_rank == 0:
-        # TODO: save checkpoint
-        #     save_checkpoint()
-
         _logger.info("Epoch #%d validating" % epoch)
         valid_metric = evaluate(
             model,

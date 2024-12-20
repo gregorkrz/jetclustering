@@ -76,7 +76,7 @@ parser.add_argument(
 )
 
 
-parser.add_argument("--batch-size", type=int, default=128, help="batch size")
+parser.add_argument("--batch-size", "-bs", type=int, default=128, help="batch size")
 parser.add_argument("--num-epochs", type=int, default=20, help="number of epochs")
 
 parser.add_argument(
@@ -135,3 +135,17 @@ parser.add_argument(
     help="learning rate scheduler",
 )
 parser.add_argument("--start-lr", type=float, default=5e-3, help="start learning rate")
+
+parser.add_argument(
+    "--backend",
+    type=str,
+    choices=["gloo", "nccl", "mpi"],
+    default=None,
+    help="backend for distributed training",
+)
+parser.add_argument(
+    "--log",
+    type=str,
+    default="",
+    help="path to the log file; `{auto}` can be used as part of the path to auto-generate a name, based on the timestamp and network configuration",
+)
