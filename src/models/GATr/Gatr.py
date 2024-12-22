@@ -61,8 +61,8 @@ class GATrModel(torch.nn.Module):
         #    x_clusters = extract_point(embedded_outputs)
         x_clusters = extract_point(embedded_outputs)
         original_scalar = extract_scalar(embedded_outputs)
-        beta = self.beta(torch.cat([original_scalar, output_scalars], dim=1))
-        x = torch.cat((x_clusters, beta.view(-1, 1)), dim=1)
+        beta = self.beta(torch.cat([original_scalar[:, 0, :], output_scalars], dim=1))
+        x = torch.cat((x_clusters[:, 0, :], beta.view(-1, 1)), dim=1)
         return x
 
     def build_attention_mask(self, batch_numbers):

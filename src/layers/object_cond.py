@@ -42,7 +42,7 @@ def calc_LV_Lbeta(
     # From here on just parameters
     qmin: float = 0.1,
     s_B: float = 1.0,
-    noise_cluster_index: int = -1,  # cluster_index entries with this value are noise/noise
+    noise_cluster_index: int = 0,  # cluster_index entries with this value are noise/noise
     beta_stabilizing="soft_q_scaling",
     huberize_norm_for_V_attractive=False,
     beta_term_option="paper",
@@ -281,8 +281,6 @@ def calc_LV_Lbeta(
         # L_V_attractive = torch.mean(V_attractive)
 
         ## multiply by a weight that depends on the energy of the shower:
-        e_hits = scatter_add(g.ndata["e_hits"][is_sig].view(-1), object_index)
-        weight_att = torch.exp(e_hits/15)  
         # print("e_hits", e_hits)
         # print("weight_att", weight_att)
         # L_V_attractive = torch.sum(V_attractive*weight_att)
@@ -880,7 +878,7 @@ def object_condensation_loss(
     _, S = pred.shape
     clust_space_dim = S - 1
     bj = torch.sigmoid(torch.reshape(pred[:, clust_space_dim], [-1, 1])) # betas
-    original_coords = batch.input_points
+    original_coords = batch.input_vectors
     if dis:
         distance_threshold = torch.reshape(pred[:, -1], [-1, 1])
     else:

@@ -270,9 +270,16 @@ def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
     def loss(model_input, model_output, gt_labels):
         batch_numbers = model_input.batch_idx
-        return object_condensation_loss(model_input, model_output, gt_labels, batch_numbers)
+        return object_condensation_loss(model_input, model_output, gt_labels+1, batch_numbers)
         # TODO: add other arguments (i.e. attractive loss weight etc.)
     return loss
+
+def renumber_clusters(tensor):
+    unique = tensor.unique()
+    mapping = torch.zeros(unique.max() + 1)
+    for i, u in enumerate(unique):
+        mapping[u] = i
+    return mapping[tensor]
 
 
 def get_gt_func(args):
@@ -302,7 +309,10 @@ def get_gt_func(args):
             dist_matrix = dist_matrix.T
             closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
             closest_quark_idx[closest_quark_dist > R] = -1
+            if len(closest_quark_idx):
+                closest_quark_idx = renumber_clusters(closest_quark_idx + 1) - 1
             labels[s:e] = closest_quark_idx
+
         return labels
     def gt(events):
         return torch.cat([get_labels(events, events.pfcands), get_labels(events, events.special_pfcands)])

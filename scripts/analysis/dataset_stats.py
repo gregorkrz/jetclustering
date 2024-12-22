@@ -77,6 +77,9 @@ def plot_distribution(result, key_name):
         for j, rinv in enumerate(r_invs):
             mDark = dark_masses[0]
             data = result[mMed][mDark][rinv][key_name]
+            if key_name == "n_pfcands":
+                number_of_zeros = len(data) - np.count_nonzero(data)
+                print(f"Number of zeros in {mMed} {rinv}: {number_of_zeros}")
             ax[i, j].hist(data, bins=50)
             ax[i, j].set_title(f"$m_{{Z'}}$={mMed},$r_{{inv}}$={rinv} ($\Sigma$={int(sum(data))})")
     # big title

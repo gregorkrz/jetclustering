@@ -50,15 +50,26 @@ def train_epoch(
     start_time = time.time()
     prev_time = time.time()
     for event_batch in tqdm.tqdm(train_loader):
+        time_preprocess_start = time.time()
         y = gt_func(event_batch)
         batch = get_batch(event_batch, {})
+        time_preprocess_end = time.time()
         step_count += 1
+        y = y.to(dev)
         opt.zero_grad()
         torch.autograd.set_detect_anomaly(True)
         with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
             batch.to(dev)
+        model_forward_time_start = time.time()
         y_pred = model(batch)
+        model_forward_time_end = time.time()
         loss, loss_dict = loss_func(batch, y_pred, y)
+        loss_time_end = time.time()
+        wandb.log({
+            "time_preprocess": time_preprocess_end - time_preprocess_start,
+            "time_model_forward": model_forward_time_end - model_forward_time_start,
+            "time_loss": loss_time_end - model_forward_time_end,
+        }, step=step_count)
         if grad_scaler is None:
             loss.backward()
             opt.step()

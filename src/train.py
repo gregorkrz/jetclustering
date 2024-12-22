@@ -139,14 +139,16 @@ if training_mode:
     best_valid_metric = np.inf
     grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
     steps = 0
+    loss = get_loss_func(args)
+    gt = get_gt_func(args)
     for epoch in range(args.num_epochs):
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
         steps += train_epoch(
             args,
             model,
-            loss_func=get_loss_func(args),
-            gt_func=get_gt_func(args),
+            loss_func=loss,
+            gt_func=gt,
             opt=opt,
             scheduler=scheduler,
             train_loader=train_loader,
