@@ -462,6 +462,13 @@ class EventCollection:
         assert data.shape[0] == self.batch_number.max().item()
         return data, self.batch_number
 
+    def __getitem__(self, i):
+        data = {}
+        s, e = self.batch_number[i], self.batch_number[i + 1]
+        for attr in self.init_attrs:
+            data[attr] = getattr(self, attr)[s:e]
+        return type(self)(**data)
+
     @staticmethod
     def deserialize(data_matrix, batch_number, cls):
         data = {}
@@ -795,6 +802,8 @@ class EventBatch:
         self.input_scalars = self.input_scalars.to(device)
         self.batch_idx = self.batch_idx.to(device)
         return self
+    def cpu(self):
+        return self.to(torch.device("cpu"))
 
 class Event:
     evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands,
@@ -851,3 +860,9 @@ class Event:
             result[key] = s[0]
             result_metadata[key + "_batch_idx"] = s[1]
         return result, result_metadata
+    def __getitem__(self, i):
+        dic = {}
+        for key in self.init_attrs:
+            #s, e = getattr(self, key).batch_number[i], getattr(self, key).batch_number[i + 1]
+            dic[key] = getattr(self, key)[i]
+        return Event(**dic, n_events=1)

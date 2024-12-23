@@ -29,7 +29,7 @@ from src.utils.nn.tools import (
 from src.utils.nn.tools import log_losses_wandb, update_dict
 from src.dataset.functions_data import get_batch
 # class_names = ["other"] + [str(i) for i in onehot_particles_arr]  # quick fix
-
+from src.plotting.plot_event import plot_batch_eval_OC
 
 def train_epoch(
     args,
@@ -109,165 +109,62 @@ def train_epoch(
     return step_count
 
 
-def evaluate_regression(
+def evaluate(
     model,
-    test_loader,
+    eval_loader,
     dev,
     epoch,
-    for_training=True,
-    loss_func=None,
-    steps_per_epoch=None,
-    eval_metrics=[
-        "mean_squared_error",
-        "mean_absolute_error",
-        "median_absolute_error",
-        "mean_gamma_deviance",
-    ],
-    tb_helper=None,
-    logwandb=False,
-    energy_weighted=False,
+    step,
+    loss_func,
+    gt_func,
     local_rank=0,
-    step=0,
-    loss_terms=[],
     args=None,
 ):
     model.eval()
-
-    total_loss = 0
-    num_batches = 0
     count = 0
-    scores = []
-    labels = defaultdict(list)
-    observers = defaultdict(list)
     start_time = time.time()
-    all_val_loss, all_val_losses = [], []
-    step = 0
-    df_showers = []
-    df_showers_pandora = []
-    df_showes_db = []
+    total_loss = 0
+    total_loss_dict = {}
+    plot_batches = [0, 1]
+    n_batches = 0
     with torch.no_grad():
-        with tqdm.tqdm(test_loader) as tq:
-            for batch_g, y in tq:
-                batch_g = batch_g.to(dev)
-                label = y
-                num_examples = label.shape[0]
-                if args.loss_regularization:
-                    model_output, loss_regularizing_neig, loss_ll = model(batch_g)
-                else:
-                    if args.predict:
-                        step_plotting = 0
-                    else:
-                        step_plotting = 1
-                    model_output, e_corr, loss_ll = model(batch_g, step_plotting)
-                (
-                    loss,
-                    losses,
-                    loss_E_frac,
-                    loss_E_frac_true,
-                ) = object_condensation_loss2(
-                    batch_g,
-                    model_output,
-                    e_corr,
-                    y,
-                    frac_clustering_loss=0,
-                    q_min=args.qmin,
-                    clust_loss_only=args.clustering_loss_only,
-                    use_average_cc_pos=args.use_average_cc_pos,
-                    hgcalloss=args.hgcalloss,
-                )
-                step += 1
-
-                num_batches += 1
-                count += num_examples
-                total_loss += loss * num_examples
-
+        with tqdm.tqdm(eval_loader) as tq:
+            for event_batch in tq:
+                count += event_batch.n_events # number of samples
+                y = gt_func(event_batch)
+                batch = get_batch(event_batch, {})
+                y = y.to(dev)
+                batch = batch.to(dev)
+                y_pred = model(batch)
+                loss, loss_dict = loss_func(batch, y_pred, y)
+                loss = loss.item()
+                total_loss += loss
+                for key in loss_dict:
+                    if key not in total_loss_dict:
+                        total_loss_dict[key] = 0
+                    total_loss_dict[key] += loss_dict[key].item()
+                if n_batches in plot_batches:
+                    plot_folder = os.path.join(args.run_path, "eval_plots", "epoch_" + str(epoch) + "_step_" + str(step))
+                    Path(plot_folder).mkdir(parents=True, exist_ok=True)
+                    plot_batch_eval_OC(event_batch, y.detach().cpu(),
+                                       y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
+                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"))
+                n_batches += 1
                 tq.set_postfix(
                     {
                         "Loss": "%.5f" % loss,
                         "AvgLoss": "%.5f" % (total_loss / count),
                     }
                 )
-                log_losses_wandb(
-                    logwandb, num_batches, local_rank, losses, loss, loss_ll, val=True
-                )
-                if steps_per_epoch is not None and num_batches >= steps_per_epoch:
-                    break
                 if args.predict:
-                    model_output1 = torch.cat((model_output, e_corr.view(-1, 1)), dim=1)
-                    (
-                        df_batch,
-                        df_batch_pandora,
-                        df_batch1,
-                    ) = create_and_store_graph_output(
-                        batch_g,
-                        model_output1,
-                        y,
-                        local_rank,
-                        step,
-                        epoch,
-                        path_save=args.model_prefix + "showers_df_evaluation",
-                        store=True,
-                        predict=True,
-                        tracks=args.tracks,
-                    )
-                    df_showers.append(df_batch)
-                    df_showers_pandora.append(df_batch_pandora)
-                    df_showes_db.append(df_batch1)
-    # calculate showers at the end of every epoch
-    if logwandb and local_rank == 0:
-        if args.predict:
-            from src.layers.inference_oc import store_at_batch_end
-            import pandas as pd
-
-            df_showers = pd.concat(df_showers)
-            df_showers_pandora = pd.concat(df_showers_pandora)
-            df_showes_db = pd.concat(df_showes_db)
-            store_at_batch_end(
-                path_save=args.model_prefix + "showers_df_evaluation",
-                df_batch=df_showers,
-                df_batch_pandora=df_showers_pandora,
-                df_batch1=df_showes_db,
-                step=0,
-                predict=True,
-            )
-        else:
-            model_output1 = torch.cat((model_output, e_corr.view(-1, 1)), dim=1)
-            create_and_store_graph_output(
-                batch_g,
-                model_output1,
-                y,
-                local_rank,
-                step,
-                epoch,
-                path_save=args.model_prefix + "showers_df_evaluation",
-                store=True,
-                predict=False,
-                tracks=args.tracks,
-            )
-    if logwandb and local_rank == 0:
-
-        wandb.log(
-            {
-                "loss val end regression": loss,
-                "loss val end lv": losses[0],
-                "loss val end beta": losses[1],
-                "loss val end E": losses[2],
-                "loss val end  X": losses[3],
-                "loss val end attractive": losses[12],
-                "loss val end repulsive": losses[13],
-            }
-        )
+                    pass # TODO: save the results here or do something with them
+    if local_rank == 0:
+        wandb.log({"val_loss": total_loss / count}, step=step)
+        wandb.log({"val_" + key: value / count for key, value in total_loss_dict.items()}, step=step)
 
     time_diff = time.time() - start_time
     _logger.info(
-        "Processed %d entries in total (avg. speed %.1f entries/s)"
+        "Evaluated on %d samples in total (avg. speed %.1f samples/s)"
         % (count, count / time_diff)
     )
-
-    if count > 0:
-        if for_training:
-            return total_loss / count
-        else:
-            # convert 2D labels/scores
-            observers = {k: _concat(v) for k, v in observers.items()}
-            return total_loss / count, scores, labels, observers
+    return total_loss / count # average loss is the validation metric here

@@ -38,7 +38,7 @@ def train_load(args):
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
     )
-    val_loaders = {}
+    '''val_loaders = {}
     for filename in val_files:
         val_data = EventDataset.from_directory(filename, mmap=True)
         val_loaders[filename] = DataLoader(
@@ -49,8 +49,18 @@ def train_load(args):
             collate_fn=concat_events,
             num_workers=args.num_workers,
             persistent_workers=args.num_workers > 0,
-        )
-    return train_loader, val_loaders
+        )'''
+    val_data = EventDatasetCollection(val_files)
+    val_loader = DataLoader(
+        val_data,
+        batch_size=args.batch_size,
+        drop_last=True,
+        pin_memory=True,
+        num_workers=args.num_workers,
+        collate_fn=concat_events,
+        persistent_workers=args.num_workers > 0,
+    )
+    return train_loader, val_loader
 
 def test_load(args):
     test_files = to_filelist(args, "test")

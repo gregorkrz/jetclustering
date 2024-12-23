@@ -75,7 +75,7 @@ _configLogger("weaver", stdout=stdout, filename=args.log)
 
 warnings.filterwarnings("ignore")
 from src.utils.nn.tools_condensation import train_epoch
-from src.utils.nn.tools_condensation import evaluate_regression as evaluate
+from src.utils.nn.tools_condensation import evaluate as evaluate
 
 training_mode = not args.predict
 if training_mode:
@@ -124,9 +124,7 @@ if training_mode:
             output_device=local_rank,
             find_unused_parameters=True,
         )
-
     opt, scheduler = get_optimizer_and_scheduler(args, model, dev)
-
     # DataParallel
     if args.backend is None:
         if gpus is not None and len(gpus) > 1:
@@ -134,14 +132,24 @@ if training_mode:
             model = torch.nn.DataParallel(model, device_ids=gpus)
     if local_rank == 0:
         wandb.watch(model, log="all", log_freq=10)
-
-    # training loop
+    # Training loop
     best_valid_metric = np.inf
     grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
     steps = 0
     loss = get_loss_func(args)
     gt = get_gt_func(args)
-    for epoch in range(args.num_epochs):
+    evaluate(
+        model,
+        val_loaders,
+        dev,
+        0,
+        steps,
+        loss_func=loss,
+        gt_func=gt,
+        local_rank=local_rank,
+        args=args,
+    )
+    for epoch in range(1, args.epochs + 1):
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
         steps += train_epoch(
@@ -161,23 +169,19 @@ if training_mode:
         _logger.info("Epoch #%d validating" % epoch)
         valid_metric = evaluate(
             model,
-            val_loader,
+            val_loaders,
             dev,
             epoch,
-            steps_per_epoch=args.steps_per_epoch_val,
+            steps,
+            loss_func=loss,
+            gt_func=gt,
             local_rank=local_rank,
             args=args,
         )
         is_best_epoch = valid_metric < best_valid_metric
         if is_best_epoch:
-            print("Best epoch!")
+            print("Best epoch:", epoch)
             best_valid_metric = valid_metric
-            if args.model_prefix and (args.backend is None or local_rank == 0):
-                shutil.copy2(
-                    args.model_prefix + "_epoch-%d_state.pt" % epoch,
-                    args.model_prefix + "_best_epoch_state.pt",
-                )
-                # torch.save(model, args.model_prefix + '_best_epoch_full.pt')
         _logger.info(
             "Epoch #%d: Current validation metric: %.5f (best: %.5f)"
             % (epoch, valid_metric, best_valid_metric),
