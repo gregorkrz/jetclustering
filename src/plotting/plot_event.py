@@ -85,19 +85,25 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
     if custom_coords:
         eta = custom_coords[0]
         phi = custom_coords[1]
-        eta_special = eta[-len(eta_special):]
-        phi_special = phi[-len(phi_special):]
-        eta = eta[:-len(eta_special)]
-        phi = phi[:-len(eta_special)]
+        if len(eta_special):
+            eta_special = eta[-len(eta_special):]
+            phi_special = phi[-len(phi_special):]
+            eta = eta[:-len(eta_special)]
+            phi = phi[:-len(eta_special)]
     genjet_eta = event.genjets.eta
     genjet_phi = event.genjets.phi
     genjet_pt = event.genjets.pt
-    colors_special = colors[-len(eta_special):]
-    colors = colors[:-len(eta_special)]
+    if len(eta_special):
+        colors_special = colors[-len(eta_special):]
+        colors = colors[:-len(eta_special)]
+        print("Colors_special", colors_special)
+        assert len(colors) == len(phi)
+        assert len(colors_special) == len(eta_special)
     ax.scatter(eta, phi, s=pt, c=colors)
     ax.scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=1.0) # Dark quarks
     ax.scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=1.0)
-    ax.scatter(eta_special, phi_special, s=pt_special, c=colors_special, marker="v")
+    if len(eta_special):
+        ax.scatter(eta_special, phi_special, s=pt_special, c=colors_special, marker="v")
     if jets:
         jet_eta = event.fatjets.eta
         jet_phi = event.fatjets.phi
@@ -113,23 +119,44 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
 
 def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename):
     # Plot the batch, together with nice colors with object condensation GT and betas
-    fig, ax = plt.subplots(event_batch.n_events, 4, figsize=(20, 5*event_batch.n_events))
+    sz = 10
+    max_events = 5
+    fig, ax = plt.subplots(max_events, 4, figsize=(4*sz, sz*max_events))
     # columns: Input coords, colored by beta ; Input coords, colored by GT labels; model coords, colored by beta; model coords, colored by GT labels
     for i in range(event_batch.n_events):
+        if i >= max_events:
+            break
         event = event_batch[i]
         filt = batch_idx == i
         y_true_event = y_true[filt]
         y_pred_event = y_pred[filt]
         betas = y_pred_event[:, 3]
         p_xyz = y_pred_event[:, :3]
+        y_true_event = y_true_event.tolist()
+        y_pred_event = y_pred_event.tolist()
+        clist = ['#a4c8e3', '#1f78b4', '#b3df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbe6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
+        colors = {
+            -1: "gray",
+            0: clist[0],
+            1: clist[1],
+            2: clist[2],
+            3: clist[3]
+        }
         eta, phi = torch.atan2(p_xyz[:, 1], p_xyz[:, 0]), torch.asin(p_xyz[:, 2] / p_xyz.norm(dim=1))
-        plot_event(event, colors=betas, ax=ax[i, 0])
-        cbar = plt.colorbar(ax[i, 0].collections[0], ax=ax[i, 0])
+        plot_event(event, colors=plt.cm.brg(betas), ax=ax[i, 0])
+        cbar = plt.colorbar(ax[i, 0].collections[0], ax=ax[i, 0], cmap=plt.cm.brg) # how to specify the palette?
+        ax[i, 0].set_title(r"input coords, $\beta$ colors")
         cbar.set_label(r"$\beta$")
-        plot_event(event, colors=y_true_event, ax=ax[i, 1])
-        plot_event(event, custom_coords=[eta, phi], colors=betas, ax=ax[i, 2])
-        cbar = plt.colorbar(ax[i, 2].collections[0], ax=ax[i, 2])
+        plot_event(event, colors=[colors[i] for i in y_true_event], ax=ax[i, 1])
+        ax[i, 1].set_title("input coords, GT colors")
+        plot_event(event, custom_coords=[eta, phi], colors=plt.cm.brg(betas), ax=ax[i, 2])
+        ax[i, 2].set_title(r"model coords, $\beta$ colors")
+        cbar = plt.colorbar(ax[i, 2].collections[0], ax=ax[i, 2], cmap=plt.cm.brg)
+        ax[i, 3].set_title("model coords, GT colors")
         cbar.set_label(r"$\beta$")
-        plot_event(event, custom_coords=[eta, phi], colors=y_true_event, ax=ax[i, 3])
+        plot_event(event, custom_coords=[eta, phi], colors=[colors[i] for i in y_true_event], ax=ax[i, 3])
+    print("Saving eval figure to", filename)
     fig.tight_layout()
     fig.savefig(filename)
+    fig.clear()
+    plt.close(fig)

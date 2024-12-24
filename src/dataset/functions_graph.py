@@ -17,6 +17,7 @@ from src.dataset.functions_data import (
     EventCollection,
     Event,
     EventMetadataAndMET,
+    concat_event_collection
 )
 
 
@@ -217,7 +218,7 @@ def create_jets_outputs(
     return jets_data, genjets_data, fat_jets_data
 
 def create_jets_outputs_new(
-    output
+    output, separate_special_pfcands=False
 ):
     n_jets = int(output["n_jets"][0, 0])
     jets_data = output["jets"][:, :n_jets]
@@ -307,10 +308,13 @@ def create_jets_outputs_new(
     #offline_jets_mapping = list(offline_jets_mapping)
     pfcands_data = EventPFCands(*[pfcands_data[:, i] for i in range(6)] + pfcands_jets_mapping)
     special_pfcands_data = EventPFCands(*[special_pfcands_data[:, i] for i in range(6)], pf_cand_jet_idx=-1*torch.ones_like(special_pfcands_data[:, 0]))
+    if not separate_special_pfcands:
+        pfcands_data = concat_event_collection([pfcands_data, special_pfcands_data])
+        special_pfcands_data = None
     MET_data = EventMetadataAndMET(pt=output_MET[0], phi=output_MET[1], scouting_trig=output_MET[2], offline_trig=output_MET[3], veto_trig=output_MET[4])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
     return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data,
-                 special_pfcands=special_pfcands_data, matrix_element_gen_particles=matrix_element_gen_particles_data)
+                 matrix_element_gen_particles=matrix_element_gen_particles_data, special_pfcands_data=special_pfcands_data)
     #return {
     #    "jets": jets_data,
     #    "genjets": genjets_data,

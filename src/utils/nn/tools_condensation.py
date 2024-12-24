@@ -153,14 +153,14 @@ def evaluate(
                 tq.set_postfix(
                     {
                         "Loss": "%.5f" % loss,
-                        "AvgLoss": "%.5f" % (total_loss / count),
+                        "AvgLoss": "%.5f" % (total_loss / n_batches),
                     }
                 )
                 if args.predict:
                     pass # TODO: save the results here or do something with them
     if local_rank == 0:
-        wandb.log({"val_loss": total_loss / count}, step=step)
-        wandb.log({"val_" + key: value / count for key, value in total_loss_dict.items()}, step=step)
+        wandb.log({"val_loss": total_loss / n_batches}, step=step)
+        wandb.log({"val_" + key: value / n_batches for key, value in total_loss_dict.items()}, step=step)
 
     time_diff = time.time() - start_time
     _logger.info(

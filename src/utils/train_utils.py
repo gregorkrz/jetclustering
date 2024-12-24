@@ -299,7 +299,7 @@ def get_gt_func(args):
     R = 0.8
     def get_idx_for_event(obj, i):
         return obj.batch_number[i], obj.batch_number[i + 1]
-    def get_labels(b, pfcands):
+    def get_labels(b, pfcands,special=False):
         # b: Batch of events
         labels = torch.zeros(len(pfcands)).long()
         for i in range(len(b)):
@@ -320,12 +320,15 @@ def get_gt_func(args):
             closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
             closest_quark_idx[closest_quark_dist > R] = -1
             if len(closest_quark_idx):
+                if special: print("Closest quark idx", closest_quark_idx, "; renumbered ",
+                                  renumber_clusters(closest_quark_idx + 1) - 1)
                 closest_quark_idx = renumber_clusters(closest_quark_idx + 1) - 1
             labels[s:e] = closest_quark_idx
-
         return labels
     def gt(events):
-        return torch.cat([get_labels(events, events.pfcands), get_labels(events, events.special_pfcands)])
+        special_labels = get_labels(events, events.special_pfcands, special=True)
+        print("Special pfcands labels", special_labels)
+        return torch.cat([get_labels(events, events.pfcands), special_labels])
     return gt
 
 
