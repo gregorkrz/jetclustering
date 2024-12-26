@@ -65,14 +65,14 @@ if not args.plot_only:
             unmatched_quarks[subdataset]["pt_all"] += data.matrix_element_gen_particles.pt.tolist()
             unmatched_quarks[subdataset]["eta"] += data.matrix_element_gen_particles.eta[filt].tolist()
             unmatched_quarks[subdataset]["phi"] += data.matrix_element_gen_particles.phi[filt].tolist()
-            visible_E_event = torch.sum(data.pfcands.E) + torch.sum(data.special_pfcands.E)
+            visible_E_event = torch.sum(data.pfcands.E) #+ torch.sum(data.special_pfcands.E)
             matched_quarks = np.where(quark_to_jet != -1)[0]
             for i in range(len(data.matrix_element_gen_particles)):
                 dq_coords = [dq[0][i], dq[1][i]]
                 cone_filter = torch.sqrt((data.pfcands.eta - dq_coords[0])**2 + (data.pfcands.phi - dq_coords[1])**2) < R
-                cone_filter_special = torch.sqrt(
-                    (data.special_pfcands.eta - dq_coords[0]) ** 2 + (data.special_pfcands.phi - dq_coords[1]) ** 2) < R
-                E_in_cone = data.pfcands.E[cone_filter].sum() + data.special_pfcands.E[cone_filter_special].sum()
+                #cone_filter_special = torch.sqrt(
+                #    (data.special_pfcands.eta - dq_coords[0]) ** 2 + (data.special_pfcands.phi - dq_coords[1]) ** 2) < R
+                E_in_cone = data.pfcands.E[cone_filter].sum()# + data.special_pfcands.E[cone_filter_special].sum()
                 if i in matched_quarks:
                     unmatched_quarks[subdataset]["frac_evt_E_matched"].append(E_in_cone / visible_E_event)
                 else:

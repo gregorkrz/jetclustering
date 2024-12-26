@@ -501,15 +501,17 @@ def concat_events(list_events):
 def get_batch(event, batch_config):
     # Returns the EventBatch class, with correct scalars etc.
     batch_idx_pfcands = torch.zeros(len(event.pfcands)).long()
-    batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
+    #batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
     for i in range(len(event.pfcands.batch_number) - 1):
         batch_idx_pfcands[event.pfcands.batch_number[i]:event.pfcands.batch_number[i+1]] = i
-    for i in range(len(event.special_pfcands.batch_number) - 1):
-        batch_idx_special_pfcands[event.special_pfcands.batch_number[i]:event.special_pfcands.batch_number[i+1]] = i
-    batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
+    #for i in range(len(event.special_pfcands.batch_number) - 1):
+    #    batch_idx_special_pfcands[event.special_pfcands.batch_number[i]:event.special_pfcands.batch_number[i+1]] = i
+    #batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
+    batch_idx = batch_idx_pfcands
     batch_idx = batch_idx.to(event.pfcands.pt.device)
     if batch_config.get("use_p_xyz", True):
-        batch_vectors = torch.cat([event.pfcands.pxyz, event.special_pfcands.pxyz], dim=0)
+        #batch_vectors = torch.cat([event.pfcands.pxyz, event.special_pfcands.pxyz], dim=0)
+        batch_vectors = event.pfcands.pxyz
     else:
         raise NotImplementedError
     pids = batch_config.get("pids", [11, 13, 22, 130, 211, 0, 1, 2, 3]) # 0, 1, 2, 3 are the special PFcands
@@ -524,12 +526,12 @@ def get_batch(event, batch_config):
     assert (pids_onehot.sum(dim=1) == 1).all()
     chg = event.pfcands.charge.unsqueeze(1)
     batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
-    pids_onehot_special_pfcands = torch.zeros(len(event.special_pfcands), len(pids))
-    for i, pid in enumerate(pids):
-        pids_onehot_special_pfcands[:, i] = (event.special_pfcands.pid.abs() == pid).float()
-    assert (pids_onehot_special_pfcands.sum(dim=1) == 1).all()
-    batch_scalars_special_pfcands = torch.cat([event.special_pfcands.charge.unsqueeze(1), pids_onehot_special_pfcands], dim=1)
-    batch_scalars = torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
+    #pids_onehot_special_pfcands = torch.zeros(len(event.special_pfcands), len(pids))
+    #for i, pid in enumerate(pids):
+    #    pids_onehot_special_pfcands[:, i] = (event.special_pfcands.pid.abs() == pid).float()
+    #assert (pids_onehot_special_pfcands.sum(dim=1) == 1).all()
+    #batch_scalars_special_pfcands =event.special_pfcands.charge.unsqueeze(1) #torch.cat([event.special_pfcands.charge.unsqueeze(1), pids_onehot_special_pfcands], dim=1)
+    batch_scalars = batch_scalars_pfcands# torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
     assert batch_idx.max() == event.n_events - 1
     return EventBatch(
         input_vectors=batch_vectors,

@@ -29,6 +29,8 @@ def train_load(args):
     train_files = to_filelist(args, "train")
     val_files = to_filelist(args, "val")
     train_data = EventDatasetCollection(train_files)
+    if args.train_dataset_size is not None:
+        train_data = torch.utils.data.Subset(train_data, list(range(args.train_dataset_size)))
     train_loader = DataLoader(
         train_data,
         batch_size=args.batch_size,
@@ -51,6 +53,8 @@ def train_load(args):
             persistent_workers=args.num_workers > 0,
         )'''
     val_data = EventDatasetCollection(val_files)
+    if args.val_dataset_size is not None:
+        val_data = torch.utils.data.Subset(val_data, list(range(args.val_dataset_size)))
     val_loader = DataLoader(
         val_data,
         batch_size=args.batch_size,
@@ -171,9 +175,9 @@ def get_optimizer_and_scheduler(args, model, device):
         opt = torch.optim.RAdam(parameters, lr=args.start_lr, **optimizer_options)
 
     if args.load_model_weights is not None:
-        _logger.info("Resume training from file %d" % args.load_model_weights)
+        _logger.info("Resume training from file %s" % args.load_model_weights)
         model_state = torch.load(
-            args.model_prefix + args.load_model_weights,
+            args.load_model_weights,
             map_location=device,
         )
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
@@ -280,7 +284,9 @@ def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
     def loss(model_input, model_output, gt_labels):
         batch_numbers = model_input.batch_idx
-        return object_condensation_loss(model_input, model_output, gt_labels+1, batch_numbers)
+        return object_condensation_loss(model_input, model_output, gt_labels+1, batch_numbers,
+                                        attr_weight=args.attr_loss_weight,
+                                        repul_weight=args.repul_loss_weight)
         # TODO: add other arguments (i.e. attractive loss weight etc.)
     return loss
 
@@ -326,9 +332,10 @@ def get_gt_func(args):
             labels[s:e] = closest_quark_idx
         return labels
     def gt(events):
-        special_labels = get_labels(events, events.special_pfcands, special=True)
-        print("Special pfcands labels", special_labels)
-        return torch.cat([get_labels(events, events.pfcands), special_labels])
+        #special_labels = get_labels(events, events.special_pfcands, special=True)
+        #print("Special pfcands labels", special_labels)
+        #return torch.cat([get_labels(events, events.pfcands), special_labels])
+        return get_labels(events, events.pfcands)
     return gt
 
 
@@ -341,8 +348,8 @@ def get_model(args, dev):
     model = network_module.get_model(args=args, **network_options)
 
     if args.load_model_weights:
-        print("Loading model state dict from %s" % args.load_model_weights_1)
-        model_state = torch.load(args.load_model_weights_1, map_location=dev)
+        print("Loading model state dict from %s" % args.load_model_weights)
+        model_state = torch.load(args.load_model_weights, map_location=dev)["model"]
         missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False)
         _logger.info(
             "Model initialized with weights from %s\n ... Missing: %s\n ... Unexpected: %s"

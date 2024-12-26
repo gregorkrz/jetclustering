@@ -16,6 +16,7 @@ from pathlib import Path
 torch.autograd.set_detect_anomaly(True)
 
 from src.utils.train_utils import count_parameters, get_gt_func, get_loss_func
+from src.utils.utils import clear_empty_paths
 from src.logger.logger import _logger, _configLogger
 from src.dataset.dataset import SimpleIterDataset
 from src.utils.import_tools import import_module
@@ -50,6 +51,7 @@ args.run_name = f"{args.run_name}_{timestamp}"
 if args.load_model_weights:
     args.load_model_weights = get_path(args.load_model_weights, "results")
 run_path = os.path.join(args.prefix, "train", args.run_name)
+clear_empty_paths(get_path(os.path.join(args.prefix, "train"), "results"))  # Clear paths of failed runs that don't have any files or folders in them
 run_path = get_path(run_path, "results")
 Path(run_path).mkdir(parents=True, exist_ok=False)
 args.run_path = run_path
@@ -149,10 +151,10 @@ if training_mode:
         local_rank=local_rank,
         args=args,
     )
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, args.num_epochs + 1):
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
-        steps += train_epoch(
+        steps = train_epoch(
             args,
             model,
             loss_func=loss,
@@ -164,9 +166,10 @@ if training_mode:
             epoch=epoch,
             grad_scaler=grad_scaler,
             local_rank=local_rank,
-            current_step=steps
+            current_step=steps,
+            val_loader=val_loaders
         )
-        _logger.info("Epoch #%d validating" % epoch)
+        '''_logger.info("Epoch #%d validating" % epoch)
         valid_metric = evaluate(
             model,
             val_loaders,
@@ -186,7 +189,7 @@ if training_mode:
             "Epoch #%d: Current validation metric: %.5f (best: %.5f)"
             % (epoch, valid_metric, best_valid_metric),
             color="bold",
-        )
+        )'''
 
 if args.data_test:
     tb = None

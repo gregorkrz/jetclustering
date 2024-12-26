@@ -68,3 +68,13 @@ def to_filelist(args, mode="train"):
     filelist = sum(file_dict.values(), [])
     assert len(filelist) == len(set(filelist))
     return file_dict, filelist
+
+
+def clear_empty_paths(dir):
+    # clear the dirs in this folder that are empty (i.e. don't have any files or folders in them)
+    for f in os.listdir(dir):
+        if not os.path.isdir(os.path.join(dir, f)):
+            continue
+        if not os.listdir(os.path.join(dir, f)):
+            shutil.rmtree(os.path.join(dir, f))
+            _logger.info("Removed empty path %s" % f)

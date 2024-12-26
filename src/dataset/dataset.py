@@ -311,6 +311,8 @@ class EventDatasetCollection(torch.utils.data.IterableDataset):
     def __iter__(self):
         for i in range(self.n_events):
             yield self.get_idx(i)
+    def __getitem__(self, i):
+        return self.get_idx(i)
     # A collection of EventDatasets.
     # You should use a sampler together with this, as by default it just concatenates the EventDatasets together!
 
@@ -440,7 +442,7 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         }
 
         if for_training:
-            self._sampler_options.update(training=True, shuffle=True, reweight=True)
+            self._sampler_options.update(training=True, shuffle=False, reweight=True)
         else:
             self._sampler_options.update(training=False, shuffle=False, reweight=False)
 

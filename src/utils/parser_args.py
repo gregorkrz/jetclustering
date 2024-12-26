@@ -24,6 +24,9 @@ parser.add_argument(
     required=True,
     help="validation files",
 )
+
+parser.add_argument("--train-dataset-size", type=int, default=None, help="number of events to use from the training dataset")
+parser.add_argument("--val-dataset-size", type=int, default=None, help="number of events to use from the validation dataset")
 parser.add_argument(
     "-test",
     "--data-test",
@@ -99,6 +102,11 @@ parser.add_argument(
     default=False,
     help="run prediction instead of training",
 )
+
+
+### Loss-related arguments ###
+parser.add_argument("--attr-loss-weight", type=float, default=1.0, help="weight for the attractive loss")
+parser.add_argument("--repul-loss-weight", type=float, default=1.0, help="weight for the repulsive loss")
 
 
 

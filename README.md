@@ -24,3 +24,9 @@ The script produces output in the `results` folder.
 
 ### Evaluation
 
+### Datasets
+
+`scouting_PFNano_signals1`: Contains special PFCands and PFCands in separate fields
+
+`scouting_PFNano_signals2`: Contains both special PFCands and PFCands in the same field, under PFCands.
+It was easier to just create this instead of always having special treatment for the special PFCands.

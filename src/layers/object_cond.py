@@ -536,7 +536,7 @@ def calc_LV_Lbeta(
 
     L_beta = L_beta_noise + L_beta_sig
 
-    L_alpha_coordinates = torch.mean(torch.norm(x_alpha_original - x_alpha, p=2, dim=1))
+    #L_alpha_coordinates = torch.mean(torch.norm(x_alpha_original - x_alpha, p=2, dim=1))
 
    
     if torch.isnan(L_beta / batch_size):
@@ -853,13 +853,22 @@ def L_clusters_calc(batch, cluster_space_coords, cluster_index, frac_combination
 
     return L_clusters
 
+def calc_eta_phi(coords):
+    """
+    Calculate eta and phi from cartesian coordinates
+    """
+    x = coords[:, 0]
+    y = coords[:, 1]
+    z = coords[:, 2]
+    eta, phi = torch.atan2(y, x), torch.asin(z / coords.norm(dim=1))
+    return torch.stack([eta, phi], dim=1)
 
 def object_condensation_loss(
         batch, # input event
         pred,
         labels,
         batch_numbers,
-        q_min=0.1,
+        q_min=3.0,
         frac_clustering_loss=0.1,
         attr_weight=1.0,
         repul_weight=1.0,
@@ -884,6 +893,7 @@ def object_condensation_loss(
     else:
         distance_threshold = 0
     xj = pred[:, :clust_space_dim] # Coordinates in clustering space
+    #xj = calc_eta_phi(xj)
     if clust_space_norm == "twonorm":
         xj = torch.nn.functional.normalize(xj, dim=1)
     elif clust_space_norm == "tanh":

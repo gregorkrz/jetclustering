@@ -18,15 +18,6 @@ from src.models.gravnet_calibration import object_condensation_loss2
 from src.layers.inference_oc import create_and_store_graph_output
 #from src.layers.object_cond import onehot_particles_arr
 from src.utils.logger_wandb import plot_clust
-from src.utils.nn.tools import (
-    lst_nonzero,
-    clip_list,
-    turn_grads_off,
-    log_betas_hist,
-    log_step_time,
-    update_and_log_scheduler,
-)
-from src.utils.nn.tools import log_losses_wandb, update_dict
 from src.dataset.functions_data import get_batch
 # class_names = ["other"] + [str(i) for i in onehot_particles_arr]  # quick fix
 from src.plotting.plot_event import plot_batch_eval_OC
@@ -44,6 +35,7 @@ def train_epoch(
     grad_scaler=None,
     local_rank=0,
     current_step=0,
+    val_loader=None
 ):
     model.train()
     step_count = current_step
@@ -81,7 +73,8 @@ def train_epoch(
         loss = loss.item()
         wandb.log({key: value.detach().cpu().item() for key, value in loss_dict.items()}, step=step_count)
         wandb.log({"loss": loss}, step=step_count)
-
+        del loss_dict
+        del loss
         if (local_rank == 0) and (step_count % 500) == 0:
             dirname = args.run_path
             model_state_dict = (
@@ -100,6 +93,17 @@ def train_epoch(
             torch.save(
                 state_dict,
                 path
+            )
+            evaluate(
+                model,
+                val_loader,
+                dev,
+                epoch,
+                step_count,
+                loss_func=loss_func,
+                gt_func=gt_func,
+                local_rank=local_rank,
+                args=args,
             )
         #_logger.info(
         #    "Epoch %d, step %d: loss=%.5f, time=%.2fs"

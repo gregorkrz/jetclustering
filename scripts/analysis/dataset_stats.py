@@ -38,8 +38,8 @@ if not args.plot_only:
             if args.dataset_cap != -1 and n > args.dataset_cap:
                 break
             n_fatjets = len(data.fatjets)
-            n_pfcands = len(data.pfcands) + len(data.special_pfcands)
-            total_visible_E = torch.sum(data.pfcands.E) + torch.sum(data.special_pfcands.E)
+            n_pfcands = len(data.pfcands) #+ len(data.special_pfcands)
+            total_visible_E = torch.sum(data.pfcands.E) #+ torch.sum(data.special_pfcands.E)
             visible_mass = torch.sqrt(torch.sum(data.pfcands.E)**2 - torch.sum(data.pfcands.p)**2)
             stats[subdataset]["total_visible_E"].append(total_visible_E)
             stats[subdataset]["visible_mass"].append(visible_mass)
