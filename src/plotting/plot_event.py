@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import torch
 import os
 import numpy as np
+import matplotlib.colors as mcolors
+
 
 def plot_event_comparison(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
     eta_dq = event.matrix_element_gen_particles.eta
@@ -127,11 +129,15 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
         fig.tight_layout()
         return fig
 
-def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename):
+def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
     # Plot the batch, together with nice colors with object condensation GT and betas
     sz = 10
     max_events = 5
-    fig, ax = plt.subplots(max_events, 4, figsize=(4*sz, sz*max_events))
+    if args.beta_type == "pt+bc":
+        n_columns = 6
+    else:
+        n_columns = 4
+    fig, ax = plt.subplots(max_events, n_columns, figsize=(n_columns * sz, sz * max_events))
     # columns: Input coords, colored by beta ; Input coords, colored by GT labels; model coords, colored by beta; model coords, colored by GT labels
     for i in range(event_batch.n_events):
         if i >= max_events:
@@ -140,10 +146,15 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename):
         filt = batch_idx == i
         y_true_event = y_true[filt]
         y_pred_event = y_pred[filt]
-        betas = y_pred_event[:, 3]
+        if args.beta_type == "default":
+            betas = y_pred_event[:, 3]
+        elif args.beta_type == "pt":
+            betas = event.pfcands.pt
+        elif args.beta_type == "pt+bc":
+            betas = event.pfcands.pt
+            classifier_labels = y_pred_event[:, 3]
         p_xyz = y_pred_event[:, :3]
         y_true_event = y_true_event.tolist()
-        y_pred_event = y_pred_event.tolist()
         clist = ['#1f78b4', '#b3df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbe6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
         colors = {
             -1: "gray",
@@ -152,7 +163,8 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename):
             2: clist[2],
             3: clist[3]
         }
-        eta, phi = torch.atan2(p_xyz[:, 1], p_xyz[:, 0]), torch.asin(p_xyz[:, 2] / p_xyz.norm(dim=1))
+        phi = torch.arctan2(p_xyz[:, 1], p_xyz[:, 0]) #torch.asin(p_xyz[:, 1] / p_xyz.norm(dim=1))
+        eta = torch.arctanh(p_xyz[:, 2] / p_xyz.norm(dim=1))
         plot_event(event, colors=plt.cm.brg(betas), ax=ax[i, 0])
         cbar = plt.colorbar(ax[i, 0].collections[0], ax=ax[i, 0], cmap=plt.cm.brg) # how to specify the palette?
         ax[i, 0].set_title(r"input coords, $\beta$ colors")
@@ -160,12 +172,27 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename):
         plot_event(event, colors=[colors[i] for i in y_true_event], ax=ax[i, 1])
         ax[i, 1].set_title("input coords, GT colors")
         plot_event(event, custom_coords=[eta, phi], colors=plt.cm.brg(betas), ax=ax[i, 2], jets=False)
-        assert betas.min() >= 0 and betas.max() <= 1
+        #assert betas.min() >= 0 and betas.max() <= 1
         ax[i, 2].set_title(r"model coords, $\beta$ colors")
         cbar = plt.colorbar(ax[i, 2].collections[0], ax=ax[i, 2], cmap=plt.cm.brg)
         ax[i, 3].set_title("model coords, GT colors")
         cbar.set_label(r"$\beta$")
         plot_event(event, custom_coords=[eta, phi], colors=[colors[i] for i in y_true_event], ax=ax[i, 3], jets=False)
+
+        if args.beta_type == "pt+bc":
+            print("classifier labels", classifier_labels[:10])
+            # Create a custom colormap from light gray to dark green
+            colors = [(0.9, 0.9, 0.9), (0.0, 0.5, 0.0)]  # RGB for light gray and dark green
+            cmap_name = "lightgray_to_darkgreen"
+            custom_cmap = mcolors.LinearSegmentedColormap.from_list(cmap_name, colors)
+            plot_event(event, custom_coords=[eta, phi], colors=custom_cmap(classifier_labels), ax=ax[i, 5], jets=False)
+            ax[i, 5].set_title(r"model coords, BC label colors")
+            cbar = plt.colorbar(ax[i, 5].collections[0], ax=ax[i, 5], cmap=custom_cmap)
+            cbar.set_label("Classifier score")
+            plot_event(event, colors=custom_cmap(classifier_labels), ax=ax[i, 4], jets=False)
+            ax[i, 4].set_title(r"input coords, BC label colors")
+            cbar = plt.colorbar(ax[i, 4].collections[0], ax=ax[i, 4], cmap=custom_cmap)
+            cbar.set_label("Classifier score")
     print("Saving eval figure to", filename)
     fig.tight_layout()
     fig.savefig(filename)

@@ -526,6 +526,9 @@ def get_batch(event, batch_config):
     assert (pids_onehot.sum(dim=1) == 1).all()
     chg = event.pfcands.charge.unsqueeze(1)
     batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
+    if batch_config.get("use_p_xyz", True):
+        # also add pt as a scalar
+        batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, event.pfcands.pt.unsqueeze(1)], dim=1)
     #pids_onehot_special_pfcands = torch.zeros(len(event.special_pfcands), len(pids))
     #for i, pid in enumerate(pids):
     #    pids_onehot_special_pfcands[:, i] = (event.special_pfcands.pid.abs() == pid).float()
@@ -537,6 +540,7 @@ def get_batch(event, batch_config):
         input_vectors=batch_vectors,
         input_scalars=batch_scalars,
         batch_idx=batch_idx,
+        pt=event.pfcands.pt
     )
 
 def to_tensor(item):
@@ -795,14 +799,16 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx
+        self.pt = pt
     def to(self, device):
         self.input_vectors = self.input_vectors.to(device)
         self.input_scalars = self.input_scalars.to(device)
         self.batch_idx = self.batch_idx.to(device)
+        self.pt = self.pt.to(device)
         return self
     def cpu(self):
         return self.to(torch.device("cpu"))

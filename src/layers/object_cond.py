@@ -53,6 +53,8 @@ def calc_LV_Lbeta(
     loss_type="hgcalimplementation",
     tracking=False,
     dis=False,
+    beta_type="default",
+    noise_logits=None
 ) -> Union[Tuple[torch.Tensor, torch.Tensor], dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -74,6 +76,7 @@ def calc_LV_Lbeta(
         beta points, acting like V_attractive.
     Note this function has modifications w.r.t. the implementation in 2002.03605:
     - The norms for V_repulsive are now Gaussian (instead of linear hinge)
+    - Noise_logits: If set to an array, it is the output of the noise classifier (whether a particle belongs to a jet or not)
     """
     # remove dummy rows added for dataloader #TODO think of better way to do this
     device = beta.device
@@ -105,7 +108,6 @@ def calc_LV_Lbeta(
     is_sig = ~is_noise
     n_hits_sig = is_sig.sum()
     n_sig_hits_per_event = scatter_count(batch[is_sig])
-
     # Per-cluster boolean, indicating whether cluster is an object or noise
     is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
     is_noise_cluster = ~is_object
@@ -130,19 +132,23 @@ def calc_LV_Lbeta(
 
     # ________________________________
     # L_V term
-
     # Calculate q
-    if loss_type == "hgcalimplementation" or loss_type == "vrepweighted":
-        q = (beta.clip(0.0, 1 - 1e-4).arctanh() / 1.01) ** 2 + qmin
-    elif beta_stabilizing == "paper":
-        q = beta.arctanh() ** 2 + qmin
-    elif beta_stabilizing == "clip":
-        beta = beta.clip(0.0, 1 - 1e-4)
-        q = beta.arctanh() ** 2 + qmin
-    elif beta_stabilizing == "soft_q_scaling":
-        q = (beta.clip(0.0, 1 - 1e-4) / 1.002).arctanh() ** 2 + qmin
-    else:
-        raise ValueError(f"beta_stablizing mode {beta_stabilizing} is not known")
+    if beta_type == "default":
+        if loss_type == "hgcalimplementation" or loss_type == "vrepweighted":
+            q = (beta.clip(0.0, 1 - 1e-4).arctanh() / 1.01) ** 2 + qmin
+        elif beta_stabilizing == "paper":
+            q = beta.arctanh() ** 2 + qmin
+        elif beta_stabilizing == "clip":
+            beta = beta.clip(0.0, 1 - 1e-4)
+            q = beta.arctanh() ** 2 + qmin
+        elif beta_stabilizing == "soft_q_scaling":
+            q = (beta.clip(0.0, 1 - 1e-4) / 1.002).arctanh() ** 2 + qmin
+        else:
+            raise ValueError(f"beta_stablizing mode {beta_stabilizing} is not known")
+    elif beta_type  == "pt":
+        q = beta
+    elif beta_type == "pt+bc":
+        q = beta
     assert_no_nans(q)
     assert q.device == device
     assert q.size() == (n_hits,)
@@ -155,7 +161,8 @@ def calc_LV_Lbeta(
 
     # Get the cluster space coordinates and betas for these maxima hits too
     x_alpha = cluster_space_coords[is_sig][index_alpha]
-    x_alpha_original = original_coords[is_sig][index_alpha]
+    #x_alpha_original = original_coords[is_sig][index_alpha]
+
     if use_average_cc_pos > 0:
         #! this is a func of beta and q so maybe we could also do it with only q
         x_alpha_sum = scatter_add(
@@ -535,25 +542,44 @@ def calc_LV_Lbeta(
         )
 
     L_beta = L_beta_noise + L_beta_sig
+    if beta_type == "pt" or beta_type == "pt+bc":
+        L_beta = torch.zeros_like(L_beta)
 
     #L_alpha_coordinates = torch.mean(torch.norm(x_alpha_original - x_alpha, p=2, dim=1))
+    x_original = original_coords / torch.norm(original_coords, p=2, dim=1).view(-1, 1)
+    x_virtual  = cluster_space_coords / torch.norm(cluster_space_coords, p=2, dim=1).view(-1, 1)
+    loss_coord = torch.mean(torch.norm(x_original - x_virtual, p=2, dim=1)) # We just compare the direction
+    if beta_type == "pt+bc":
+        assert noise_logits is not None
+        y_true_noise = 1 - is_noise.float()
+        num_positives = torch.sum(y_true_noise).item()
+        num_negatives = len(y_true_noise) - num_positives
+        num_all = len(y_true_noise)
+        # Compute weights
+        pos_weight = num_all / num_positives if num_positives > 0 else 0
+        neg_weight = num_all / num_negatives if num_negatives > 0 else 0
+        weight = pos_weight * y_true_noise + neg_weight * (1 - y_true_noise)
+        L_bc = torch.nn.BCELoss(weight=weight)(
+            noise_logits, 1-is_noise.float()
+        )
 
-   
     if torch.isnan(L_beta / batch_size):
         print("isnan!!!")
         print(L_beta, batch_size)
         print("L_beta_noise", L_beta_noise)
         print("L_beta_sig", L_beta_sig)
-    L_exp = L_beta
-    if loss_type == "hgcalimplementation" or loss_type == "vrepweighted":
-        return {
-            "loss_potential": L_V,  # 0
-            "loss_beta": L_beta,
-            "loss_beta_sig": L_beta_sig, # signal part of the betas
-            "loss_beta_noise": L_beta_noise, # noise part of the betas
-            "loss_attractive": L_V_attractive,
-            "loss_repulsive": L_V_repulsive
-        }
+    result = {
+        "loss_potential": L_V,  # 0
+        "loss_beta": L_beta,
+        "loss_beta_sig": L_beta_sig, # signal part of the betas
+        "loss_beta_noise": L_beta_noise, # noise part of the betas
+        "loss_attractive": L_V_attractive,
+        "loss_repulsive": L_V_repulsive,
+        "loss_coord": loss_coord,
+    }
+    if beta_type == "pt+bc":
+        result["loss_noise_classification"] = L_bc
+    return result
 
 
 
@@ -860,7 +886,9 @@ def calc_eta_phi(coords):
     x = coords[:, 0]
     y = coords[:, 1]
     z = coords[:, 2]
-    eta, phi = torch.atan2(y, x), torch.asin(z / coords.norm(dim=1))
+    #eta, phi = torch.atan2(y, x), torch.asin(z / coords.norm(dim=1))
+    phi = torch.arctan2(y, x)
+    eta = torch.arctanh(z / torch.sqrt(x**2 + y**2 + z**2))
     return torch.stack([eta, phi], dim=1)
 
 def object_condensation_loss(
@@ -877,6 +905,8 @@ def object_condensation_loss(
         loss_type="hgcalimplementation",
         clust_space_norm="none",
         dis=False,
+        coord_weight=0.0,
+        beta_type="default"
 ):
     """
     :param batch: Model input
@@ -885,8 +915,17 @@ def object_condensation_loss(
     :return:
     """
     _, S = pred.shape
-    clust_space_dim = S - 1
-    bj = torch.sigmoid(torch.reshape(pred[:, clust_space_dim], [-1, 1])) # betas
+    noise_logits = None
+    if beta_type == "default":
+        clust_space_dim = S - 1
+        bj = torch.sigmoid(torch.reshape(pred[:, clust_space_dim], [-1, 1])) # betas
+    elif beta_type == "pt":
+        bj = batch.pt
+        clust_space_dim = S
+    elif beta_type == "pt+bc":
+        bj = batch.pt
+        clust_space_dim = S - 1
+        noise_logits = pred[:, clust_space_dim]
     original_coords = batch.input_vectors
     if dis:
         distance_threshold = torch.reshape(pred[:, -1], [-1, 1])
@@ -921,8 +960,13 @@ def object_condensation_loss(
         use_average_cc_pos=use_average_cc_pos,
         loss_type=loss_type,
         dis=dis,
+        beta_type=beta_type,
+        noise_logits=noise_logits
     )
 
     loss = a["loss_potential"] + a["loss_beta"]
-
+    if coord_weight > 0:
+        loss += a["loss_coord"] * coord_weight
+    if beta_type == "pt+bc":
+        loss += a["loss_noise_classification"]
     return loss, a

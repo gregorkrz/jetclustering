@@ -152,7 +152,7 @@ def evaluate(
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
                     plot_batch_eval_OC(event_batch, y.detach().cpu(),
                                        y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
-                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"))
+                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"), args=args)
                 n_batches += 1
                 tq.set_postfix(
                     {

@@ -22,6 +22,7 @@ class GATrModel(torch.nn.Module):
         self.blocks = blocks
         self.embed_as_vectors = embed_as_vectors
         self.input_dim = 3
+        self.n_scalars_out = n_scalars_out
         self.gatr = GATr(
             in_mv_channels=1,
             out_mv_channels=1,
@@ -35,7 +36,10 @@ class GATrModel(torch.nn.Module):
         )
         self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
-        self.beta = nn.Linear(n_scalars_out + 1, 1)
+        if n_scalars_out > 0:
+            self.beta = nn.Linear(n_scalars_out + 1, 1)
+        else:
+            self.beta = None
 
     def forward(self, data):
         # data: instance of EventBatch
@@ -61,8 +65,11 @@ class GATrModel(torch.nn.Module):
         #    x_clusters = extract_point(embedded_outputs)
         x_clusters = extract_point(embedded_outputs)
         original_scalar = extract_scalar(embedded_outputs)
-        beta = self.beta(torch.cat([original_scalar[:, 0, :], output_scalars], dim=1))
-        x = torch.cat((x_clusters[:, 0, :], torch.sigmoid(beta.view(-1, 1))), dim=1)
+        if self.beta is not None:
+            beta = self.beta(torch.cat([original_scalar[:, 0, :], output_scalars], dim=1))
+            x = torch.cat((x_clusters[:, 0, :], torch.sigmoid(beta.view(-1, 1))), dim=1)
+        else:
+            x = x_clusters[:, 0, :]
         return x
 
     def build_attention_mask(self, batch_numbers):
@@ -71,11 +78,16 @@ class GATrModel(torch.nn.Module):
         )
 
 def get_model(args):
+    n_scalars_out = 8
+    if args.beta_type == "pt":
+        n_scalars_out = 0
+    elif args.beta_type == "pt+bc":
+        n_scalars_out = 8
     return GATrModel(
-        n_scalars=10,
+        n_scalars=11,
         hidden_mv_channels=16,
         hidden_s_channels=64,
         blocks=10,
         embed_as_vectors=False,
-        n_scalars_out=8
+        n_scalars_out=n_scalars_out
     )

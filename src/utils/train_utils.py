@@ -286,7 +286,9 @@ def get_loss_func(args):
         batch_numbers = model_input.batch_idx
         return object_condensation_loss(model_input, model_output, gt_labels+1, batch_numbers,
                                         attr_weight=args.attr_loss_weight,
-                                        repul_weight=args.repul_loss_weight)
+                                        repul_weight=args.repul_loss_weight,
+                                        coord_weight=args.coord_loss_weight,
+                                        beta_type=args.beta_type)
         # TODO: add other arguments (i.e. attractive loss weight etc.)
     return loss
 

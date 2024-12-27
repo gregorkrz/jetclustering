@@ -107,9 +107,14 @@ parser.add_argument(
 ### Loss-related arguments ###
 parser.add_argument("--attr-loss-weight", type=float, default=1.0, help="weight for the attractive loss")
 parser.add_argument("--repul-loss-weight", type=float, default=1.0, help="weight for the repulsive loss")
-
-
-
+parser.add_argument("--coord-loss-weight", type=float, default=0.0, help="weight for the coordinate loss")
+parser.add_argument(
+    "--beta-type",
+    type=str,
+    default="default",
+    choices=["default", "pt", "pt+bc"],
+    help="How to predict betas",
+)
 
 #### Optimizer and LR-related arguments ####
 

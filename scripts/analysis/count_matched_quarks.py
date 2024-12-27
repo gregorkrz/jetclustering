@@ -18,6 +18,7 @@ parser.add_argument("--input", type=str, required=True)
 parser.add_argument("--dataset-cap", type=int, default=-1)
 parser.add_argument("--output", type=str, default="")
 parser.add_argument("--plot-only", action="store_true")
+parser.add_argument("--jets-object", type=str, default="fatjets")
 
 args = parser.parse_args()
 path = get_path(args.input, "preprocessed_data")
@@ -35,14 +36,15 @@ if not args.plot_only:
         dataset = get_iter(current_path)
         n = 0
         for data in tqdm(dataset):
+            jets_object = data.__dict__[args.jets_object]
             n += 1
             if args.dataset_cap != -1 and n > args.dataset_cap:
                 break
-            jets = [data.fatjets.eta, data.fatjets.phi]
+            jets = [jets_object.eta, jets_object.phi]
             dq = [data.matrix_element_gen_particles.eta, data.matrix_element_gen_particles.phi]
             # calculate deltaR between each jet and each quark
-            distance_matrix = np.zeros((len(data.fatjets), len(data.matrix_element_gen_particles)))
-            for i in range(len(data.fatjets)):
+            distance_matrix = np.zeros((len(jets_object), len(data.matrix_element_gen_particles)))
+            for i in range(len(jets_object)):
                 for j in range(len(data.matrix_element_gen_particles)):
                     deta = jets[0][i] - dq[0][j]
                     dphi = jets[1][i] - dq[1][j]
@@ -50,7 +52,7 @@ if not args.plot_only:
             # row-wise argmin
             distance_matrix = distance_matrix.T
             #min_distance = np.min(distance_matrix, axis=1)
-            if len(data.fatjets):
+            if len(jets_object):
                 quark_to_jet = np.min(distance_matrix, axis=1)
                 quark_to_jet[quark_to_jet > R] = -1
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
