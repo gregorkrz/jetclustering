@@ -20,7 +20,7 @@ from src.layers.inference_oc import create_and_store_graph_output
 from src.utils.logger_wandb import plot_clust
 from src.dataset.functions_data import get_batch
 # class_names = ["other"] + [str(i) for i in onehot_particles_arr]  # quick fix
-from src.plotting.plot_event import plot_batch_eval_OC
+from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 
 def train_epoch(
     args,
@@ -131,22 +131,38 @@ def evaluate(
     total_loss_dict = {}
     plot_batches = [0, 1]
     n_batches = 0
+    if args.predict:
+        predictions = {
+            "event_idx": [],
+            "GT_cluster": [],
+            "pred": [],
+            "eta": [],
+            "phi": [],
+            "pt": [],
+            "AK8_cluster": [],
+            "radius_cluster_GenJets": [],
+            "radius_cluster_FatJets": []
+    }
+        if args.beta_type != "pt+bc":
+            del predictions["BC_score"]
+    last_event_idx = 0
     with torch.no_grad():
         with tqdm.tqdm(eval_loader) as tq:
             for event_batch in tq:
                 count += event_batch.n_events # number of samples
                 y = gt_func(event_batch)
-                batch, y = get_batch(event_batch, {}, y)
+                batch, y = get_batch(event_batch, {}, y, test=args.predict)
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)
-                loss, loss_dict = loss_func(batch, y_pred, y)
-                loss = loss.item()
-                total_loss += loss
-                for key in loss_dict:
-                    if key not in total_loss_dict:
-                        total_loss_dict[key] = 0
-                    total_loss_dict[key] += loss_dict[key].item()
+                if not args.predict:
+                    loss, loss_dict = loss_func(batch, y_pred, y)
+                    loss = loss.item()
+                    total_loss += loss
+                    for key in loss_dict:
+                        if key not in total_loss_dict:
+                            total_loss_dict[key] = 0
+                        total_loss_dict[key] += loss_dict[key].item()
                 if n_batches in plot_batches:
                     plot_folder = os.path.join(args.run_path, "eval_plots", "epoch_" + str(epoch) + "_step_" + str(step))
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
@@ -154,15 +170,26 @@ def evaluate(
                                        y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
                                        os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"), args=args)
                 n_batches += 1
-                tq.set_postfix(
-                    {
-                        "Loss": "%.5f" % loss,
-                        "AvgLoss": "%.5f" % (total_loss / n_batches),
-                    }
-                )
+                if not args.predict:
+                    tq.set_postfix(
+                        {
+                            "Loss": "%.5f" % loss,
+                            "AvgLoss": "%.5f" % (total_loss / n_batches),
+                        }
+                    )
                 if args.predict:
-                    pass # TODO: save the results here or do something with them
-    if local_rank == 0:
+                    event_idx = batch.batch_idx + last_event_idx
+                    predictions["event_idx"].append(event_idx)
+                    predictions["GT_cluster"].append(y.detach().cpu())
+                    predictions["pred"].append(y_pred.detach().cpu())
+                    predictions["eta"].append(event_batch.pfcands.eta.detach().cpu())
+                    predictions["phi"].append(event_batch.pfcands.phi.detach().cpu())
+                    predictions["pt"].append(event_batch.pfcands.pt.detach().cpu())
+                    predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
+                    predictions["radius_cluster_GenJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets).detach().cpu())
+                    predictions["radius_cluster_FatJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets).detach().cpu())
+                    last_event_idx = event_idx.max().item() + 1
+    if local_rank == 0 and not args.predict:
         wandb.log({"val_loss": total_loss / n_batches}, step=step)
         wandb.log({"val_" + key: value / n_batches for key, value in total_loss_dict.items()}, step=step)
 
@@ -171,4 +198,15 @@ def evaluate(
         "Evaluated on %d samples in total (avg. speed %.1f samples/s)"
         % (count, count / time_diff)
     )
+    if args.predict:
+        predictions["event_idx"] = torch.cat(predictions["event_idx"], dim=0)
+        predictions["GT_cluster"] = torch.cat(predictions["GT_cluster"], dim=0)
+        predictions["pred"] = torch.cat(predictions["pred"], dim=0)
+        predictions["eta"] = torch.cat(predictions["eta"], dim=0)
+        predictions["phi"] = torch.cat(predictions["phi"], dim=0)
+        predictions["pt"] = torch.cat(predictions["pt"], dim=0)
+        predictions["AK8_cluster"] = torch.cat(predictions["AK8_cluster"], dim=0)
+        predictions["radius_cluster_GenJets"] = torch.cat(predictions["radius_cluster_GenJets"], dim=0)
+        predictions["radius_cluster_FatJets"] = torch.cat(predictions["radius_cluster_FatJets"], dim=0)
+        return predictions
     return total_loss / count # average loss is the validation metric here

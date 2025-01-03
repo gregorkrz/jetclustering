@@ -21,7 +21,6 @@ parser.add_argument(
     "-val",
     "--data-val",
     nargs="*",
-    required=True,
     help="validation files",
 )
 

@@ -31,7 +31,7 @@ from src.dataset.functions_graph import graph_batch_func
 from src.utils.parser_args import parser
 from src.utils.paths import get_path
 import warnings
-
+import pickle
 import os
 
 def find_free_port():
@@ -117,6 +117,10 @@ print("Number of parameters:", num_parameters_counted)
 
 orig_model = model
 training_mode = not args.predict
+
+loss = get_loss_func(args)
+gt = get_gt_func(args)
+
 if training_mode:
     model = orig_model.to(dev)
     if args.backend is not None:
@@ -140,8 +144,6 @@ if training_mode:
     best_valid_metric = np.inf
     grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
     steps = 0
-    loss = get_loss_func(args)
-    gt = get_gt_func(args)
     evaluate(
         model,
         val_loaders,
@@ -194,58 +196,32 @@ if training_mode:
         )'''
 
 if args.data_test:
-    tb = None
+    assert args.predict
     if args.backend is not None and local_rank != 0:
         sys.exit(0)
-    if args.log_wandb and local_rank == 0:
-        import wandb
-        from src.utils.logger_wandb import log_wandb_init
-
-        wandb.init(project=args.wandb_projectname, entity=args.wandb_entity)
-        wandb.run.name = args.wandb_displayname
-        log_wandb_init(args, data_config)
-
     if training_mode:
-        del train_loader, val_loader
-        test_loaders, data_config = test_load(args)
+        del train_loader, val_loaders
+        test_loaders = test_load(args)
+    model = orig_model.to(dev)
 
-    if not args.model_prefix.endswith(".onnx"):
-        if args.predict_gpus:
-            gpus = [int(i) for i in args.predict_gpus.split(",")]
-            dev = torch.device(gpus[0])
-        else:
-            gpus = None
-            dev = torch.device("cpu")
-        model = orig_model.to(dev)
-        if args.model_prefix:
-            model_path = (
-                args.model_prefix
-                if args.model_prefix.endswith(".pt")
-                else args.model_prefix + "_best_epoch_state.pt"
-            )
-            _logger.info("Loading model %s for eval" % model_path)
-            model.load_state_dict(torch.load(model_path, map_location=dev))
-        if gpus is not None and len(gpus) > 1:
-            model = torch.nn.DataParallel(model, device_ids=gpus)
-        model = model.to(dev)
-
-    for name, get_test_loader in test_loaders.items():
-        test_loader = get_test_loader()
-        test_metric, scores, labels, observers = evaluate(
+    if gpus is not None and len(gpus) > 1:
+        model = torch.nn.DataParallel(model, device_ids=gpus)
+    model = model.to(dev)
+    i = 0
+    for filename, test_loader in test_loaders.items():
+        result = evaluate(
             model,
             test_loader,
             dev,
-            epoch=None,
-            for_training=False,
-            loss_func=loss_func,
-            steps_per_epoch=args.steps_per_epoch_val,
-            tb_helper=tb,
-            logwandb=args.log_wandb,
-            energy_weighted=args.energy_loss,
+            0,
+            0,
+            loss_func=loss,
+            gt_func=gt,
             local_rank=local_rank,
-            loss_terms=[args.clustering_loss_only, args.clustering_and_energy_loss],
             args=args,
         )
-
-        _logger.info("Test metric %.5f" % test_metric, color="bold")
-        del test_loader
+        _logger.info(f"Finished evaluating {filename}")
+        result["filename"] = filename
+        output_filename = os.path.join(run_path, f"eval_{i}.pkl")
+        pickle.dump(result, open(output_filename, "wb"))
+        i += 1

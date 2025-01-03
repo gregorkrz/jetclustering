@@ -19,6 +19,8 @@ def to_filelist(args, mode="train"):
         flist = args.data_train
     elif mode == "val":
         flist = args.data_val
+    elif mode == "test":
+        flist = args.data_test
     else:
         raise NotImplementedError("Invalid mode %s" % mode)
     print(mode, "filelist:", flist)

@@ -10,6 +10,8 @@ def to_filelist(args, mode="train"):
         flist = args.data_train
     elif mode == "val":
         flist = args.data_val
+    elif mode == "test":
+        flist = args.data_test
     else:
         raise NotImplementedError("Invalid mode %s" % mode)
     print(flist)
@@ -78,3 +80,15 @@ def clear_empty_paths(dir):
         if not os.listdir(os.path.join(dir, f)):
             shutil.rmtree(os.path.join(dir, f))
             _logger.info("Removed empty path %s" % f)
+
+import io
+import torch
+import pickle
+
+class CPU_Unpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == 'torch.storage' and name == '_load_from_bytes':
+            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
+        else:
+            return super().find_class(module, name)
+

@@ -504,16 +504,18 @@ def renumber_clusters(tensor):
         mapping[u] = i
     return mapping[tensor]
 
-def get_batch(event, batch_config, y):
+def get_batch(event, batch_config, y, test=False):
     # Returns the EventBatch class, with correct scalars etc.
+    # if test=True, it will put all events in the batch, i.e. no filtering of the events without signal.
     batch_idx_pfcands = torch.zeros(len(event.pfcands)).long()
     #batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
     for i in range(len(event.pfcands.batch_number) - 1):
         batch_idx_pfcands[event.pfcands.batch_number[i]:event.pfcands.batch_number[i+1]] = i
     batch_filter = []
-    for i in batch_idx_pfcands.unique().tolist():
-        if (y[batch_idx_pfcands == i] == -1).all():
-            batch_filter.append(i)
+    if not test:
+        for i in batch_idx_pfcands.unique().tolist():
+            if (y[batch_idx_pfcands == i] == -1).all():
+                batch_filter.append(i)
     #for i in range(len(event.special_pfcands.batch_number) - 1):
     #    batch_idx_special_pfcands[event.special_pfcands.batch_number[i]:event.special_pfcands.batch_number[i+1]] = i
     #batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])

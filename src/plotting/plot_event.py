@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.colors as mcolors
 from matplotlib import cm
 from sklearn.metrics import confusion_matrix
+from src.plotting.histograms import score_histogram, confusion_matrix_plot
 
 def plot_event_comparison(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
     eta_dq = event.matrix_element_gen_particles.eta
@@ -129,34 +130,6 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
     if make_fig:
         fig.tight_layout()
         return fig
-
-def score_histogram(scores_true, scores_pred):
-    sz = 10
-    fig, ax = plt.subplots(1, 1, figsize=(sz, sz))
-    bins = np.linspace(0, 1, 100)
-    pos_scores = scores_pred[scores_true == 1]
-    neg_scores = scores_pred[scores_true == 0]
-    ax.hist(pos_scores, bins=bins, histtype="step", label="Jet", color=(0, 0.5, 0))
-    ax.hist(neg_scores, bins=bins, histtype="step", label="Noise", color=(0.6, 0.6, 0.6))
-    ax.set_yscale("log")
-    ax.set_xlabel("Classifier score")
-    ax.legend()
-    ax.grid(1)
-    fig.tight_layout()
-    return fig
-
-def confusion_matrix_plot(ytrue, ypred, ax):
-    cm = confusion_matrix(ytrue.int(), ypred.int())
-    ax.imshow(cm, cmap="Blues")
-    ax.set_xlabel("Predicted label")
-    ax.set_ylabel("True label")
-    ax.set_xticks([0, 1])
-    ax.set_yticks([0, 1])
-    ax.set_xticklabels(["Noise", "Jet"])
-    ax.set_yticklabels(["Noise", "Jet"])
-    for i in range(2):
-        for j in range(2):
-            ax.text(j, i, cm[i, j], ha="center", va="center", color="black")
 
 
 def get_idx_for_event(obj, i):
