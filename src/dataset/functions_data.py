@@ -3,7 +3,6 @@ import torch
 import dgl
 #from torch_scatter import scatter_add, scatter_sum
 
-
 def get_ratios(e_hits, part_idx, y):
     """Obtain the percentage of energy of the particle present in the hits
 
@@ -498,12 +497,23 @@ def concat_events(list_events):
         # assert result[attr].batch_number.max() == len(list_events)# sometimes the event is empty (e.g. no found jets)
     return Event(**result, n_events=len(list_events))
 
-def get_batch(event, batch_config):
+def renumber_clusters(tensor):
+    unique = tensor.unique()
+    mapping = torch.zeros(unique.max() + 1)
+    for i, u in enumerate(unique):
+        mapping[u] = i
+    return mapping[tensor]
+
+def get_batch(event, batch_config, y):
     # Returns the EventBatch class, with correct scalars etc.
     batch_idx_pfcands = torch.zeros(len(event.pfcands)).long()
     #batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
     for i in range(len(event.pfcands.batch_number) - 1):
         batch_idx_pfcands[event.pfcands.batch_number[i]:event.pfcands.batch_number[i+1]] = i
+    batch_filter = []
+    for i in batch_idx_pfcands.unique().tolist():
+        if (y[batch_idx_pfcands == i] == -1).all():
+            batch_filter.append(i)
     #for i in range(len(event.special_pfcands.batch_number) - 1):
     #    batch_idx_special_pfcands[event.special_pfcands.batch_number[i]:event.special_pfcands.batch_number[i+1]] = i
     #batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
@@ -536,12 +546,19 @@ def get_batch(event, batch_config):
     #batch_scalars_special_pfcands =event.special_pfcands.charge.unsqueeze(1) #torch.cat([event.special_pfcands.charge.unsqueeze(1), pids_onehot_special_pfcands], dim=1)
     batch_scalars = batch_scalars_pfcands# torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
     assert batch_idx.max() == event.n_events - 1
+    filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
+    if (~filt).sum() > 0:
+        print("Found events with no signal!!!", (~filt).sum() / len(filt), batch_filter)
+        print("Renumbered", renumber_clusters(batch_idx[filt]).unique())
+        print("Original", batch_idx[filt].unique())
+        print("ALL", batch_idx.unique())
     return EventBatch(
-        input_vectors=batch_vectors,
-        input_scalars=batch_scalars,
-        batch_idx=batch_idx,
-        pt=event.pfcands.pt
-    )
+        input_vectors=batch_vectors[filt],
+        input_scalars=batch_scalars[filt],
+        batch_idx=renumber_clusters(batch_idx[filt]),
+        pt=event.pfcands.pt[filt],
+        filter=filt,
+    ), y[filt]
 
 def to_tensor(item):
     if isinstance(item, torch.Tensor):
@@ -799,16 +816,19 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx, pt):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx
         self.pt = pt
+        self.filter = filter
     def to(self, device):
         self.input_vectors = self.input_vectors.to(device)
         self.input_scalars = self.input_scalars.to(device)
         self.batch_idx = self.batch_idx.to(device)
         self.pt = self.pt.to(device)
+        if self.filter is not None:
+            self.filter = self.filter.to(device)
         return self
     def cpu(self):
         return self.to(torch.device("cpu"))

@@ -44,7 +44,7 @@ def train_epoch(
     for event_batch in tqdm.tqdm(train_loader):
         time_preprocess_start = time.time()
         y = gt_func(event_batch)
-        batch = get_batch(event_batch, {})
+        batch, y = get_batch(event_batch, {}, y)
         time_preprocess_end = time.time()
         step_count += 1
         y = y.to(dev)
@@ -75,7 +75,7 @@ def train_epoch(
         wandb.log({"loss": loss}, step=step_count)
         del loss_dict
         del loss
-        if (local_rank == 0) and (step_count % 500) == 0:
+        if (local_rank == 0) and (step_count % 1000) == 0:
             dirname = args.run_path
             model_state_dict = (
                 model.module.state_dict()
@@ -136,7 +136,7 @@ def evaluate(
             for event_batch in tq:
                 count += event_batch.n_events # number of samples
                 y = gt_func(event_batch)
-                batch = get_batch(event_batch, {})
+                batch, y = get_batch(event_batch, {}, y)
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)

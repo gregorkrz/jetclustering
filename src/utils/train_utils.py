@@ -307,7 +307,7 @@ def get_gt_func(args):
     R = 0.8
     def get_idx_for_event(obj, i):
         return obj.batch_number[i], obj.batch_number[i + 1]
-    def get_labels(b, pfcands,special=False):
+    def get_labels(b, pfcands, special=False):
         # b: Batch of events
         labels = torch.zeros(len(pfcands)).long()
         for i in range(len(b)):

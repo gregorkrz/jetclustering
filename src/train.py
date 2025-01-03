@@ -59,7 +59,7 @@ wandb.init(project=args.wandb_projectname, entity=os.environ["SVJ_WANDB_ENTITY"]
 wandb.run.name = args.run_name
 wandb.config.run_path = run_path
 wandb.config.update(args.__dict__)
-wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_")}
+wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_") or key.startswith("CUDA_")}
 
 args.local_rank = (
     None if args.backend is None else int(os.environ.get("LOCAL_RANK", "0"))
@@ -102,6 +102,8 @@ if args.gpus:
         print("ended initializing group process")
     else:
         gpus = [int(i) for i in args.gpus.split(",")]
+        #if os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+        #    gpus = [int(i) for i in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
         dev = torch.device(gpus[0])
         local_rank = 0
 else:

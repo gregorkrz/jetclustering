@@ -3,7 +3,8 @@ import torch
 import os
 import numpy as np
 import matplotlib.colors as mcolors
-
+from matplotlib import cm
+from sklearn.metrics import confusion_matrix
 
 def plot_event_comparison(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
     eta_dq = event.matrix_element_gen_particles.eta
@@ -129,12 +130,86 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
         fig.tight_layout()
         return fig
 
+def score_histogram(scores_true, scores_pred):
+    sz = 10
+    fig, ax = plt.subplots(1, 1, figsize=(sz, sz))
+    bins = np.linspace(0, 1, 100)
+    pos_scores = scores_pred[scores_true == 1]
+    neg_scores = scores_pred[scores_true == 0]
+    ax.hist(pos_scores, bins=bins, histtype="step", label="Jet", color=(0, 0.5, 0))
+    ax.hist(neg_scores, bins=bins, histtype="step", label="Noise", color=(0.6, 0.6, 0.6))
+    ax.set_yscale("log")
+    ax.set_xlabel("Classifier score")
+    ax.legend()
+    ax.grid(1)
+    fig.tight_layout()
+    return fig
+
+def confusion_matrix_plot(ytrue, ypred, ax):
+    cm = confusion_matrix(ytrue.int(), ypred.int())
+    ax.imshow(cm, cmap="Blues")
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(["Noise", "Jet"])
+    ax.set_yticklabels(["Noise", "Jet"])
+    for i in range(2):
+        for j in range(2):
+            ax.text(j, i, cm[i, j], ha="center", va="center", color="black")
+
+
+def get_idx_for_event(obj, i):
+    return obj.batch_number[i], obj.batch_number[i+1]
+
+def get_labels_jets(b, pfcands, jets):
+    # b: Batch of events
+    R=0.8
+    labels = torch.zeros(len(pfcands)).long()
+    for i in range(len(b)):
+        s, e = get_idx_for_event(jets, i)
+        dq_eta = jets.eta[s:e]
+        dq_phi = jets.phi[s:e]
+        if s == e:
+            continue
+        s, e = get_idx_for_event(pfcands, i)
+        pfcands_eta = pfcands.eta[s:e]
+        pfcands_phi = pfcands.phi[s:e]
+        # calculate the distance matrix between each dark quark and pfcands
+        dist_matrix = torch.cdist(
+            torch.stack([dq_eta, dq_phi], dim=1),
+            torch.stack([pfcands_eta, pfcands_phi], dim=1),
+            p=2
+        )
+        dist_matrix = dist_matrix.T
+        closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
+        closest_quark_idx[closest_quark_dist > R] = -1
+        labels[s:e] = closest_quark_idx
+    return (labels>=0).float()
+
 def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
     # Plot the batch, together with nice colors with object condensation GT and betas
-    sz = 10
     max_events = 5
+    sz = 10
     if args.beta_type == "pt+bc":
         n_columns = 6
+        y_true_bc = (y_true >= 0).int()
+        score_histogram(y_true_bc, y_pred[:, 3]).savefig(os.path.join(os.path.dirname(filename), "binary_classifier_scores.pdf"))
+        score_histogram(y_true_bc, (event_batch.pfcands.pf_cand_jet_idx >= 0).float()).savefig(
+            os.path.join(os.path.dirname(filename), "binary_classifier_scores_AK8.pdf"))
+        score_histogram(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets)).savefig(
+            os.path.join(os.path.dirname(filename), "binary_classifier_scores_radius_FatJets.pdf"))
+        score_histogram(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets)).savefig(
+            os.path.join(os.path.dirname(filename), "binary_classifier_scores_radius_GenJets.pdf"))
+        fig, ax = plt.subplots(1, 3, figsize=(3*sz/2, sz/2))
+        confusion_matrix_plot(y_true_bc, y_pred[:, 3] > 0.5, ax[0])
+        ax[0].set_title("Classifier (cut at 0.5)")
+        confusion_matrix_plot(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets), ax[2])
+        ax[2].set_title("FatJets")
+        confusion_matrix_plot(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets), ax[1])
+        ax[1].set_title("GenJets")
+        fig.tight_layout()
+        fig.savefig(os.path.join(os.path.dirname(filename), "conf_matrices.pdf"))
     else:
         n_columns = 4
     fig, ax = plt.subplots(max_events, n_columns, figsize=(n_columns * sz, sz * max_events))
@@ -166,7 +241,7 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
         phi = torch.arctan2(p_xyz[:, 1], p_xyz[:, 0]) #torch.asin(p_xyz[:, 1] / p_xyz.norm(dim=1))
         eta = torch.arctanh(p_xyz[:, 2] / p_xyz.norm(dim=1))
         plot_event(event, colors=plt.cm.brg(betas), ax=ax[i, 0])
-        cbar = plt.colorbar(ax[i, 0].collections[0], ax=ax[i, 0], cmap=plt.cm.brg) # how to specify the palette?
+        cbar = plt.colorbar(mappable=cm.ScalarMappable(cmap=plt.cm.brg), ax=ax[i, 0]) # How to specify the palette?
         ax[i, 0].set_title(r"input coords, $\beta$ colors")
         cbar.set_label(r"$\beta$")
         plot_event(event, colors=[colors[i] for i in y_true_event], ax=ax[i, 1])
@@ -174,27 +249,26 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
         plot_event(event, custom_coords=[eta, phi], colors=plt.cm.brg(betas), ax=ax[i, 2], jets=False)
         #assert betas.min() >= 0 and betas.max() <= 1
         ax[i, 2].set_title(r"model coords, $\beta$ colors")
-        cbar = plt.colorbar(ax[i, 2].collections[0], ax=ax[i, 2], cmap=plt.cm.brg)
+        cbar = plt.colorbar(mappable=cm.ScalarMappable(cmap=plt.cm.brg), ax=ax[i, 2])
         ax[i, 3].set_title("model coords, GT colors")
         cbar.set_label(r"$\beta$")
         plot_event(event, custom_coords=[eta, phi], colors=[colors[i] for i in y_true_event], ax=ax[i, 3], jets=False)
-
         if args.beta_type == "pt+bc":
-            print("classifier labels", classifier_labels[:10])
             # Create a custom colormap from light gray to dark green
             colors = [(0.9, 0.9, 0.9), (0.0, 0.5, 0.0)]  # RGB for light gray and dark green
             cmap_name = "lightgray_to_darkgreen"
             custom_cmap = mcolors.LinearSegmentedColormap.from_list(cmap_name, colors)
             plot_event(event, custom_coords=[eta, phi], colors=custom_cmap(classifier_labels), ax=ax[i, 5], jets=False)
             ax[i, 5].set_title(r"model coords, BC label colors")
-            cbar = plt.colorbar(ax[i, 5].collections[0], ax=ax[i, 5], cmap=custom_cmap)
+            cbar = plt.colorbar(mappable=cm.ScalarMappable(cmap=custom_cmap), ax=ax[i, 5])
             cbar.set_label("Classifier score")
             plot_event(event, colors=custom_cmap(classifier_labels), ax=ax[i, 4], jets=False)
             ax[i, 4].set_title(r"input coords, BC label colors")
-            cbar = plt.colorbar(ax[i, 4].collections[0], ax=ax[i, 4], cmap=custom_cmap)
+            cbar = plt.colorbar(mappable=cm.ScalarMappable(cmap=custom_cmap), ax=ax[i, 4])
             cbar.set_label("Classifier score")
     print("Saving eval figure to", filename)
     fig.tight_layout()
     fig.savefig(filename)
     fig.clear()
     plt.close(fig)
+
