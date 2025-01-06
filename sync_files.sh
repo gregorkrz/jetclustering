@@ -13,4 +13,4 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 
 
 ### Vega -> T3
-rsync -avz -e "ssh" /ceph/hpc/home/krzmancg/jetclustering/results t3:/work/gkrzmanc/jetclustering
+# rsync -avz -e "ssh" /ceph/hpc/home/krzmancg/jetclustering/results t3:/work/gkrzmanc/jetclustering

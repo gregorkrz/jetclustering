@@ -520,9 +520,12 @@ def get_batch(event, batch_config, y, test=False):
     #batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
     batch_idx = batch_idx_pfcands
     batch_idx = batch_idx.to(event.pfcands.pt.device)
-    if batch_config.get("use_p_xyz", True):
+    if batch_config.get("use_p_xyz", False):
         #batch_vectors = torch.cat([event.pfcands.pxyz, event.special_pfcands.pxyz], dim=0)
         batch_vectors = event.pfcands.pxyz
+    elif batch_config.get("use_four_momenta", False):
+        batch_vectors = torch.cat([event.pfcands.E.unsqueeze(-1), event.pfcands.pxyz], dim=1)
+        assert batch_vectors.shape[0] == event.pfcands.E.shape[0]
     else:
         raise NotImplementedError
     pids = batch_config.get("pids", [11, 13, 22, 130, 211, 0, 1, 2, 3]) # 0, 1, 2, 3 are the special PFcands
@@ -537,7 +540,7 @@ def get_batch(event, batch_config, y, test=False):
     assert (pids_onehot.sum(dim=1) == 1).all()
     chg = event.pfcands.charge.unsqueeze(1)
     batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
-    if batch_config.get("use_p_xyz", True):
+    if batch_config.get("use_p_xyz", False):
         # also add pt as a scalar
         batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, event.pfcands.pt.unsqueeze(1)], dim=1)
     #pids_onehot_special_pfcands = torch.zeros(len(event.special_pfcands), len(pids))

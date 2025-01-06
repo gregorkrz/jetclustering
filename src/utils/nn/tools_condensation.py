@@ -30,7 +30,8 @@ def train_epoch(
     grad_scaler=None,
     local_rank=0,
     current_step=0,
-    val_loader=None
+    val_loader=None,
+    batch_config=None
 ):
     model.train()
     step_count = current_step
@@ -39,7 +40,7 @@ def train_epoch(
     for event_batch in tqdm.tqdm(train_loader):
         time_preprocess_start = time.time()
         y = gt_func(event_batch)
-        batch, y = get_batch(event_batch, {}, y)
+        batch, y = get_batch(event_batch, batch_config, y)
         time_preprocess_end = time.time()
         step_count += 1
         y = y.to(dev)
@@ -99,6 +100,7 @@ def train_epoch(
                 gt_func=gt_func,
                 local_rank=local_rank,
                 args=args,
+                batch_config=batch_config
             )
         #_logger.info(
         #    "Epoch %d, step %d: loss=%.5f, time=%.2fs"
@@ -118,6 +120,7 @@ def evaluate(
     gt_func,
     local_rank=0,
     args=None,
+    batch_config=None
 ):
     model.eval()
     count = 0
@@ -147,7 +150,7 @@ def evaluate(
             for event_batch in tq:
                 count += event_batch.n_events # number of samples
                 y = gt_func(event_batch)
-                batch, y = get_batch(event_batch, {}, y, test=args.predict)
+                batch, y = get_batch(event_batch, batch_config, y, test=args.predict)
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)
@@ -164,7 +167,7 @@ def evaluate(
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
                     plot_batch_eval_OC(event_batch, y.detach().cpu(),
                                        y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
-                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"), args=args)
+                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"), args=args, batch=n_batches)
                 n_batches += 1
                 if not args.predict:
                     tq.set_postfix(

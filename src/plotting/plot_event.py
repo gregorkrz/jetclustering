@@ -6,6 +6,7 @@ import matplotlib.colors as mcolors
 from matplotlib import cm
 from sklearn.metrics import confusion_matrix
 from src.plotting.histograms import score_histogram, confusion_matrix_plot
+from src.plotting.plot_coordinates import plot_coordinates
 
 def plot_event_comparison(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
     eta_dq = event.matrix_element_gen_particles.eta
@@ -137,7 +138,7 @@ def get_idx_for_event(obj, i):
 
 def get_labels_jets(b, pfcands, jets):
     # b: Batch of events
-    R=0.8
+    R = 0.8
     labels = torch.zeros(len(pfcands)).long()
     for i in range(len(b)):
         s, e = get_idx_for_event(jets, i)
@@ -158,9 +159,10 @@ def get_labels_jets(b, pfcands, jets):
         closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
         closest_quark_idx[closest_quark_dist > R] = -1
         labels[s:e] = closest_quark_idx
-    return (labels>=0).float()
+    return (labels >= 0).float()
 
-def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
+
+def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, batch):
     # Plot the batch, together with nice colors with object condensation GT and betas
     max_events = 5
     sz = 10
@@ -202,6 +204,14 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
             betas = event.pfcands.pt
             classifier_labels = y_pred_event[:, 3]
         p_xyz = y_pred_event[:, :3]
+        if y_pred_event.shape[1] == 5:
+            p_xyz = y_pred_event[:, 1:4]
+        plot_coordinates(event.pfcands.pxyz, pt=event.pfcands.pt, tidx=y_true_event,
+                         outdir=os.path.dirname(filename),
+                         filename="input_coords_batch_" + str(batch) + "_event_" + str(i) + ".html")
+        plot_coordinates(p_xyz, pt=event.pfcands.pt, tidx=y_true_event,
+                         outdir=os.path.dirname(filename),
+                         filename="model_coords_batch_" + str(batch) + "_event_" + str(i) + ".html")
         y_true_event = y_true_event.tolist()
         clist = ['#1f78b4', '#b3df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbe6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
         colors = {
@@ -244,4 +254,3 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args):
     fig.savefig(filename)
     fig.clear()
     plt.close(fig)
-

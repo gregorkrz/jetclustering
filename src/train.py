@@ -121,6 +121,10 @@ training_mode = not args.predict
 loss = get_loss_func(args)
 gt = get_gt_func(args)
 
+batch_config = {"use_p_xyz": True, "use_four_momenta": False}
+if "lgatr" in args.network_config.lower():
+    batch_config = {"use_four_momenta": True}
+
 if training_mode:
     model = orig_model.to(dev)
     if args.backend is not None:
@@ -154,6 +158,7 @@ if training_mode:
         gt_func=gt,
         local_rank=local_rank,
         args=args,
+        batch_config=batch_config
     )
     for epoch in range(1, args.num_epochs + 1):
         _logger.info("-" * 50)
@@ -171,7 +176,8 @@ if training_mode:
             grad_scaler=grad_scaler,
             local_rank=local_rank,
             current_step=steps,
-            val_loader=val_loaders
+            val_loader=val_loaders,
+            batch_config=batch_config
         )
         '''_logger.info("Epoch #%d validating" % epoch)
         valid_metric = evaluate(
