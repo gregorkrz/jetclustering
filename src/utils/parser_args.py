@@ -115,6 +115,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--lorentz-norm",
+    help="Whether the norm in clustering space should be the Lorentz one (otherwise it's usual euclidean 2-norm)",
+    action="store_true",
+    default=False,
+)
+
+parser.add_argument(
     "-embed-as-vectors",
     "--embed-as-vectors",
     action="store_true",

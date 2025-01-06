@@ -10,7 +10,6 @@ def plot_coordinates(
     outdir,
     filename
 ):
-    print("coords", coords.shape, "pt", pt.shape, "tidx", tidx.shape)
     data = {
         "X": coords[:, 0].view(-1, 1).detach().cpu().numpy(),
         "Y": coords[:, 1].view(-1, 1).detach().cpu().numpy(),

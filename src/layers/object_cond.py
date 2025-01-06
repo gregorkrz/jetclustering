@@ -54,7 +54,8 @@ def calc_LV_Lbeta(
     tracking=False,
     dis=False,
     beta_type="default",
-    noise_logits=None
+    noise_logits=None,
+    lorentz_norm=False
 ) -> Union[Tuple[torch.Tensor, torch.Tensor], dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -242,10 +243,16 @@ def calc_LV_Lbeta(
         #     )
      
         N_k = torch.sum(M, dim=0)  # number of hits per object
-        norms = torch.sum(
-            torch.square(cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)),
-            dim=-1,
-        ) # take the norm squared
+        if lorentz_norm:
+            diff = cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)
+            norms = diff[:, :, 0]**2 - torch.sum(diff[:, :, 1:] ** 2, dim=-1)
+            norms = norms.abs() ## ??? Why is this needed? wrong convention?
+            #print("Norms", norms[:15])
+        else:
+            norms = torch.sum(
+                torch.square(cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)),
+                dim=-1,
+            ) # Take the norm squared
         norms_att = norms[is_sig]
         #! att func as in line 159 of object condensation
         
@@ -906,7 +913,8 @@ def object_condensation_loss(
         clust_space_norm="none",
         dis=False,
         coord_weight=0.0,
-        beta_type="default"
+        beta_type="default",
+        lorentz_norm=False
 ):
     """
     :param batch: Model input
@@ -961,7 +969,8 @@ def object_condensation_loss(
         loss_type=loss_type,
         dis=dis,
         beta_type=beta_type,
-        noise_logits=noise_logits
+        noise_logits=noise_logits,
+        lorentz_norm=lorentz_norm
     )
 
     loss = a["loss_potential"] + a["loss_beta"]

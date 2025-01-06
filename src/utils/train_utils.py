@@ -290,7 +290,8 @@ def get_loss_func(args):
                                         attr_weight=args.attr_loss_weight,
                                         repul_weight=args.repul_loss_weight,
                                         coord_weight=args.coord_loss_weight,
-                                        beta_type=args.beta_type)
+                                        beta_type=args.beta_type,
+                                        lorentz_norm=args.lorentz_norm)
         # TODO: add other arguments (i.e. attractive loss weight etc.)
     return loss
 

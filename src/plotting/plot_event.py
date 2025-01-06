@@ -206,6 +206,9 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, b
         p_xyz = y_pred_event[:, :3]
         if y_pred_event.shape[1] == 5:
             p_xyz = y_pred_event[:, 1:4]
+            e = y_pred_event[:, 0]
+            #lorentz_invariant = e**2 - p_xyz.norm(dim=1)**2
+            #lorentz_invariant_inputs = event.pfcands.E ** 2 - event.pfcands.pxyz.norm(dim=1) ** 2
         plot_coordinates(event.pfcands.pxyz, pt=event.pfcands.pt, tidx=y_true_event,
                          outdir=os.path.dirname(filename),
                          filename="input_coords_batch_" + str(batch) + "_event_" + str(i) + ".html")
