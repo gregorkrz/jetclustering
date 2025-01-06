@@ -32,7 +32,8 @@ if not args.plot_only:
         current_path = os.path.join(path, subdataset)
         dataset = get_iter(current_path)
         n = 0
-        stats[subdataset] = {"total_visible_E": [], "visible_mass": [], "n_fatjets": [], "n_pfcands": [], "pt": []}
+        stats[subdataset] = {"total_visible_E": [], "visible_mass": [], "n_fatjets": [], "n_pfcands": [], "pt": [],
+                             "fatjet_pt": [], "genjet_pt": []}
         for data in tqdm(dataset):
             n += 1
             if args.dataset_cap != -1 and n > args.dataset_cap:
@@ -47,6 +48,8 @@ if not args.plot_only:
             stats[subdataset]["n_fatjets"].append(n_fatjets)
             stats[subdataset]["n_pfcands"].append(n_pfcands)
             stats[subdataset]["pt"] += pt
+            stats[subdataset]["fatjet_pt"] += data.fatjets.pt.tolist()
+            stats[subdataset]["genjet_pt"] += data.genjets.pt.tolist()
         #stats[subdataset]["n_events"] = dataset.n_events
     def get_properties(name):
         # get mediator mass, dark quark mass, r_inv from the filename
@@ -74,6 +77,7 @@ dark_masses = [20]
 r_invs = sorted(list(set([rinv for mMed in result for mDark in result[mMed] for rinv in result[mMed][mDark]])))
 
 def plot_distribution(result, key_name):
+    print("---> key:", key_name)
     fig, ax = plt.subplots(len(mediator_masses), len(r_invs), figsize=(3*len(r_invs), 3*len(mediator_masses)))
     for i, mMed in enumerate(mediator_masses):
         for j, rinv in enumerate(r_invs):
@@ -82,21 +86,27 @@ def plot_distribution(result, key_name):
             if key_name == "n_pfcands":
                 number_of_zeros = len(data) - np.count_nonzero(data)
                 print(f"Number of zeros in {mMed} {rinv}: {number_of_zeros}")
+            if key_name == "fatjet_pt":
+                print("Min fatjet_pt:", min(data))
+            if key_name == "genjet_pt":
+                print("Min genjet_pt:", min(data))
+                number_of_zeros = len(data) - np.count_nonzero(data)
+                print(f"Number of zeros in {mMed} {rinv}: {number_of_zeros}")
             ax[i, j].hist(data, bins=50)
             ax[i, j].set_title(f"$m_{{Z'}}$={mMed},$r_{{inv}}$={rinv} ($\Sigma$={int(sum(data))})")
             if key_name == "pt":
-                ax[i, j].yscale("log")
+                ax[i, j].set_yscale("log")
     # big title
     fig.suptitle(key_name)
     fig.tight_layout()
     fig.savefig(os.path.join(output_path, f"{key_name}.pdf"))
     #fig.show()
-
 plot_distribution(result, "total_visible_E")
 plot_distribution(result, "visible_mass")
 plot_distribution(result, "n_fatjets")
 plot_distribution(result, "n_pfcands")
 plot_distribution(result, "pt")
-
+plot_distribution(result, "fatjet_pt")
+plot_distribution(result, "genjet_pt")
 
 

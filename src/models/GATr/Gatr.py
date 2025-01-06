@@ -9,7 +9,6 @@ from gatr.interface import (
 )
 import torch
 import torch.nn as nn
-import dgl
 from xformers.ops.fmha import BlockDiagonalMask
 
 
@@ -47,10 +46,13 @@ class GATrModel(torch.nn.Module):
         inputs_scalar = data.input_scalars
         assert inputs_scalar.shape[1] == self.n_scalars
         if self.embed_as_vectors:
-            velocities = embed_translation(inputs_v)
+            velocities = embed_translation(self.batch_norm(inputs_v))
             embedded_inputs = (
                 velocities
             )
+            # if it contains nans, raise an error
+            if torch.isnan(embedded_inputs).any():
+                raise ValueError("NaNs in the input!")
         else:
             inputs = self.batch_norm(inputs_v)
             embedded_inputs = embed_point(inputs)
@@ -63,13 +65,19 @@ class GATrModel(torch.nn.Module):
         #    x_clusters = extract_translation(embedded_outputs)
         #else:
         #    x_clusters = extract_point(embedded_outputs)
-        x_clusters = extract_point(embedded_outputs)
+        if self.embed_as_vectors:
+            x_clusters = extract_translation(embedded_outputs)
+        else:
+            x_clusters = extract_point(embedded_outputs)
         original_scalar = extract_scalar(embedded_outputs)
         if self.beta is not None:
             beta = self.beta(torch.cat([original_scalar[:, 0, :], output_scalars], dim=1))
             x = torch.cat((x_clusters[:, 0, :], torch.sigmoid(beta.view(-1, 1))), dim=1)
         else:
             x = x_clusters[:, 0, :]
+        if torch.isnan(x).any():
+            raise ValueError("NaNs in the output!")
+        #print(x[:5])
         return x
 
     def build_attention_mask(self, batch_numbers):
@@ -88,6 +96,6 @@ def get_model(args):
         hidden_mv_channels=16,
         hidden_s_channels=64,
         blocks=10,
-        embed_as_vectors=False,
+        embed_as_vectors=args.embed_as_vectors,
         n_scalars_out=n_scalars_out
     )

@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import dgl
 #from torch_scatter import scatter_add, scatter_sum, scatter_mean
 
 from src.dataset.functions_data import (

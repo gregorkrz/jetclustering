@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import dgl
 #from torch_scatter import scatter_add, scatter_sum
 
 def get_ratios(e_hits, part_idx, y):

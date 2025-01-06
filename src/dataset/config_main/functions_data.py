@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import dgl
 from torch_scatter import scatter_add, scatter_sum
 from sklearn.preprocessing import StandardScaler
 from torch_scatter import scatter_sum

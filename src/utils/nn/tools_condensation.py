@@ -14,12 +14,7 @@ from sklearn.metrics import confusion_matrix
 from pathlib import Path
 import os
 import pickle
-from src.models.gravnet_calibration import object_condensation_loss2
-from src.layers.inference_oc import create_and_store_graph_output
-#from src.layers.object_cond import onehot_particles_arr
-from src.utils.logger_wandb import plot_clust
 from src.dataset.functions_data import get_batch
-# class_names = ["other"] + [str(i) for i in onehot_particles_arr]  # quick fix
 from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 
 def train_epoch(
@@ -139,6 +134,7 @@ def evaluate(
             "eta": [],
             "phi": [],
             "pt": [],
+            "mass": [],
             "AK8_cluster": [],
             "radius_cluster_GenJets": [],
             "radius_cluster_FatJets": []
@@ -188,6 +184,7 @@ def evaluate(
                     predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
                     predictions["radius_cluster_GenJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets).detach().cpu())
                     predictions["radius_cluster_FatJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets).detach().cpu())
+                    predictions["mass"].append(event_batch.pfcands.mass.detach().cpu())
                     last_event_idx = event_idx.max().item() + 1
     if local_rank == 0 and not args.predict:
         wandb.log({"val_loss": total_loss / n_batches}, step=step)
@@ -208,5 +205,6 @@ def evaluate(
         predictions["AK8_cluster"] = torch.cat(predictions["AK8_cluster"], dim=0)
         predictions["radius_cluster_GenJets"] = torch.cat(predictions["radius_cluster_GenJets"], dim=0)
         predictions["radius_cluster_FatJets"] = torch.cat(predictions["radius_cluster_FatJets"], dim=0)
+        predictions["mass"] = torch.cat(predictions["mass"], dim=0)
         return predictions
     return total_loss / count # average loss is the validation metric here

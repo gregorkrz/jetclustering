@@ -77,7 +77,6 @@ parser.add_argument(
     "--wandb-projectname", type=str, help="project where the run is stored inside wandb", default="svj_clustering"
 )
 
-
 parser.add_argument("--batch-size", "-bs", type=int, default=128, help="batch size")
 parser.add_argument("--num-epochs", type=int, default=20, help="number of epochs")
 
@@ -113,6 +112,14 @@ parser.add_argument(
     default="default",
     choices=["default", "pt", "pt+bc"],
     help="How to predict betas",
+)
+
+parser.add_argument(
+    "-embed-as-vectors",
+    "--embed-as-vectors",
+    action="store_true",
+    default=False,
+    help="Whether to embed the input p_xyz as vectors (translations) or points",
 )
 
 #### Optimizer and LR-related arguments ####
