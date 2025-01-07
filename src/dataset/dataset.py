@@ -20,10 +20,13 @@ from src.data.preprocess import (
     AutoStandardizer,
     WeightMaker,
 )
-
+from src.dataset.functions_data import to_tensor
+from src.layers.object_cond import calc_eta_phi
+from torch_scatter import scatter_sum
 from src.dataset.functions_graph import create_graph, create_jets_outputs, create_jets_outputs_new
-from src.dataset.functions_data import Event, EventCollection
+from src.dataset.functions_data import Event, EventCollection, EventJets
 
+from src.utils.utils import CPU_Unpickler
 
 def _finalize_inputs(table, data_config):
     # transformation
@@ -318,7 +321,7 @@ class EventDatasetCollection(torch.utils.data.IterableDataset):
 
 class EventDataset(torch.utils.data.IterableDataset):
     @staticmethod
-    def from_directory(dir, mmap=True):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -327,8 +330,10 @@ class EventDataset(torch.utils.data.IterableDataset):
                 result[file.split(".")[0]] = np.load(
                     os.path.join(dir, file), mmap_mode="r" if mmap else None
                 )
-        return EventDataset(result, metadata)
-    def __init__(self, events, metadata):
+        dataset = EventDataset(result, metadata, model_clusters_file=model_clusters_file,
+                               model_output_file=model_output_file)
+        return dataset
+    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None):
         # events: serialized events dict
         # metadata: dict with metadata
         self.events = events
@@ -338,6 +343,13 @@ class EventDataset(torch.utils.data.IterableDataset):
         self.i = 0
         #for key in self.attrs:
         #    self.evt_idx_to_batch_idx[key] = {}
+        if model_output_file is not None:
+            self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
+            self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
+            # model_output["batch_idx"] contains the batch index for each event. model_clusters is an array of the model labels for each event.
+        else:
+            self.model_output = None
+            self.model_clusters = None
     def __len__(self):
         return self.n_events
    # def __next__(self):
@@ -348,15 +360,31 @@ class EventDataset(torch.utils.data.IterableDataset):
         result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
         result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
                   key in self.attrs}
+        if self.model_output is not None:
+            result["model_jets"] = self.get_model_jets(i, pfcands=result["pfcands"])
         return Event(**result)
-
+    def get_model_jets(self, i, pfcands):
+        event_filter = self.model_output["event_idx"] == i
+        pfcands_pt = pfcands.pt
+        pfcands_pxyz = pfcands.pxyz
+        assert len(pfcands_pt) == event_filter.sum()
+        #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
+        jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter] + 1, dim=0)[1:]
+        jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
+        jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
+        jets_mass = torch.zeros_like(jets_eta)
+        cutoff = 100
+        mask = jets_pt >= cutoff
+        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])
     def get_iter(self):
         while self.i < self.n_events:
             start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}
             end = {key: self.metadata[key + "_batch_idx"][self.i+1] for key in self.attrs}
             result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
-            self.i += 1
             result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for key in self.attrs}
+            if self.model_output is not None:
+                result["model_jets"] = self.get_model_jets(self.i, pfcands=result["pfcands"])
+            self.i += 1
             yield Event(**result)
     def __iter__(self):
         return self.get_iter()

@@ -7,8 +7,8 @@ def plot_coordinates(
     coords,
     pt, # the size of the points
     tidx, # truth idx
-    outdir,
-    filename
+    outdir=None,
+    filename=None
 ):
     data = {
         "X": coords[:, 0].view(-1, 1).detach().cpu().numpy(),
@@ -17,9 +17,10 @@ def plot_coordinates(
         "tIdx": tidx.view(-1, 1).detach().cpu().numpy(),
         "pt": pt.view(-1, 1).detach().cpu().numpy(),
     }
+    print([(k, data[k].shape) for k in data])
     df = pd.DataFrame(
-        np.concatenate([data[k] for k in data], axis=1),
-        columns=[k for k in data],
+        np.concatenate([data[k] for k in sorted(data.keys())], axis=1),
+        columns=[k for k in sorted(data.keys())],
     )
     df["orig_tIdx"] = df["tIdx"]
     fig = px.scatter_3d(
@@ -34,6 +35,8 @@ def plot_coordinates(
         color_continuous_scale=px.colors.sequential.Rainbow,
     )
     fig.update_traces(marker=dict(line=dict(width=0)))
+    if filename is None or outdir is None:
+        return fig
     fig.write_html(
         os.path.join(outdir, filename)
     )

@@ -840,9 +840,10 @@ class EventBatch:
 class Event:
     evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands,
                        "offline_pfcands": EventPFCands, "MET": EventMetadataAndMET, "fatjets": EventJets,
-                       "special_pfcands": EventPFCands, "matrix_element_gen_particles": EventPFCands}
+                       "special_pfcands": EventPFCands, "matrix_element_gen_particles": EventPFCands,
+                       "model_jets": EventJets}
     def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, fatjets=None,
-                 special_pfcands=None, matrix_element_gen_particles=None, n_events=1): # Add more collections here
+                 special_pfcands=None, matrix_element_gen_particles=None, model_jets=None, n_events=1): # Add more collections here
         self.jets = jets
         self.genjets = genjets
         self.pfcands = pfcands
@@ -851,6 +852,7 @@ class Event:
         self.fatjets = fatjets
         self.special_pfcands = special_pfcands
         self.matrix_element_gen_particles = matrix_element_gen_particles
+        self.model_jets = model_jets
         self.init_attrs = []
         self.n_events = n_events
         if jets is not None:
@@ -869,6 +871,8 @@ class Event:
             self.init_attrs.append("special_pfcands")
         if matrix_element_gen_particles is not None:
             self.init_attrs.append("matrix_element_gen_particles")
+        if model_jets is not None:
+            self.init_attrs.append("model_jets")
     ''' @staticmethod
     def deserialize(result, result_metadata, event_idx=None):
         # 'result' arrays can be mmap-ed.

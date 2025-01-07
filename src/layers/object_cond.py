@@ -886,7 +886,7 @@ def L_clusters_calc(batch, cluster_space_coords, cluster_index, frac_combination
 
     return L_clusters
 
-def calc_eta_phi(coords):
+def calc_eta_phi(coords, return_stacked=True):
     """
     Calculate eta and phi from cartesian coordinates
     """
@@ -896,6 +896,8 @@ def calc_eta_phi(coords):
     #eta, phi = torch.atan2(y, x), torch.asin(z / coords.norm(dim=1))
     phi = torch.arctan2(y, x)
     eta = torch.arctanh(z / torch.sqrt(x**2 + y**2 + z**2))
+    if not return_stacked:
+        return eta, phi
     return torch.stack([eta, phi], dim=1)
 
 def object_condensation_loss(

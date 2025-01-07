@@ -162,6 +162,7 @@ def evaluate(
                         if key not in total_loss_dict:
                             total_loss_dict[key] = 0
                         total_loss_dict[key] += loss_dict[key].item()
+                    del loss_dict
                 if n_batches in plot_batches:
                     plot_folder = os.path.join(args.run_path, "eval_plots", "epoch_" + str(epoch) + "_step_" + str(step))
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
@@ -176,6 +177,7 @@ def evaluate(
                             "AvgLoss": "%.5f" % (total_loss / n_batches),
                         }
                     )
+
                 if args.predict:
                     event_idx = batch.batch_idx + last_event_idx
                     predictions["event_idx"].append(event_idx)

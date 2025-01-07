@@ -5,7 +5,7 @@ from src.utils.paths import get_path
 
 
 # To be used for simple analysis scripts, not for the full training!
-def get_iter(path, full_dataloader=False):
+def get_iter(path, full_dataloader=False, model_clusters_dir=None):
     if full_dataloader:
         datasets = os.listdir(path)
         datasets = [os.path.join(path, x) for x in datasets]
@@ -50,6 +50,5 @@ def get_iter(path, full_dataloader=False):
 
         iterator = iter(train_data)
     else:
-        iterator = iter(EventDataset.from_directory(path))
+        iterator = iter(EventDataset.from_directory(path, model_clusters_dir=model_clusters_dir))
     return iterator
-
