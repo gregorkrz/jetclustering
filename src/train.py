@@ -124,7 +124,7 @@ gt = get_gt_func(args)
 batch_config = {"use_p_xyz": True, "use_four_momenta": False}
 if "lgatr" in args.network_config.lower():
     batch_config = {"use_four_momenta": True}
-
+print("batch_config:", batch_config)
 if training_mode:
     model = orig_model.to(dev)
     if args.backend is not None:
@@ -225,6 +225,7 @@ if args.data_test:
             gt_func=gt,
             local_rank=local_rank,
             args=args,
+            batch_config=batch_config
         )
         _logger.info(f"Finished evaluating {filename}")
         result["filename"] = filename
