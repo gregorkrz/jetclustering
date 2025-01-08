@@ -6,17 +6,16 @@ from src.utils.paths import get_path
 from src.utils.utils import CPU_Unpickler
 from pathlib import Path
 from src.plotting.histograms import score_histogram, per_pt_score_histogram, plot_roc_curve, confusion_matrix_plot
+import argparse
 
-#import mplhep as hep
-#hep.style.use("CMS")
-filename = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", type=str, required=True)
+args = parser.parse_args()
+
+input_dir = get_path(args.input, "results")
+
 # for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
 
-result = CPU_Unpickler(open(filename, "rb")).load()
-eval_path = os.path.join(os.path.dirname(filename), "full_eval")
-
-print(result.keys())
-Path(eval_path).mkdir(parents=True, exist_ok=True)
 
 
 def plot_score_histograms(result, eval_path):
@@ -43,22 +42,32 @@ def plot_cm(result, eval_path):
     fig.tight_layout()
     fig.savefig(os.path.join(eval_path, "confusion_matrix.pdf"))
 
-def plotting_blueprint(result, eval_path):
-    pass
+for file in os.listdir(input_dir):
+    filename = get_path(os.path.join(input_dir, file),"results")
+    if file.startswith("eval_") and file.endswith(".pkl"):
+        print("Plotting file", filename)
+        result = CPU_Unpickler(open(filename, "rb")).load()
+        eval_path = os.path.join(os.path.dirname(filename), "full_eval")
 
-plotting_jobs = [plot_score_histograms, plot_cm]
-from time import time
+        print(result.keys())
+        Path(eval_path).mkdir(parents=True, exist_ok=True)
 
-for job in plotting_jobs:
-    t0 = time()
-    print("Starting plotting job", job.__name__)
-    try:
-        job(result, eval_path)
-    except Exception as e:
-        print(f"Error in {job.__name__}: {e}")
-        # print the traceback of the exception
-        import traceback
-        traceback.print_exc()
+        def plotting_blueprint(result, eval_path):
+            pass
 
-    print(f"{job.__name__} took {time()-t0:.2f}s")
+        plotting_jobs = [plot_score_histograms, plot_cm]
+        from time import time
+
+        for job in plotting_jobs:
+            t0 = time()
+            print("Starting plotting job", job.__name__)
+            try:
+                job(result, eval_path)
+            except Exception as e:
+                print(f"Error in {job.__name__}: {e}")
+                # print the traceback of the exception
+                import traceback
+                traceback.print_exc()
+
+            print(f"{job.__name__} took {time()-t0:.2f}s")
 

@@ -362,7 +362,13 @@ class EventDataset(torch.utils.data.IterableDataset):
                   key in self.attrs}
         if self.model_output is not None:
             result["model_jets"] = self.get_model_jets(i, pfcands=result["pfcands"])
+        if "genjets" in result:
+            result["genjets"] = EventDataset.mask_jets(result["genjets"])
         return Event(**result)
+    @staticmethod
+    def mask_jets(jets, cutoff=100):
+        mask = jets.pt >= cutoff
+        return EventJets(jets.pt[mask], jets.eta[mask], jets.phi[mask], jets.mass[mask])
     def get_model_jets(self, i, pfcands):
         event_filter = self.model_output["event_idx"] == i
         pfcands_pt = pfcands.pt
@@ -385,6 +391,8 @@ class EventDataset(torch.utils.data.IterableDataset):
             if self.model_output is not None:
                 result["model_jets"] = self.get_model_jets(self.i, pfcands=result["pfcands"])
             self.i += 1
+            if "genjets" in result:
+                result["genjets"] = EventDataset.mask_jets(result["genjets"])
             yield Event(**result)
     def __iter__(self):
         return self.get_iter()

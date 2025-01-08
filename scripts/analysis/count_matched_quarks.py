@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
+from src.utils.utils import CPU_Unpickler
 from src.dataset.get_dataset import get_iter
 from src.utils.paths import get_path
 from pathlib import Path
@@ -23,21 +24,35 @@ parser.add_argument("--eval-dir", type=str, default="")
 
 args = parser.parse_args()
 path = get_path(args.input, "preprocessed_data")
-eval_dir = get_path(args.eval_dir, "results")
+
+if args.eval_dir:
+    eval_dir = get_path(args.eval_dir, "results")
+    dataset_path_to_eval_file = {}
+    for file in os.listdir(eval_dir):
+        if file.startswith("eval_") and file.endswith(".pkl"):
+            file_number = file.split("_")[1].split(".")[0]
+            dataset_path_to_eval_file[CPU_Unpickler(open(os.path.join(eval_dir, file), "rb")).load()["filename"]] = [os.path.join(eval_dir, file), os.path.join(eval_dir, "clustering_{}.pkl".format(file_number))]
+    print(dataset_path_to_eval_file)
 
 if args.output == "":
     args.output = args.input
+
 output_path = os.path.join(get_path(args.output, "results"), "count_matched_quarks")
 Path(output_path).mkdir(parents=True, exist_ok=True)
 
 if not args.plot_only:
     n_matched_quarks = {}
     unmatched_quarks = {}
-    n_fake_jets = {} # number of jets that have not been matched to a quark
+    n_fake_jets = {} # Number of jets that have not been matched to a quark
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
-        dataset = get_iter(current_path)
+        model_clusters_file = None
+        model_output_file = None
+        if args.eval_dir:
+            model_clusters_file = dataset_path_to_eval_file[current_path][1]
+            model_output_file = dataset_path_to_eval_file[current_path][0]
+        dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file)
         n = 0
         for data in tqdm(dataset):
             jets_object = data.__dict__[args.jets_object]
@@ -171,7 +186,7 @@ for i, mDark in enumerate(dark_masses):
     ax[i].set_xlabel("$r_{inv}$")
     ax[i].set_ylabel("$m_{Z'}$ [GeV]")
     ax[i].set_title(f"mDark = {mDark} GeV")
-    cbar = fig.colorbar(ax[i].imshow(data, cmap="Blues"), ax=ax[i])
+    cbar = fig.colorbar(ax[i].imshow(data, cmap="Greens"), ax=ax[i])
     cbar.set_label("Avg. unmatched jets / event")
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"))

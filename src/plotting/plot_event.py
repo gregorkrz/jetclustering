@@ -115,8 +115,8 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
     #    assert len(colors) == len(phi)
     #    assert len(colors_special) == len(eta_special)
     ax.scatter(eta, phi, s=pt, c=colors)
-    ax.scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=1.0) # Dark quarks
-    ax.scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=1.0)
+    ax.scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=0.5) # Dark quarks
+    ax.scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=0.5)
     #if len(eta_special):
     #    ax.scatter(eta_special, phi_special, s=pt_special, c=colors_special, marker="v")
     if jets:
@@ -125,6 +125,12 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
         for i in range(len(jet_eta)):
             circle = plt.Circle((jet_eta[i], jet_phi[i]), 0.8, color="red", fill=False)
             ax.add_artist(circle)
+        if hasattr(event, "model_jets"):
+            model_jet_eta = event.model_jets.eta
+            model_jet_phi = event.model_jets.phi
+            for i in range(len(model_jet_eta)):
+                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.8, color="blue", fill=False)
+                ax.add_artist(circle)
     ax.set_xlabel(r"$\eta$")
     ax.set_ylabel(r"$\phi$")
     ax.set_aspect("equal")
