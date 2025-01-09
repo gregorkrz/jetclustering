@@ -548,7 +548,7 @@ def get_batch(event, batch_config, y, test=False):
     #    pids_onehot_special_pfcands[:, i] = (event.special_pfcands.pid.abs() == pid).float()
     #assert (pids_onehot_special_pfcands.sum(dim=1) == 1).all()
     #batch_scalars_special_pfcands =event.special_pfcands.charge.unsqueeze(1) #torch.cat([event.special_pfcands.charge.unsqueeze(1), pids_onehot_special_pfcands], dim=1)
-    batch_scalars = batch_scalars_pfcands# torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
+    batch_scalars = batch_scalars_pfcands # torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
     assert batch_idx.max() == event.n_events - 1
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
     if (~filt).sum() > 0:

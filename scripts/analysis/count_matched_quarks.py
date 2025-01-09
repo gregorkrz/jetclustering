@@ -41,10 +41,21 @@ if args.output == "":
 output_path = os.path.join(get_path(args.output, "results"), "count_matched_quarks")
 Path(output_path).mkdir(parents=True, exist_ok=True)
 
+def get_bc_scores_for_jets(event):
+    scores = event.pfcands.bc_scores_pfcands
+    clusters = event.pfcands.bc_labels_pfcands
+    selected_clusters_idx = torch.where(event.model_jets.pt > 100)[0]
+    result = []
+    for c in selected_clusters_idx:
+        result.append(scores[clusters == c.item()])
+    return result
+
 if not args.plot_only:
     n_matched_quarks = {}
     unmatched_quarks = {}
     n_fake_jets = {} # Number of jets that have not been matched to a quark
+    bc_scores_matched = {}
+    bc_scores_unmatched = {}
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
@@ -53,10 +64,8 @@ if not args.plot_only:
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
-        t0 = time.time()
-        dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file)
-        t1 = time.time()
-        print("getting dataset took", t1-t0, "s")
+        dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file,
+                           include_model_jets_unfiltered=True)
         n = 0
         for data in tqdm(dataset):
             jets_object = data.__dict__[args.jets_object]
@@ -82,6 +91,14 @@ if not args.plot_only:
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                 n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
                 filt = quark_to_jet == -1
+                if args.jets_object == "model_jets":
+                    matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
+                    unmatched_jet_idx = sorted(list(set(list(range(n_jets))) - set(matched_jet_idx)))
+                    scores = get_bc_scores_for_jets(data)
+                    for i in matched_jet_idx:
+                        bc_scores_matched[subdataset] = bc_scores_matched.get(subdataset, []) + [torch.mean(scores[i]).item()]
+                    for i in unmatched_jet_idx:
+                        bc_scores_unmatched[subdataset] = bc_scores_unmatched.get(subdataset, []) + [torch.mean(scores[i]).item()]
             else:
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [0]
                 n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets]
@@ -106,7 +123,6 @@ if not args.plot_only:
                 else:
                     unmatched_quarks[subdataset]["frac_evt_E_unmatched"].append(E_in_cone / visible_E_event)
             #print("Number of matched quarks:", np.sum(quark_to_jet != -1))
-
     avg_n_matched_quarks = {}
     avg_n_fake_jets = {}
     for key in n_matched_quarks:
@@ -119,30 +135,38 @@ if not args.plot_only:
         mDark = int(parts[2].split("-")[1])
         rinv = float(parts[3].split("-")[1])
         return mMed, mDark, rinv
-
     result = {}
     result_unmatched = {}
     result_fakes = {}
+    result_bc = {}
     for key in avg_n_matched_quarks:
         mMed, mDark, rinv = get_properties(key)
         if mMed not in result:
             result[mMed] = {}
             result_unmatched[mMed] = {}
             result_fakes[mMed] = {}
+            result_bc[mMed] = {}
         if mDark not in result[mMed]:
             result[mMed][mDark] = {}
             result_unmatched[mMed][mDark] = {}
             result_fakes[mMed][mDark] = {}
+            result_bc[mMed][mDark] = {}
         result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
         result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
         result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
+        result_bc[mMed][mDark][rinv] = {
+            "matched": bc_scores_matched[key],
+            "unmatched": bc_scores_unmatched[key]
+        }
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
+    pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
 if args.plot_only:
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
+    result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
 import matplotlib.pyplot as plt
 # heatmap plots
 mediator_masses = sorted(list(result.keys()))
@@ -252,3 +276,18 @@ for i in range(len(r_invs)):
         ax[i, j].legend()
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "frac_E_in_cone_density.pdf"))
+
+
+fig, ax = plt.subplots(figsize=(5, 5))
+unmatched = result_bc[900][20][0.3]["unmatched"]
+matched = result_bc[900][20][0.3]["matched"]
+bins = np.linspace(0, 1, 100)
+ax.hist(unmatched, bins=bins, histtype="step", label="Unmatched jet")
+ax.hist(matched, bins=bins, histtype="step", label="Matched jet")
+ax.set_title("mMed = 900, mDark = 20, rinv = 0.3")
+ax.set_xlabel("BC score")
+ax.set_ylabel("count")
+ax.set_yscale("log")
+ax.legend()
+fig.tight_layout()
+fig.savefig(os.path.join(output_path, "scores.pdf"))

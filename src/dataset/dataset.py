@@ -365,18 +365,17 @@ class EventDataset(torch.utils.data.IterableDataset):
         #    self.evt_idx_to_batch_idx[key] = {}
         if model_output_file is not None:
             self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
-            t0 = time.time()
             self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
-            t1 = time.time()
-            print("Time to get batch bounds:", t1 - t0)
             self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
             # model_output["batch_idx"] contains the batch index for each event. model_clusters is an array of the model labels for each event.
         else:
             self.model_output = None
             self.model_clusters = None
+
     def __len__(self):
         return self.n_events
    # def __next__(self):
+
     def get_idx(self, i):
         # i is a list of indices that we want to get from the dataset
         start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
@@ -385,16 +384,20 @@ class EventDataset(torch.utils.data.IterableDataset):
         result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
                   key in self.attrs}
         if self.model_output is not None:
-            result["model_jets"] = self.get_model_jets(i, pfcands=result["pfcands"])
+            result["model_jets"], bc_scores_pfcands, bc_labels_pfcands = self.get_model_jets(i, pfcands=result["pfcands"])
+            result["pfcands"].bc_scores_pfcands = bc_scores_pfcands
+            result["pfcands"].bc_labels_pfcands = bc_labels_pfcands
             if self.include_model_jets_unfiltered:
-                result["model_jets_unfiltered"] = self.get_model_jets(i, pfcands=result["pfcands"], filter=False)
+                result["model_jets_unfiltered"], _, _ = self.get_model_jets(i, pfcands=result["pfcands"], filter=False)
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
         return Event(**result)
+
     @staticmethod
     def mask_jets(jets, cutoff=100):
         mask = jets.pt >= cutoff
         return EventJets(jets.pt[mask], jets.eta[mask], jets.phi[mask], jets.mass[mask])
+
     def get_model_jets(self, i, pfcands, filter=True):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
         pfcands_pt = pfcands.pt
@@ -405,26 +408,18 @@ class EventDataset(torch.utils.data.IterableDataset):
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
         jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
         jets_mass = torch.zeros_like(jets_eta)
+        cluster_labels = self.model_clusters[event_filter_s:event_filter_e]
+        bc_scores = self.model_output["pred"][event_filter_s:event_filter_e, -1]
         if filter:
             cutoff = 100
             mask = jets_pt >= cutoff
         else:
             mask = torch.ones_like(jets_pt, dtype=torch.bool)
-        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])
+        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask]), bc_scores, cluster_labels
     def get_iter(self):
         while self.i < self.n_events:
-            start = {key: self.metadata[key + "_batch_idx"][self.i] for key in self.attrs}
-            end = {key: self.metadata[key + "_batch_idx"][self.i+1] for key in self.attrs}
-            result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
-            result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for key in self.attrs}
-            if self.model_output is not None:
-                result["model_jets"] = self.get_model_jets(self.i, pfcands=result["pfcands"])
-                if self.include_model_jets_unfiltered:
-                    result["model_jets_unfiltered"] = self.get_model_jets(self.i, pfcands=result["pfcands"], filter=False)
+            yield self.get_idx(self.i)
             self.i += 1
-            if "genjets" in result:
-                result["genjets"] = EventDataset.mask_jets(result["genjets"])
-            yield Event(**result)
     def __iter__(self):
         return self.get_iter()
     def __getitem__(self, i):

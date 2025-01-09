@@ -17,6 +17,9 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=True)
+parser.add_argument("--output-suffix", type=str, required=False, default="")
+parser.add_argument("--min-cluster-size", type=int, default=10)
+parser.add_argument("--min-samples", type=int, default=20)
 
 args = parser.parse_args()
 path = get_path(args.input, "results")
@@ -38,14 +41,15 @@ for file in os.listdir(path):
         print("Computing clusters for file", file)
         result = CPU_Unpickler(open(os.path.join(path, file), "rb")).load()
         file_number = file.split("_")[1].split(".")[0]
-        labels_path = os.path.join(path, "clustering_{}.pkl".format(file_number))
+        labels_path = os.path.join(path, "clustering_{}_{}.pkl".format(args.output_suffix, file_number))
         if not os.path.exists(labels_path):
             #dataset = EventDataset.from_directory(result["filename"], mmap=True)
             if result["pred"].shape[1] == 4:
-                labels = get_clustering_labels(result["pred"][:, :3], result["event_idx"])
+                coords = result["pred"][:, :3]
             else:
-                # L-GATr outputs 4-vectors
-                labels = get_clustering_labels(result["pred"][:, :4], result["event_idx"])
+                coords = result["pred"][:, :4]
+            labels = get_clustering_labels(coords, result["event_idx"], min_cluster_size=args.min_cluster_size,
+                                           min_samples=args.min_samples)
             with open(labels_path, "wb") as f:
                 pickle.dump(labels, f)
             print("Saved labels to", labels_path)

@@ -2,7 +2,7 @@
 #SBATCH --partition=standard           # Specify the partition
 #SBATCH --account=t3                  # Specify the account
 #SBATCH --mem=10000                   # Request 10GB of memory
-#SBATCH --time=01:00:00               # Set the time limit to 1 hour
+#SBATCH --time=00:30:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJ_analysis_0  # Name the job
 #SBATCH --output=jobs/analysis_0_output.log       # Redirect stdout to a log file
 #SBATCH --error=jobs/analysis_0_error.log         # Redirect stderr to a log file
