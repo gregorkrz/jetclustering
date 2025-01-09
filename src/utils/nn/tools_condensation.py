@@ -163,7 +163,7 @@ def evaluate(
                             total_loss_dict[key] = 0
                         total_loss_dict[key] += loss_dict[key].item()
                     del loss_dict
-                if n_batches in plot_batches:
+                if n_batches in plot_batches and not args.predict: # don't plot these for the
                     plot_folder = os.path.join(args.run_path, "eval_plots", "epoch_" + str(epoch) + "_step_" + str(step))
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
                     plot_batch_eval_OC(event_batch, y.detach().cpu(),

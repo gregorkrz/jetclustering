@@ -4,12 +4,13 @@ import argparse
 import numpy as np
 import pandas as pd
 import pickle
-
+import torch
+import time
 from src.utils.utils import CPU_Unpickler
 from src.dataset.get_dataset import get_iter
 from src.utils.paths import get_path
 from pathlib import Path
-import torch
+
 
 # This script attempts to open dataset files and prints the number of events in each one.
 R = 0.8
@@ -52,7 +53,10 @@ if not args.plot_only:
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
+        t0 = time.time()
         dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file)
+        t1 = time.time()
+        print("getting dataset took", t1-t0, "s")
         n = 0
         for data in tqdm(dataset):
             jets_object = data.__dict__[args.jets_object]

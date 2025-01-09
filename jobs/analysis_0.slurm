@@ -11,17 +11,21 @@ export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 
 
-#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --dataset-cap 3000
-#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/GenJets --dataset-cap 3000 --jets-object genjets
-#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/GATr_model --dataset-cap 3000 --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45 --jets-object model_jets
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --dataset-cap 3000
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/GenJets --dataset-cap 3000 --jets-object genjets
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/GATr_model --dataset-cap 3000 --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45 --jets-object model_jets
 
 
 # GATr model trained on m=900, r inv = 0.7
 # Test_betaPt_BC_all_datasets_2025_01_08_10_54_58
 
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/GATr_model_trained_rinv_07_m_900 --dataset-cap 3000 --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_08_10_54_58 --jets-object model_jets
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/GATr_model_trained_rinv_07_m_900 --dataset-cap 3000 --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_08_10_54_58 --jets-object model_jets
+
+
+# LGATr model trained on m=900, r inv = 0.3
+# train/Test_LGATr_all_datasets_2025_01_08_19_27_54
+
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/LGATr_model_trained_rinv_03_m_900 --dataset-cap 3000 --eval-dir train/Test_LGATr_all_datasets_2025_01_08_19_27_54 --jets-object model_jets
 
 # Run the job:
 # sbatch jobs/analysis_0.slurm
-
-

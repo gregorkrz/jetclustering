@@ -319,9 +319,27 @@ class EventDatasetCollection(torch.utils.data.IterableDataset):
     # A collection of EventDatasets.
     # You should use a sampler together with this, as by default it just concatenates the EventDatasets together!
 
+def get_batch_bounds(batch_idx):
+    # batch_idx: tensor of format [0,0,0,0,1,1,1...]
+    # returns tensor of format [0, 4, ...]
+    batches = sorted(batch_idx.unique().tolist())
+    result = torch.zeros(len(batches) + 1)
+    #for i, b in enumerate(batches):
+    #    assert i == b
+    #    result[i] = torch.where(batch_idx==b)[0].min()
+    #    result[i+1] = torch.where(batch_idx==b)[0].max()
+    b_list = batch_idx.int().tolist()
+    prev = -1
+    for i, b in enumerate(b_list):
+        if b != prev:
+            result[b] = i
+            prev = b
+    result[-1] = len(b_list)
+    return result
+
 class EventDataset(torch.utils.data.IterableDataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -331,20 +349,26 @@ class EventDataset(torch.utils.data.IterableDataset):
                     os.path.join(dir, file), mmap_mode="r" if mmap else None
                 )
         dataset = EventDataset(result, metadata, model_clusters_file=model_clusters_file,
-                               model_output_file=model_output_file)
+                               model_output_file=model_output_file,
+                               include_model_jets_unfiltered=include_model_jets_unfiltered)
         return dataset
-    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None):
+    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
         # events: serialized events dict
         # metadata: dict with metadata
         self.events = events
         self.n_events = metadata["n_events"]
         self.attrs = metadata["attrs"]
         self.metadata = metadata
+        self.include_model_jets_unfiltered = include_model_jets_unfiltered
         self.i = 0
         #for key in self.attrs:
         #    self.evt_idx_to_batch_idx[key] = {}
         if model_output_file is not None:
             self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
+            t0 = time.time()
+            self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
+            t1 = time.time()
+            print("Time to get batch bounds:", t1 - t0)
             self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
             # model_output["batch_idx"] contains the batch index for each event. model_clusters is an array of the model labels for each event.
         else:
@@ -362,6 +386,8 @@ class EventDataset(torch.utils.data.IterableDataset):
                   key in self.attrs}
         if self.model_output is not None:
             result["model_jets"] = self.get_model_jets(i, pfcands=result["pfcands"])
+            if self.include_model_jets_unfiltered:
+                result["model_jets_unfiltered"] = self.get_model_jets(i, pfcands=result["pfcands"], filter=False)
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
         return Event(**result)
@@ -369,18 +395,21 @@ class EventDataset(torch.utils.data.IterableDataset):
     def mask_jets(jets, cutoff=100):
         mask = jets.pt >= cutoff
         return EventJets(jets.pt[mask], jets.eta[mask], jets.phi[mask], jets.mass[mask])
-    def get_model_jets(self, i, pfcands):
-        event_filter = self.model_output["event_idx"] == i
+    def get_model_jets(self, i, pfcands, filter=True):
+        event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
         pfcands_pt = pfcands.pt
         pfcands_pxyz = pfcands.pxyz
-        assert len(pfcands_pt) == event_filter.sum()
+        assert len(pfcands_pt) == event_filter_e - event_filter_s
         #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
-        jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter] + 1, dim=0)[1:]
+        jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
         jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
         jets_mass = torch.zeros_like(jets_eta)
-        cutoff = 100
-        mask = jets_pt >= cutoff
+        if filter:
+            cutoff = 100
+            mask = jets_pt >= cutoff
+        else:
+            mask = torch.ones_like(jets_pt, dtype=torch.bool)
         return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])
     def get_iter(self):
         while self.i < self.n_events:
@@ -390,6 +419,8 @@ class EventDataset(torch.utils.data.IterableDataset):
             result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for key in self.attrs}
             if self.model_output is not None:
                 result["model_jets"] = self.get_model_jets(self.i, pfcands=result["pfcands"])
+                if self.include_model_jets_unfiltered:
+                    result["model_jets_unfiltered"] = self.get_model_jets(self.i, pfcands=result["pfcands"], filter=False)
             self.i += 1
             if "genjets" in result:
                 result["genjets"] = EventDataset.mask_jets(result["genjets"])

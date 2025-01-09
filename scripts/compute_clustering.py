@@ -11,7 +11,7 @@ import hdbscan
 import argparse
 from tqdm import tqdm
 
-#filename = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
+# filename = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
 # for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
 # keeping the clustering script here for now, so that it's separated from the GPU-heavy tasks like inference (clustering may be changed frequently...)
 
@@ -41,7 +41,11 @@ for file in os.listdir(path):
         labels_path = os.path.join(path, "clustering_{}.pkl".format(file_number))
         if not os.path.exists(labels_path):
             #dataset = EventDataset.from_directory(result["filename"], mmap=True)
-            labels = get_clustering_labels(result["pred"][:, :3], result["event_idx"])
+            if result["pred"].shape[1] == 4:
+                labels = get_clustering_labels(result["pred"][:, :3], result["event_idx"])
+            else:
+                # L-GATr outputs 4-vectors
+                labels = get_clustering_labels(result["pred"][:, :4], result["event_idx"])
             with open(labels_path, "wb") as f:
                 pickle.dump(labels, f)
             print("Saved labels to", labels_path)

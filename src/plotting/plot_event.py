@@ -125,7 +125,7 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
         for i in range(len(jet_eta)):
             circle = plt.Circle((jet_eta[i], jet_phi[i]), 0.8, color="red", fill=False)
             ax.add_artist(circle)
-        if hasattr(event, "model_jets"):
+        if hasattr(event, "model_jets") and event.model_jets is not None:
             model_jet_eta = event.model_jets.eta
             model_jet_phi = event.model_jets.phi
             for i in range(len(model_jet_eta)):

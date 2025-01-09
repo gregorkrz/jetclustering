@@ -15,13 +15,13 @@ args = parser.parse_args()
 input_dir = get_path(args.input, "results")
 
 # for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
-
+# for L-GATr: /work/gkrzmanc/jetclustering/results/train/Test_LGATr_all_datasets_2025_01_08_19_27_54
 
 
 def plot_score_histograms(result, eval_path):
     pt = result["pt"]
     y_true = (result["GT_cluster"] >= 0)
-    y_pred = result["pred"][:, 3]
+    y_pred = result["pred"][:, -1]
     score_histogram(y_true, y_pred, sz=5).savefig(os.path.join(eval_path, "binary_classifier_scores.pdf"))
     per_pt_score_histogram(y_true, y_pred, pt).savefig(os.path.join(eval_path, "binary_classifier_scores_per_pt.pdf"))
     plot_roc_curve(y_true, y_pred).savefig(os.path.join(eval_path, "roc_curve.pdf"))
@@ -43,11 +43,12 @@ def plot_cm(result, eval_path):
     fig.savefig(os.path.join(eval_path, "confusion_matrix.pdf"))
 
 for file in os.listdir(input_dir):
+    print("File:", file)
     filename = get_path(os.path.join(input_dir, file),"results")
     if file.startswith("eval_") and file.endswith(".pkl"):
         print("Plotting file", filename)
         result = CPU_Unpickler(open(filename, "rb")).load()
-        eval_path = os.path.join(os.path.dirname(filename), "full_eval")
+        eval_path = os.path.join(os.path.dirname(filename), "full_eval_" + file.split("_")[1].split(".")[0])
 
         print(result.keys())
         Path(eval_path).mkdir(parents=True, exist_ok=True)
