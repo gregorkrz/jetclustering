@@ -38,16 +38,24 @@ class LGATrModel(torch.nn.Module):
         inputs_v = data.input_vectors # four-momenta
         inputs_scalar = data.input_scalars
         assert inputs_scalar.shape[1] == self.n_scalars
+        batchsize, num_points, _ = inputs_v.shape
         #velocities = embed_vector(inputs_v)
         inputs_v = inputs_v.unsqueeze(0)
         embedded_inputs = embed_vector(inputs_v)
         # if it contains nans, raise an error
         if torch.isnan(embedded_inputs).any():
             raise ValueError("NaNs in the input!")
-        embedded_inputs = embedded_inputs.unsqueeze(-2) # (batch_size*num_points, 1, 16)
+        multivectors = embedded_inputs.unsqueeze(-2) # (batch_size*num_points, 1, 16)
+        # for spurions, duplicate each unique batch_idx. e.g. [0,0,1,1,2,2] etc.
+        #spurions_batch_idx = torch.repeat_interleave(data.batch_idx.unique(), 2)
+        #batch_idx = torch.cat([data.batch_idx, spurions_batch_idx])
+        spurions = embed_spurions(beam_reference="xyplane", add_time_reference=True,
+                                  device=multivectors.device, dtype=multivectors.dtype)
+        spurions = spurions[None, None, ...].repeat(batchsize, num_points, 1, 1)  # (batchsize, num_points, 2, 16)
+        multivectors = torch.cat((multivectors, spurions), dim=-2)  # (batchsize, num_points, 3, 16)
         mask = self.build_attention_mask(data.batch_idx)
         embedded_outputs, output_scalars = self.gatr(
-            embedded_inputs, scalars=inputs_scalar, attention_mask=mask
+            multivectors, scalars=inputs_scalar, attention_mask=mask
         )
         #if self.embed_as_vectors:
         #    x_clusters = extract_translation(embedded_outputs)

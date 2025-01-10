@@ -28,8 +28,8 @@ def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None
         ax[i].set_yticklabels(mediator_masses)
         ax[i].set_xlabel("$r_{inv}$")
         ax[i].set_ylabel("$m_{Z'}$ [GeV]")
-        ax[i].set_title(f"mDark = {mDark} GeV")
-        cbar = fig.colorbar(ax[i].imshow(data, cmap=color_scheme), ax=ax[i])
+        #ax[i].set_title(f"mDark = {mDark} GeV")
+        cbar = plt.colorbar(ax[i].imshow(data, cmap=color_scheme), ax=ax[i])
         cbar.set_label(cbar_label)
     if make_fig:
         fig.tight_layout()

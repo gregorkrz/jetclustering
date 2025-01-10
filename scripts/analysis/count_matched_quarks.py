@@ -24,6 +24,8 @@ parser.add_argument("--output", type=str, default="")
 parser.add_argument("--plot-only", action="store_true")
 parser.add_argument("--jets-object", type=str, default="fatjets")
 parser.add_argument("--eval-dir", type=str, default="")
+parser.add_argument("--clustering-suffix", type=str, default="") # default: 1020, also want to try 1010 or others...?
+
 
 args = parser.parse_args()
 path = get_path(args.input, "preprocessed_data")
@@ -34,7 +36,10 @@ if args.eval_dir:
     for file in os.listdir(eval_dir):
         if file.startswith("eval_") and file.endswith(".pkl"):
             file_number = file.split("_")[1].split(".")[0]
-            dataset_path_to_eval_file[CPU_Unpickler(open(os.path.join(eval_dir, file), "rb")).load()["filename"]] = [os.path.join(eval_dir, file), os.path.join(eval_dir, "clustering_{}.pkl".format(file_number))]
+            clustering_file = "clustering_{}.pkl".format(file_number)
+            if args.clustering_suffix:
+                clustering_file = "clustering_{}_{}.pkl".format(args.clustering_suffix, file_number)
+            dataset_path_to_eval_file[CPU_Unpickler(open(os.path.join(eval_dir, file), "rb")).load()["filename"]] = [os.path.join(eval_dir, file), os.path.join(eval_dir, clustering_file)]
     print(dataset_path_to_eval_file)
 
 if args.output == "":
@@ -165,16 +170,19 @@ if not args.plot_only:
         result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
         result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
         result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
-        result_bc[mMed][mDark][rinv] = {
-            "matched": bc_scores_matched[key],
-            "unmatched": bc_scores_unmatched[key]
-        }
+        #result_bc[mMed][mDark][rinv] = {
+        #    "matched": bc_scores_matched[key],
+        #    "unmatched": bc_scores_unmatched[key]
+        #}
         result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
     pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
+    # write the number of events to n_events.txt
+    with open(os.path.join(output_path, "n_events.txt"), "w") as f:
+        f.write(str(n))
 if args.plot_only:
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
@@ -248,7 +256,7 @@ for i in range(len(r_invs)):
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "frac_E_in_cone_density.pdf"))
 
-
+'''
 fig, ax = plt.subplots(figsize=(5, 5))
 unmatched = result_bc[900][20][0.3]["unmatched"]
 matched = result_bc[900][20][0.3]["matched"]
@@ -262,3 +270,4 @@ ax.set_yscale("log")
 ax.legend()
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "avg_scores_matched_vs_unmatched_jet.pdf"))
+'''

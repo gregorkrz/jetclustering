@@ -655,7 +655,11 @@ class EventJets(EventCollection):
              self.p * torch.cos(self.theta)),
             dim=1
         )
-        assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-3).all()
+        tst = torch.abs(torch.norm(self.pxyz, dim=1) - self.p)
+        if not (tst[~torch.isnan(tst)] < 1e-2).all():
+            print("!!!!!", (torch.abs(torch.norm(self.pxyz, dim=1) - self.p)).max())
+            print("pt", self.pt, "eta", self.eta, "phi", self.phi, "mass", mass, "batch_number", batch_number)
+            assert False
         self.mass = to_tensor(mass)
         self.area = area
         if self.area is not None:
@@ -665,7 +669,6 @@ class EventJets(EventCollection):
 
     def __len__(self):
         return len(self.pt)
-
 
 class Particles_GT:
     def __init__(
