@@ -8,8 +8,10 @@ import torch
 import time
 from src.utils.utils import CPU_Unpickler
 from src.dataset.get_dataset import get_iter
+from src.plotting.eval_matrix import matrix_plot
 from src.utils.paths import get_path
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 
 # This script attempts to open dataset files and prints the number of events in each one.
@@ -56,11 +58,14 @@ if not args.plot_only:
     n_fake_jets = {} # Number of jets that have not been matched to a quark
     bc_scores_matched = {}
     bc_scores_unmatched = {}
+    precision_and_recall = {}  # array of [n_relevent_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
         model_clusters_file = None
         model_output_file = None
+        if subdataset not in precision_and_recall:
+            precision_and_recall[subdataset] = [0, 0, 0, 0]
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
@@ -85,11 +90,14 @@ if not args.plot_only:
             distance_matrix = distance_matrix.T
             #min_distance = np.min(distance_matrix, axis=1)
             n_jets = len(jets_object)
+            precision_and_recall[subdataset][1] += n_jets
+            precision_and_recall[subdataset][2] += len(data.matrix_element_gen_particles)
             if len(jets_object):
                 quark_to_jet = np.min(distance_matrix, axis=1)
                 quark_to_jet[quark_to_jet > R] = -1
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                 n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
+                precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
                 filt = quark_to_jet == -1
                 if args.jets_object == "model_jets":
                     matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
@@ -139,6 +147,7 @@ if not args.plot_only:
     result_unmatched = {}
     result_fakes = {}
     result_bc = {}
+    result_PR = {}
     for key in avg_n_matched_quarks:
         mMed, mDark, rinv = get_properties(key)
         if mMed not in result:
@@ -146,11 +155,13 @@ if not args.plot_only:
             result_unmatched[mMed] = {}
             result_fakes[mMed] = {}
             result_bc[mMed] = {}
+            result_PR[mMed] = {}
         if mDark not in result[mMed]:
             result[mMed][mDark] = {}
             result_unmatched[mMed][mDark] = {}
             result_fakes[mMed][mDark] = {}
             result_bc[mMed][mDark] = {}
+            result_PR[mMed][mDark] = {}
         result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
         result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
         result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
@@ -158,68 +169,29 @@ if not args.plot_only:
             "matched": bc_scores_matched[key],
             "unmatched": bc_scores_unmatched[key]
         }
+        result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
     pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
+    pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
 if args.plot_only:
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
     result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
-import matplotlib.pyplot as plt
-# heatmap plots
-mediator_masses = sorted(list(result.keys()))
+    result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+
+
+matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"))
+matrix_plot(result_fakes, "Greens", "Avg. unmatched jets / event").savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"))
+matrix_plot(result_PR, "Reds", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0]).savefig(os.path.join(output_path, "precision.pdf"))
+matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1]).savefig(os.path.join(output_path, "recall.pdf"))
+matrix_plot(result_PR, "Purples", "F_1 score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1])).savefig(os.path.join(output_path, "f1_score.pdf"))
+
 dark_masses = [20]
+mediator_masses = sorted(list(result.keys()))
 r_invs = sorted(list(set([rinv for mMed in result for mDark in result[mMed] for rinv in result[mMed][mDark]])))
-fig, ax = plt.subplots(len(dark_masses), 1, figsize=(5, 5))
-if len(dark_masses) == 1:
-    ax = [ax]
-for i, mDark in enumerate(dark_masses):
-    data = np.zeros((len(mediator_masses), len(r_invs)))
-    for j, mMed in enumerate(mediator_masses):
-        for k, rinv in enumerate(r_invs):
-            data[j, k] = result[mMed][mDark][rinv]
-    ax[i].imshow(data, cmap="Blues")
-    for (j, k), val in np.ndenumerate(data):
-        ax[i].text(k, j, f'{val:.2f}', ha='center', va='center', color='black')
-    ax[i].set_xticks(range(len(r_invs)))
-    ax[i].set_xticklabels(r_invs)
-    ax[i].set_yticks(range(len(mediator_masses)))
-    ax[i].set_yticklabels(mediator_masses)
-    ax[i].set_xlabel("$r_{inv}$")
-    ax[i].set_ylabel("$m_{Z'}$ [GeV]")
-    ax[i].set_title(f"mDark = {mDark} GeV")
-    cbar = fig.colorbar(ax[i].imshow(data, cmap="Blues"), ax=ax[i])
-    cbar.set_label("Avg. matched dark quarks / event")
-fig.tight_layout()
-fig.savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"))
-print("Done")
-
-fig, ax = plt.subplots(len(dark_masses), 1, figsize=(5, 5))
-if len(dark_masses) == 1:
-    ax = [ax]
-for i, mDark in enumerate(dark_masses):
-    data = np.zeros((len(mediator_masses), len(r_invs)))
-    for j, mMed in enumerate(mediator_masses):
-        for k, rinv in enumerate(r_invs):
-            data[j, k] = result_fakes[mMed][mDark][rinv]
-    ax[i].imshow(data, cmap="Blues")
-    for (j, k), val in np.ndenumerate(data):
-        ax[i].text(k, j, f'{val:.2f}', ha='center', va='center', color='black')
-    ax[i].set_xticks(range(len(r_invs)))
-    ax[i].set_xticklabels(r_invs)
-    ax[i].set_yticks(range(len(mediator_masses)))
-    ax[i].set_yticklabels(mediator_masses)
-    ax[i].set_xlabel("$r_{inv}$")
-    ax[i].set_ylabel("$m_{Z'}$ [GeV]")
-    ax[i].set_title(f"mDark = {mDark} GeV")
-    cbar = fig.colorbar(ax[i].imshow(data, cmap="Greens"), ax=ax[i])
-    cbar.set_label("Avg. unmatched jets / event")
-fig.tight_layout()
-fig.savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"))
-print("Done")
-
 
 fig, ax = plt.subplots(len(r_invs), len(mediator_masses), figsize=(3*len(mediator_masses), 3 * len(r_invs)))
 for i in range(len(r_invs)):
@@ -230,7 +202,6 @@ for i in range(len(r_invs)):
         ax[i, j].set_title(f"mMed = {mediator_masses[j]}, rinv = {r_invs[i]}")
         ax[i, j].set_xlabel("pt")
         ax[i, j].legend()
-
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "unmatched_dark_quarks_pt.pdf"))
 
@@ -290,4 +261,4 @@ ax.set_ylabel("count")
 ax.set_yscale("log")
 ax.legend()
 fig.tight_layout()
-fig.savefig(os.path.join(output_path, "scores.pdf"))
+fig.savefig(os.path.join(output_path, "avg_scores_matched_vs_unmatched_jet.pdf"))

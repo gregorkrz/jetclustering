@@ -129,7 +129,7 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
             model_jet_eta = event.model_jets.eta
             model_jet_phi = event.model_jets.phi
             for i in range(len(model_jet_eta)):
-                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.8, color="blue", fill=False)
+                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.7, color="blue", fill=False)
                 ax.add_artist(circle)
     ax.set_xlabel(r"$\eta$")
     ax.set_ylabel(r"$\phi$")
