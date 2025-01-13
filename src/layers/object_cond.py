@@ -55,7 +55,8 @@ def calc_LV_Lbeta(
     dis=False,
     beta_type="default",
     noise_logits=None,
-    lorentz_norm=False
+    lorentz_norm=False,
+    spatial_part_only=False,
 ) -> Union[Tuple[torch.Tensor, torch.Tensor], dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -249,10 +250,16 @@ def calc_LV_Lbeta(
             norms = norms.abs() ## ??? Why is this needed? wrong convention?
             #print("Norms", norms[:15])
         else:
-            norms = torch.sum(
-                torch.square(cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)),
-                dim=-1,
-            ) # Take the norm squared
+            if spatial_part_only:
+                norms = torch.sum(
+                    torch.square(cluster_space_coords[:, 1:4].unsqueeze(1) - x_alpha[:, 1:4].unsqueeze(0)),
+                    dim=-1,
+                )
+            else:
+                norms = torch.sum(
+                    torch.square(cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)),
+                    dim=-1,
+                ) # Take the norm squared
         norms_att = norms[is_sig]
         #! att func as in line 159 of object condensation
         
@@ -916,7 +923,9 @@ def object_condensation_loss(
         dis=False,
         coord_weight=0.0,
         beta_type="default",
-        lorentz_norm=False
+        lorentz_norm=False,
+        spatial_part_only=False,
+        loss_quark_distance=False
 ):
     """
     :param batch: Model input
@@ -951,33 +960,70 @@ def object_condensation_loss(
         pass
     else:
         raise NotImplementedError
-
-    clustering_index_l = labels
-
-    a = calc_LV_Lbeta(
-        original_coords,
-        batch,
-        distance_threshold,
-        beta=bj.view(-1),
-        cluster_space_coords=xj,  # Predicted by model
-        cluster_index_per_event=clustering_index_l.view(
-            -1
-        ).long(),  # Truth hit->cluster index
-        batch=batch_numbers.long(),
-        qmin=q_min,
-        attr_weight=attr_weight,
-        repul_weight=repul_weight,
-        use_average_cc_pos=use_average_cc_pos,
-        loss_type=loss_type,
-        dis=dis,
-        beta_type=beta_type,
-        noise_logits=noise_logits,
-        lorentz_norm=lorentz_norm
-    )
-
-    loss = a["loss_potential"] + a["loss_beta"]
-    if coord_weight > 0:
-        loss += a["loss_coord"] * coord_weight
+    if not loss_quark_distance:
+        clustering_index_l = labels
+        a = calc_LV_Lbeta(
+            original_coords,
+            batch,
+            distance_threshold,
+            beta=bj.view(-1),
+            cluster_space_coords=xj,  # Predicted by model
+            cluster_index_per_event=clustering_index_l.view(
+                -1
+            ).long(),  # Truth hit->cluster index
+            batch=batch_numbers.long(),
+            qmin=q_min,
+            attr_weight=attr_weight,
+            repul_weight=repul_weight,
+            use_average_cc_pos=use_average_cc_pos,
+            loss_type=loss_type,
+            dis=dis,
+            beta_type=beta_type,
+            noise_logits=noise_logits,
+            lorentz_norm=lorentz_norm,
+            spatial_part_only=spatial_part_only
+        )
+        loss = a["loss_potential"] + a["loss_beta"]
+        if coord_weight > 0:
+            loss += a["loss_coord"] * coord_weight
+    else:
+        # quark distance loss
+        target_coords = labels.labels_coordinates[labels.labels[labels.labels != -1]]
+        if lorentz_norm:
+            diff = xj[labels.labels != -1] - labels.labels_coordinates[labels.labels != -1]
+            norms = diff[:, :, 0]**2 - torch.sum(diff[:, :, 1:] ** 2, dim=-1)
+            norms = norms.abs()
+        else:
+            if spatial_part_only:
+                print("xj", xj[labels.labels != -1, 1:4][:10])
+                print("labels", target_coords[:10])
+                norms = torch.sum(
+                    torch.square(xj[labels.labels != -1, 1:4].unsqueeze(1) - target_coords[:, 1:4].unsqueeze(1)),
+                    dim=-1,
+                )
+            else:
+                norms = torch.sum(
+                    torch.square(xj[labels.labels != -1].unsqueeze(1) - target_coords.unsqueeze(1)),
+                    dim=-1,
+                ) # Take the norm squared
+        a = {"norms_loss": torch.mean(norms)}
+        loss = a["norms_loss"]
+        if beta_type == "pt+bc":
+            # TODO: polish this, it's another loss that should be computed outside calc_LV_Lbeta
+            assert noise_logits is not None
+            is_noise = labels.labels == -1
+            y_true_noise = 1 - is_noise.float()
+            num_positives = torch.sum(y_true_noise).item()
+            num_negatives = len(y_true_noise) - num_positives
+            num_all = len(y_true_noise)
+            # Compute weights
+            pos_weight = num_all / num_positives if num_positives > 0 else 0
+            neg_weight = num_all / num_negatives if num_negatives > 0 else 0
+            weight = pos_weight * y_true_noise + neg_weight * (1 - y_true_noise)
+            L_bc = torch.nn.BCELoss(weight=weight)(
+                noise_logits, 1 - is_noise.float()
+            )
+            a["loss_noise_classification"] = L_bc
     if beta_type == "pt+bc":
         loss += a["loss_noise_classification"]
     return loss, a

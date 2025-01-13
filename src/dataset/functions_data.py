@@ -503,6 +503,26 @@ def renumber_clusters(tensor):
         mapping[u] = i
     return mapping[tensor]
 
+
+class TensorCollection:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+    def to(self, device):
+        # Move all tensors to device
+        for k, v in self.__dict__.items():
+            if torch.is_tensor(v):
+                setattr(self, k, v.to(device))
+        return self
+    def dict_rep(self):
+        d = {}
+        for k, v in self.__dict__.items():
+            if torch.is_tensor(v):
+                d[k] = v
+        return d
+    #def __getitem__(self, i):
+    #    return TensorCollection(**{k: v[i] for k, v in self.__dict__.items()})
+
+
 def get_batch(event, batch_config, y, test=False):
     # Returns the EventBatch class, with correct scalars etc.
     # if test=True, it will put all events in the batch, i.e. no filtering of the events without signal.
@@ -511,9 +531,13 @@ def get_batch(event, batch_config, y, test=False):
     for i in range(len(event.pfcands.batch_number) - 1):
         batch_idx_pfcands[event.pfcands.batch_number[i]:event.pfcands.batch_number[i+1]] = i
     batch_filter = []
-    if not test:
+    if batch_config.get("quark_dist_loss", False):
+        lbl = y.labels
+    else:
+        lbl = y
+    if not (test or batch_config.get("quark_dist_loss", False)): # dont filter for quark distance loss
         for i in batch_idx_pfcands.unique().tolist():
-            if (y[batch_idx_pfcands == i] == -1).all():
+            if (lbl[batch_idx_pfcands == i] == -1).all():
                 batch_filter.append(i)
     #for i in range(len(event.special_pfcands.batch_number) - 1):
     #    batch_idx_special_pfcands[event.special_pfcands.batch_number[i]:event.special_pfcands.batch_number[i+1]] = i
@@ -540,9 +564,9 @@ def get_batch(event, batch_config, y, test=False):
     assert (pids_onehot.sum(dim=1) == 1).all()
     chg = event.pfcands.charge.unsqueeze(1)
     batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
-    if batch_config.get("use_p_xyz", False):
-        # also add pt as a scalar
-        batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, event.pfcands.pt.unsqueeze(1)], dim=1)
+    #if batch_config.get("use_p_xyz", False):
+    #    # also add pt as a scalar
+    batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, event.pfcands.pt.unsqueeze(1), event.pfcands.E.unsqueeze(1)], dim=1)
     #pids_onehot_special_pfcands = torch.zeros(len(event.special_pfcands), len(pids))
     #for i, pid in enumerate(pids):
     #    pids_onehot_special_pfcands[:, i] = (event.special_pfcands.pid.abs() == pid).float()
@@ -552,17 +576,21 @@ def get_batch(event, batch_config, y, test=False):
     assert batch_idx.max() == event.n_events - 1
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
     if (~filt).sum() > 0:
-        print("Found events with no signal!!!", (~filt).sum() / len(filt), batch_filter)
+        print("Found events with no signal!!! Dropping it in training", (~filt).sum() / len(filt), batch_filter)
         print("Renumbered", renumber_clusters(batch_idx[filt]).unique())
         print("Original", batch_idx[filt].unique())
         print("ALL", batch_idx.unique())
+    if batch_config.get("quark_dist_loss", False):
+        y_filt = y
+    else:
+        y_filt = y[filt]
     return EventBatch(
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],
         batch_idx=renumber_clusters(batch_idx[filt]),
         pt=event.pfcands.pt[filt],
         filter=filt,
-    ), y[filt]
+    ), y_filt
 
 def to_tensor(item):
     if isinstance(item, torch.Tensor):

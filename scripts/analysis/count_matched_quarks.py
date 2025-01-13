@@ -39,7 +39,11 @@ if args.eval_dir:
             clustering_file = "clustering_{}.pkl".format(file_number)
             if args.clustering_suffix:
                 clustering_file = "clustering_{}_{}.pkl".format(args.clustering_suffix, file_number)
-            dataset_path_to_eval_file[CPU_Unpickler(open(os.path.join(eval_dir, file), "rb")).load()["filename"]] = [os.path.join(eval_dir, file), os.path.join(eval_dir, clustering_file)]
+            f = CPU_Unpickler(open(os.path.join(eval_dir, file), "rb")).load()
+            clustering_file = os.path.join(eval_dir, clustering_file)
+            if "model_cluster" in f:
+                clustering_file = None
+            dataset_path_to_eval_file[f["filename"]] = [os.path.join(eval_dir, file), clustering_file]
     print(dataset_path_to_eval_file)
 
 if args.output == "":
@@ -63,7 +67,7 @@ if not args.plot_only:
     n_fake_jets = {} # Number of jets that have not been matched to a quark
     bc_scores_matched = {}
     bc_scores_unmatched = {}
-    precision_and_recall = {}  # array of [n_relevent_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
+    precision_and_recall = {} # Array of [n_relevant_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)

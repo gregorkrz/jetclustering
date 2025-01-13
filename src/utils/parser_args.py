@@ -94,15 +94,17 @@ parser.add_argument(
     help="number of threads to load the dataset; memory consumption and disk access load increases (~linearly) with this numbers",
 )
 
-parser.add_argument(
-    "--predict",
-    action="store_true",
-    default=False,
-    help="run prediction instead of training",
-)
-
 
 ### Loss-related arguments ###
+
+parser.add_argument(
+    "--loss",
+    type=str,
+    default="oc",
+    choices=["oc", "quark_distance"],
+    help="Loss function to use (oc is object condensation, quark_distance aims to cluster things around the corresponding dark quark)"
+)
+
 parser.add_argument("--attr-loss-weight", type=float, default=1.0, help="weight for the attractive loss")
 parser.add_argument("--repul-loss-weight", type=float, default=1.0, help="weight for the repulsive loss")
 parser.add_argument("--coord-loss-weight", type=float, default=0.0, help="weight for the coordinate loss")
@@ -116,10 +118,38 @@ parser.add_argument(
 
 parser.add_argument(
     "--lorentz-norm",
-    help="Whether the norm in clustering space should be the Lorentz one (otherwise it's usual euclidean 2-norm)",
+    help="Whether the norm in clustering space should be the Lorentz one (otherwise it's usual Euclidean 2-norm)",
     action="store_true",
     default=False,
 )
+
+parser.add_argument(
+    "--spatial-part-only",
+    help="For L-GATr: if turned on, the spatial part is only going to be used for the loss.",
+    action="store_true",
+    default=False,
+)
+
+parser.add_argument(
+    "--min-cluster-size",
+    help="parameter of the HDBSCAN clustering",
+    type=int,
+    default=10
+)
+
+parser.add_argument(
+    "--min-samples",
+    help="parameter of the HDBSCAN clustering",
+    type=int,
+    default=20
+)
+parser.add_argument(
+    "--epsilon",
+    help="parameter of the HDBSCAN clustering",
+    type=float,
+    default=0.01
+)
+
 
 parser.add_argument(
     "-embed-as-vectors",
@@ -161,6 +191,7 @@ parser.add_argument(
     help="learning rate scheduler",
 )
 parser.add_argument("--start-lr", type=float, default=5e-3, help="start learning rate")
+parser.add_argument("--validation-steps", type=float, default=1000, help="Run eval on validation set every x steps")
 
 parser.add_argument(
     "--backend",

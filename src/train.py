@@ -54,6 +54,7 @@ run_path = os.path.join(args.prefix, "train", args.run_name)
 clear_empty_paths(get_path(os.path.join(args.prefix, "train"), "results"))  # Clear paths of failed runs that don't have any files or folders in them
 run_path = get_path(run_path, "results")
 Path(run_path).mkdir(parents=True, exist_ok=False)
+print("Created directory", run_path)
 args.run_path = run_path
 wandb.init(project=args.wandb_projectname, entity=os.environ["SVJ_WANDB_ENTITY"])
 wandb.run.name = args.run_name
@@ -79,7 +80,7 @@ warnings.filterwarnings("ignore")
 from src.utils.nn.tools_condensation import train_epoch
 from src.utils.nn.tools_condensation import evaluate as evaluate
 
-training_mode = not args.predict
+training_mode = bool(args.data_train)
 if training_mode:
     # val_loaders and test_loaders are a dictionary file -> dataloader with only one dataset
     # train_loader is a single dataloader of all the files
@@ -116,14 +117,12 @@ num_parameters_counted = count_parameters(model)
 print("Number of parameters:", num_parameters_counted)
 
 orig_model = model
-training_mode = not args.predict
-
 loss = get_loss_func(args)
 gt = get_gt_func(args)
-
 batch_config = {"use_p_xyz": True, "use_four_momenta": False}
 if "lgatr" in args.network_config.lower():
     batch_config = {"use_four_momenta": True}
+batch_config["quark_dist_loss"] = args.loss == "quark_distance"
 print("batch_config:", batch_config)
 if training_mode:
     model = orig_model.to(dev)
@@ -202,7 +201,6 @@ if training_mode:
         )'''
 
 if args.data_test:
-    assert args.predict
     if args.backend is not None and local_rank != 0:
         sys.exit(0)
     if training_mode:
@@ -225,7 +223,8 @@ if args.data_test:
             gt_func=gt,
             local_rank=local_rank,
             args=args,
-            batch_config=batch_config
+            batch_config=batch_config,
+            predict=True
         )
         _logger.info(f"Finished evaluating {filename}")
         result["filename"] = filename

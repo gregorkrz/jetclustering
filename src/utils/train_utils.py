@@ -4,7 +4,6 @@ import glob
 import functools
 import math
 import torch
-
 from torch.utils.data import DataLoader
 from src.logger.logger import _logger, _configLogger
 from src.dataset.dataset import EventDatasetCollection, EventDataset
@@ -12,6 +11,7 @@ from src.utils.import_tools import import_module
 from src.dataset.functions_graph import graph_batch_func
 from src.dataset.functions_data import concat_events
 from src.utils.paths import get_path
+
 from src.layers.object_cond import object_condensation_loss
 
 def to_filelist(args, mode="train"):
@@ -26,6 +26,24 @@ def to_filelist(args, mode="train"):
     print(mode, "filelist:", flist)
     flist = [get_path(p, "preprocessed_data") for p in flist]
     return flist
+
+class TensorCollection:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+    def to(self, device):
+        # Move all tensors to device
+        for k, v in self.__dict__.items():
+            if torch.is_tensor(v):
+                setattr(self, k, v.to(device))
+        return self
+    def dict_rep(self):
+        d = {}
+        for k, v in self.__dict__.items():
+            if torch.is_tensor(v):
+                d[k] = v
+        return d
+    #def __getitem__(self, i):
+    #    return TensorCollection(**{k: v[i] for k, v in self.__dict__.items()})
 
 def train_load(args):
     train_files = to_filelist(args, "train")
@@ -285,14 +303,19 @@ def get_optimizer_and_scheduler(args, model, device):
 def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
     def loss(model_input, model_output, gt_labels):
-        batch_numbers = model_input.batch_idx
-        return object_condensation_loss(model_input, model_output, gt_labels+1, batch_numbers,
-                                        attr_weight=args.attr_loss_weight,
-                                        repul_weight=args.repul_loss_weight,
-                                        coord_weight=args.coord_loss_weight,
-                                        beta_type=args.beta_type,
-                                        lorentz_norm=args.lorentz_norm)
-        # TODO: add other arguments (i.e. attractive loss weight etc.)
+            batch_numbers = model_input.batch_idx
+            if args.loss != "quark_distance":
+                labels = gt_labels+1
+            else:
+                labels = gt_labels
+            return object_condensation_loss(model_input, model_output, labels, batch_numbers,
+                                            attr_weight=args.attr_loss_weight,
+                                            repul_weight=args.repul_loss_weight,
+                                            coord_weight=args.coord_loss_weight,
+                                            beta_type=args.beta_type,
+                                            lorentz_norm=args.lorentz_norm,
+                                            spatial_part_only=args.spatial_part_only,
+                                            loss_quark_distance=args.loss=="quark_distance")
     return loss
 
 def renumber_clusters(tensor):
@@ -310,13 +333,18 @@ def get_gt_func(args):
     R = 0.8
     def get_idx_for_event(obj, i):
         return obj.batch_number[i], obj.batch_number[i + 1]
-    def get_labels(b, pfcands, special=False):
+    def get_labels(b, pfcands, special=False, get_coordinates=False):
         # b: Batch of events
+        # if get_coordinates is true, it returns the coordinates of the labels rather than the clustering labels themselves.
         labels = torch.zeros(len(pfcands)).long()
+        if get_coordinates:
+            labels_coordinates = torch.zeros(len(b.matrix_element_gen_particles.pt), 4).long()
+            labels_no_renumber = torch.ones_like(labels)*-1
+            offset = 0
         for i in range(len(b)):
-            s, e = get_idx_for_event(b.matrix_element_gen_particles, i)
-            dq_eta = b.matrix_element_gen_particles.eta[s:e]
-            dq_phi = b.matrix_element_gen_particles.phi[s:e]
+            s_dq, e_dq = get_idx_for_event(b.matrix_element_gen_particles, i)
+            dq_eta = b.matrix_element_gen_particles.eta[s_dq:e_dq]
+            dq_phi = b.matrix_element_gen_particles.phi[s_dq:e_dq]
             # dq_pt = b.matrix_element_gen_particles.pt[s:e] # Maybe we can somehow weigh the loss by pt?
             s, e = get_idx_for_event(pfcands, i)
             pfcands_eta = pfcands.eta[s:e]
@@ -333,14 +361,26 @@ def get_gt_func(args):
             if len(closest_quark_idx):
                 if special: print("Closest quark idx", closest_quark_idx, "; renumbered ",
                                   renumber_clusters(closest_quark_idx + 1) - 1)
-                closest_quark_idx = renumber_clusters(closest_quark_idx + 1) - 1
+                if not get_coordinates:
+                    closest_quark_idx = renumber_clusters(closest_quark_idx + 1) - 1
+                else:
+                    labels_no_renumber[s:e] = closest_quark_idx
+                    closest_quark_idx[closest_quark_idx != -1] += offset
             labels[s:e] = closest_quark_idx
+            if get_coordinates:
+                E_dq = b.matrix_element_gen_particles.E[s_dq:e_dq]
+                pxyz_dq = b.matrix_element_gen_particles.pxyz[s_dq:e_dq] # the -1 doesn't matter as it will be ignored anyway
+                labels_coordinates[s_dq:e_dq] = torch.cat([E_dq.unsqueeze(-1), pxyz_dq], dim=1)
+                offset += len(E_dq)
+        if get_coordinates:
+            print("labels coords", labels_coordinates)
+            return TensorCollection(labels=labels, labels_coordinates=labels_coordinates, labels_no_renumber=labels_no_renumber)
         return labels
     def gt(events):
         #special_labels = get_labels(events, events.special_pfcands, special=True)
         #print("Special pfcands labels", special_labels)
         #return torch.cat([get_labels(events, events.pfcands), special_labels])
-        return get_labels(events, events.pfcands)
+        return get_labels(events, events.pfcands, get_coordinates=args.loss=="quark_distance")
     return gt
 
 

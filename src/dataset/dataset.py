@@ -366,7 +366,10 @@ class EventDataset(torch.utils.data.IterableDataset):
         if model_output_file is not None:
             self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
             self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
-            self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
+            if model_clusters_file is not None:
+                self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
+            else:
+                self.model_clusters = self.model_output["model_cluster"]
             # model_output["batch_idx"] contains the batch index for each event. model_clusters is an array of the model labels for each event.
         else:
             self.model_output = None
