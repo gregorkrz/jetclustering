@@ -53,3 +53,4 @@ for i, model in tqdm(enumerate(models)):
 fig.tight_layout()
 fig.savefig(out_file_avg_number_matched_quarks)
 print("Saved to", out_file_avg_number_matched_quarks)
+

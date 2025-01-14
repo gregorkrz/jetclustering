@@ -174,10 +174,10 @@ def evaluate(
                         label_true = y.labels_no_renumber.detach().cpu()
                     else:
                         label_true = y.detach().cpu()
-                    plot_batch_eval_OC(event_batch, label_true,
-                                       y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
-                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"),
-                                       args=args, batch=n_batches, dropped_batches=batch.dropped_batches)
+                    #plot_batch_eval_OC(event_batch, label_true,
+                    #                   y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
+                    #                   os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"),
+                    #                   args=args, batch=n_batches, dropped_batches=batch.dropped_batches)
                 n_batches += 1
                 if not predict:
                     tq.set_postfix(

@@ -1,0 +1,78 @@
+import pickle
+import os
+from src.utils.paths import get_path
+from src.utils.utils import CPU_Unpickler
+import argparse
+from src.jetfinder.clustering import get_clustering_labels
+import optuna
+from src.dataset.dataset import EventDataset
+from src.evaluation.clustering_metrics import compute_f1_score
+
+import warnings
+warnings.filterwarnings("ignore")
+
+# filename = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
+# for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
+# keeping the clustering script here for now, so that it's separated from the GPU-heavy tasks like inference (clustering may be changed frequently...)
+# parameters: min-cluster-size: [5, 30]
+#             min-samples: [2, 30]
+#             epsilon: [0.01, 0.5]
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", type=str, required=True)
+parser.add_argument("--dataset", type=int, required=False, default=3) # which dataset to optimize on
+parser.add_argument("--dataset-cap", type=int, required=False, default=-1)
+args = parser.parse_args()
+path = get_path(args.input, "results")
+study_file = os.path.join(path, "clustering_tuning_{}.log".format(args.dataset))
+
+study_exists = os.path.exists(study_file)
+storage = optuna.storages.JournalStorage(
+    optuna.storages.journal.JournalFileBackend(study_file)
+)
+
+if study_exists:
+    study = optuna.load_study(storage=storage, study_name="clustering")
+else:
+    study = optuna.create_study(storage=storage, study_name="clustering")
+
+eval_result_file = os.path.join(path, "eval_{}.pkl".format(args.dataset))
+eval_result = CPU_Unpickler(open(eval_result_file, "rb")).load()
+
+dataset_cap = args.dataset_cap
+
+def objective(trial):
+    min_clust_size = trial.suggest_int("min_cluster_size", 5, 30)
+    min_samples = trial.suggest_int("min_samples", 2, 30)
+    epsilon = trial.suggest_uniform("epsilon", 0.01, 0.5)
+    print("Starting trial with parameters:", trial.params)
+    suffix = "{}-{}-{}".format(min_clust_size, min_samples, epsilon)
+    clustering_file = os.path.join(path, "clustering_{}_{}.pkl".format(suffix, args.dataset))
+    if not os.path.exists(clustering_file):
+        if eval_result["pred"].shape[1] == 4:
+            coords = eval_result["pred"][:, :3]
+        else:
+            coords = eval_result["pred"][:, :4]
+        event_idx = eval_result["event_idx"]
+        if dataset_cap > 0:
+            filt = event_idx < dataset_cap
+            event_idx = event_idx[filt]
+            coords = coords[filt]
+        labels = get_clustering_labels(coords, event_idx, min_cluster_size=min_clust_size,
+                                       min_samples=min_samples, epsilon=epsilon, bar=True)
+        with open(clustering_file, "wb") as f:
+            pickle.dump(labels, f)
+        print("Clustering saved to", clustering_file)
+    #else:
+    #    labels = pickle.load(open(clustering_file, "rb"))
+    print("Dataset:", eval_result["filename"])
+    dataset = EventDataset.from_directory(eval_result["filename"],
+                                          model_clusters_file=clustering_file,
+                                          model_output_file=eval_result_file,
+                                          include_model_jets_unfiltered=True)
+    score = compute_f1_score(dataset, dataset_cap=dataset_cap)
+    print("F1 score for", suffix, ":", score)
+    return score
+
+study.optimize(objective, n_trials=10)
+print(f"Best params is {study.best_params} with value {study.best_value}")
