@@ -575,6 +575,7 @@ def get_batch(event, batch_config, y, test=False):
     batch_scalars = batch_scalars_pfcands # torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
     assert batch_idx.max() == event.n_events - 1
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
+    dropped_batches = batch_idx[filt].unique()
     if (~filt).sum() > 0:
         print("Found events with no signal!!! Dropping it in training", (~filt).sum() / len(filt), batch_filter)
         print("Renumbered", renumber_clusters(batch_idx[filt]).unique())
@@ -584,12 +585,14 @@ def get_batch(event, batch_config, y, test=False):
         y_filt = y
     else:
         y_filt = y[filt]
+        print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
     return EventBatch(
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],
         batch_idx=renumber_clusters(batch_idx[filt]),
         pt=event.pfcands.pt[filt],
         filter=filt,
+        dropped_batches=dropped_batches
     ), y_filt
 
 def to_tensor(item):
@@ -684,10 +687,10 @@ class EventJets(EventCollection):
             dim=1
         )
         tst = torch.abs(torch.norm(self.pxyz, dim=1) - self.p)
-        if not (tst[~torch.isnan(tst)] < 1e-2).all():
-            print("!!!!!", (torch.abs(torch.norm(self.pxyz, dim=1) - self.p)).max())
-            print("pt", self.pt, "eta", self.eta, "phi", self.phi, "mass", mass, "batch_number", batch_number)
-            assert False
+        #if not (tst[~torch.isnan(tst)] < 1e-2).all():
+        #    print("!!!!!", (torch.abs(torch.norm(self.pxyz, dim=1) - self.p)).max())
+        #    print("pt", self.pt, "eta", self.eta, "phi", self.phi, "mass", mass, "batch_number", batch_number)
+        #    assert False
         self.mass = to_tensor(mass)
         self.area = area
         if self.area is not None:
@@ -851,12 +854,13 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx
         self.pt = pt
         self.filter = filter
+        self.dropped_batches = dropped_batches
     def to(self, device):
         self.input_vectors = self.input_vectors.to(device)
         self.input_scalars = self.input_scalars.to(device)

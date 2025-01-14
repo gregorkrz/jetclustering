@@ -168,29 +168,30 @@ def get_labels_jets(b, pfcands, jets):
     return (labels >= 0).float()
 
 
-def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, batch):
+def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, batch, dropped_batches):
     # Plot the batch, together with nice colors with object condensation GT and betas
     max_events = 5
     sz = 10
+    assert len(y_true) == len(y_pred), f"y_true: {len(y_true)}, y_pred: {len(y_pred)}"
     if args.beta_type == "pt+bc":
         n_columns = 6
         y_true_bc = (y_true >= 0).int()
-        score_histogram(y_true_bc, y_pred[:, 3]).savefig(os.path.join(os.path.dirname(filename), "binary_classifier_scores.pdf"))
-        score_histogram(y_true_bc, (event_batch.pfcands.pf_cand_jet_idx >= 0).float()).savefig(
-            os.path.join(os.path.dirname(filename), "binary_classifier_scores_AK8.pdf"))
-        score_histogram(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets)).savefig(
-            os.path.join(os.path.dirname(filename), "binary_classifier_scores_radius_FatJets.pdf"))
-        score_histogram(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets)).savefig(
-            os.path.join(os.path.dirname(filename), "binary_classifier_scores_radius_GenJets.pdf"))
-        fig, ax = plt.subplots(1, 3, figsize=(3*sz/2, sz/2))
-        confusion_matrix_plot(y_true_bc, y_pred[:, 3] > 0.5, ax[0])
-        ax[0].set_title("Classifier (cut at 0.5)")
-        confusion_matrix_plot(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets), ax[2])
-        ax[2].set_title("FatJets")
-        confusion_matrix_plot(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets), ax[1])
-        ax[1].set_title("GenJets")
-        fig.tight_layout()
-        fig.savefig(os.path.join(os.path.dirname(filename), "conf_matrices.pdf"))
+        #score_histogram(y_true_bc, y_pred[:, 3]).savefig(os.path.join(os.path.dirname(filename), "binary_classifier_scores.pdf"))
+        #score_histogram(y_true_bc, (event_batch.pfcands.pf_cand_jet_idx >= 0).float()).savefig(
+        #    os.path.join(os.path.dirname(filename), "binary_classifier_scores_AK8.pdf"))
+        #score_histogram(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets)).savefig(
+        #    os.path.join(os.path.dirname(filename), "binary_classifier_scores_radius_FatJets.pdf"))
+        #score_histogram(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets)).savefig(
+        #    os.path.join(os.path.dirname(filename), "binary_classifier_scores_radius_GenJets.pdf"))
+        #fig, ax = plt.subplots(1, 3, figsize=(3*sz/2, sz/2))
+        #confusion_matrix_plot(y_true_bc, y_pred[:, 3] > 0.5, ax[0])
+        #ax[0].set_title("Classifier (cut at 0.5)")
+        #confusion_matrix_plot(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets), ax[2])
+        #ax[2].set_title("FatJets")
+        #confusion_matrix_plot(y_true_bc, get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets), ax[1])
+        #ax[1].set_title("GenJets")
+        #fig.tight_layout()
+        #fig.savefig(os.path.join(os.path.dirname(filename), "conf_matrices.pdf"))
     else:
         n_columns = 4
     fig, ax = plt.subplots(max_events, n_columns, figsize=(n_columns * sz, sz * max_events))
@@ -198,12 +199,14 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, b
     for i in range(event_batch.n_events):
         if i >= max_events:
             break
+        if i in dropped_batches:
+            continue
         event = event_batch[i]
         filt = batch_idx == i
         y_true_event = y_true[filt]
         y_pred_event = y_pred[filt]
         if args.beta_type == "default":
-            betas = y_pred_event[:, 3]
+            betas = y_pred_event[filt, 3]
         elif args.beta_type == "pt":
             betas = event.pfcands.pt
         elif args.beta_type == "pt+bc":

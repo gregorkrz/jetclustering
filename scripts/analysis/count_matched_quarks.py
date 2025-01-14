@@ -12,7 +12,7 @@ from src.plotting.eval_matrix import matrix_plot
 from src.utils.paths import get_path
 from pathlib import Path
 import matplotlib.pyplot as plt
-
+from src.dataset.dataset import EventDataset
 
 # This script attempts to open dataset files and prints the number of events in each one.
 R = 0.8
@@ -78,10 +78,14 @@ if not args.plot_only:
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
-        dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file,
-                           include_model_jets_unfiltered=True)
+        #dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file,
+        #                   include_model_jets_unfiltered=True)
+        dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
+                                    model_output_file=model_output_file,
+                                    include_model_jets_unfiltered=True)
         n = 0
-        for data in tqdm(dataset):
+        for x in tqdm(range(len(dataset))):
+            data = dataset[x]
             jets_object = data.__dict__[args.jets_object]
             n += 1
             if args.dataset_cap != -1 and n > args.dataset_cap:

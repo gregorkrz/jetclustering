@@ -293,28 +293,29 @@ class _SimpleIter(object):
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
         return create_jets_outputs_new(X), False
 
-class EventDatasetCollection(torch.utils.data.IterableDataset):
+class EventDatasetCollection(torch.utils.data.Dataset):
     def __init__(self, dir_list):
         self.event_collections_dict = OrderedDict()
         for dir in dir_list:
             self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
         self.event_thresholds = [x.n_events for x in self.event_collections_dict.values()]
+        self.event_thresholds = np.cumsum([0] + self.event_thresholds)
         self.dir_list = dir_list
     def __len__(self):
         return self.n_events
     def get_idx(self, i):
-        prev_threshold = 0
         for j, threshold in enumerate(self.event_thresholds):
-            if i < threshold:
-                return self.event_collections_dict[self.dir_list[j]][prev_threshold + i]
-            prev_threshold += threshold
+            if i >= threshold:
+                print("-------------", i, threshold, self.event_thresholds)
+                return self.event_collections_dict[self.dir_list[j]][i - threshold]
     def getitem(self, i):
         return self.get_idx(i)
     def __iter__(self):
         for i in range(self.n_events):
             yield self.get_idx(i)
     def __getitem__(self, i):
+        assert i < self.n_events, "Index out of bounds: %d >= %d" % (i, self.n_events)
         return self.get_idx(i)
     # A collection of EventDatasets.
     # You should use a sampler together with this, as by default it just concatenates the EventDatasets together!
@@ -337,7 +338,7 @@ def get_batch_bounds(batch_idx):
     result[-1] = len(b_list)
     return result
 
-class EventDataset(torch.utils.data.IterableDataset):
+class EventDataset(torch.utils.data.Dataset):
     @staticmethod
     def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
         result = {}
@@ -366,6 +367,7 @@ class EventDataset(torch.utils.data.IterableDataset):
         if model_output_file is not None:
             self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
             self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
+            self.n_events = self.model_output["event_idx"].max().int().item()  # sometimes the last batch gets cut off, which causes problems
             if model_clusters_file is not None:
                 self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
             else:
@@ -380,7 +382,6 @@ class EventDataset(torch.utils.data.IterableDataset):
    # def __next__(self):
 
     def get_idx(self, i):
-        # i is a list of indices that we want to get from the dataset
         start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
         end = {key: self.metadata[key + "_batch_idx"][i + 1] for key in self.attrs}
         result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
@@ -426,6 +427,7 @@ class EventDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         return self.get_iter()
     def __getitem__(self, i):
+        assert i < self.n_events, "Index out of bounds: %d >= %d" % (i, self.n_events)
         return self.get_idx(i)
 
 
@@ -581,3 +583,4 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
                 kwargs = {k: copy.deepcopy(self.__dict__[k]) for k in self._init_args}
                 self._iters[worker_id] = _SimpleIter(**kwargs)
                 return self._iters[worker_id]
+

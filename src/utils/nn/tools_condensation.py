@@ -154,7 +154,7 @@ def evaluate(
             for event_batch in tq:
                 count += event_batch.n_events # number of samples
                 y = gt_func(event_batch)
-                batch, y = get_batch(event_batch, batch_config, y, test=predict)
+                batch, y = get_batch(event_batch, batch_config, y, test=False)
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)
@@ -170,9 +170,14 @@ def evaluate(
                 if n_batches in plot_batches and not predict: # don't plot these for prediction - they are useful in training
                     plot_folder = os.path.join(args.run_path, "eval_plots", "epoch_" + str(epoch) + "_step_" + str(step))
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
-                    plot_batch_eval_OC(event_batch, y.labels_no_renumber.detach().cpu(),
+                    if args.loss == "quark_distance":
+                        label_true = y.labels_no_renumber.detach().cpu()
+                    else:
+                        label_true = y.detach().cpu()
+                    plot_batch_eval_OC(event_batch, label_true,
                                        y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
-                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"), args=args, batch=n_batches)
+                                       os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"),
+                                       args=args, batch=n_batches, dropped_batches=batch.dropped_batches)
                 n_batches += 1
                 if not predict:
                     tq.set_postfix(

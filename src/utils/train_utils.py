@@ -59,6 +59,7 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
+        shuffle=True
     )
     '''val_loaders = {}
     for filename in val_files:
@@ -83,6 +84,7 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
+        shuffle=True
     )
     return train_loader, val_loader
 
@@ -338,7 +340,7 @@ def get_gt_func(args):
         # if get_coordinates is true, it returns the coordinates of the labels rather than the clustering labels themselves.
         labels = torch.zeros(len(pfcands)).long()
         if get_coordinates:
-            labels_coordinates = torch.zeros(len(b.matrix_element_gen_particles.pt), 4).long()
+            labels_coordinates = torch.zeros(len(b.matrix_element_gen_particles.pt), 4).float()
             labels_no_renumber = torch.ones_like(labels)*-1
             offset = 0
         for i in range(len(b)):

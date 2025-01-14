@@ -35,11 +35,11 @@ colors = {
 }
 
 #%%
-
 models = {
     "GATr_rinv_03_m_900": "train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45",
     "GATr_rinv_07_m_900": "train/Test_betaPt_BC_all_datasets_2025_01_08_10_54_58",
-    "LGATr_rinv_03_m_900": "train/Test_LGATr_all_datasets_2025_01_08_19_27_54"
+    #"LGATr_rinv_03_m_900": "train/Test_LGATr_all_datasets_2025_01_08_19_27_54",
+    "LGATr_rinv_07_m_900_s31k": "train/Eval_LGATr_SB_spatial_part_only_1_2025_01_13_14_31_58"
 }
 
 output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison", "results")
@@ -65,12 +65,18 @@ for ds in range(20):
         result = CPU_Unpickler(open(filename, "rb")).load()
         print(result["filename"])
         m_med, m_dark, r_inv = get_properties(result["filename"])
-        clusters = CPU_Unpickler(open(clusters_file, "rb")).load()
+        if os.path.exists(clusters_file):
+            clusters = CPU_Unpickler(open(clusters_file, "rb")).load()
+        else:
+            clusters = result["model_cluster"].numpy()
+            clusters_file = None
         dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True)
         for e in range(n_events_per_file):
             print("            ----- event:", e)
-            c = [colors[i] for i in clusters[result["event_idx"] == e]]
+            c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]
             model_coords = result["pred"][result["event_idx"] == e]
+            if model_coords.shape[1] == 5:
+                model_coords = model_coords[:, 1:]
             model_coords = calc_eta_phi(model_coords, 0)
             plot_event(dataset[e], colors=c, ax=ax[e, 2*mn])
             plot_event(dataset[e], colors=c, ax=ax[e, 2*mn+1], custom_coords=model_coords)
@@ -80,6 +86,6 @@ for ds in range(20):
                 ax[e, 2*mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
                 #ax[e, 2*mn+1].text(model_coords[0][i], model_coords[1][i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
             ax[e, 2*mn].set_title(model)
-            ax[e, 2*mn + 1].set_title(model + " (model coords)")
+            ax[e, 2*mn + 1].set_title(model + " (virt. coord.)")
         fig.tight_layout()
         fig.savefig(os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf"))

@@ -60,7 +60,7 @@ wandb.init(project=args.wandb_projectname, entity=os.environ["SVJ_WANDB_ENTITY"]
 wandb.run.name = args.run_name
 wandb.config.run_path = run_path
 wandb.config.update(args.__dict__)
-wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_") or key.startswith("CUDA_")}
+wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_") or key.startswith("CUDA_") or key.startswith("SLURM_")}
 
 args.local_rank = (
     None if args.backend is None else int(os.environ.get("LOCAL_RANK", "0"))
@@ -178,27 +178,6 @@ if training_mode:
             val_loader=val_loaders,
             batch_config=batch_config
         )
-        '''_logger.info("Epoch #%d validating" % epoch)
-        valid_metric = evaluate(
-            model,
-            val_loaders,
-            dev,
-            epoch,
-            steps,
-            loss_func=loss,
-            gt_func=gt,
-            local_rank=local_rank,
-            args=args,
-        )
-        is_best_epoch = valid_metric < best_valid_metric
-        if is_best_epoch:
-            print("Best epoch:", epoch)
-            best_valid_metric = valid_metric
-        _logger.info(
-            "Epoch #%d: Current validation metric: %.5f (best: %.5f)"
-            % (epoch, valid_metric, best_valid_metric),
-            color="bold",
-        )'''
 
 if args.data_test:
     if args.backend is not None and local_rank != 0:

@@ -995,17 +995,14 @@ def object_condensation_loss(
             norms = norms.abs()
         else:
             if spatial_part_only:
-                print("xj", xj[labels.labels != -1, 1:4][:10])
-                print("labels", target_coords[:10])
-                norms = torch.sum(
-                    torch.square(xj[labels.labels != -1, 1:4].unsqueeze(1) - target_coords[:, 1:4].unsqueeze(1)),
-                    dim=-1,
-                )
+                x_coords = xj[labels.labels != -1, 1:4]
+                x_true = target_coords[:, 1:4]
             else:
-                norms = torch.sum(
-                    torch.square(xj[labels.labels != -1].unsqueeze(1) - target_coords.unsqueeze(1)),
-                    dim=-1,
-                ) # Take the norm squared
+                x_coords = xj[labels.labels != -1]
+                x_true = target_coords
+            #norms = torch.norm(x_coords - x_true, p=2, dim=1)
+            # cosine similarity
+            norms = torch.nn.functional.cosine_similarity(x_coords, x_true, dim=1)
         a = {"norms_loss": torch.mean(norms)}
         loss = a["norms_loss"]
         if beta_type == "pt+bc":
