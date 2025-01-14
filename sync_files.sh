@@ -22,3 +22,8 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 
 # T3 -> Vega data
 # rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/preprocessed_data/scouting_PFNano_signals2 /ceph/hpc/home/krzmancg/jetclustering/
+
+# T3 -> Vega code
+rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/code /ceph/hpc/home/krzmancg/jetclustering/ --exclude "wandb" --exclude ".env" --exclude "env.sh" --exclude "__pycache__" --exclude ".git"
+
+

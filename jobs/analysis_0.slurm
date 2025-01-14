@@ -2,11 +2,11 @@
 #SBATCH --partition=standard           # Specify the partition
 #SBATCH --account=t3                  # Specify the account
 #SBATCH --mem=10000                   # Request 10GB of memory
-#SBATCH --time=00:30:00               # Set the time limit to 1 hour
+#SBATCH --time=01:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJ  # Name the job
 #SBATCH --output=jobs/analysis_0_output2.log       # Redirect stdout to a log file
 #SBATCH --error=jobs/analysis_0_error2.log         # Redirect stderr to a log file
-#SBATCH -n 4
+#SBATCH -n 8
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
