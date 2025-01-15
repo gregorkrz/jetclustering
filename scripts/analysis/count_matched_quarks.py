@@ -41,7 +41,7 @@ if args.eval_dir:
                 clustering_file = "clustering_{}_{}.pkl".format(args.clustering_suffix, file_number)
             f = CPU_Unpickler(open(os.path.join(eval_dir, file), "rb")).load()
             clustering_file = os.path.join(eval_dir, clustering_file)
-            if "model_cluster" in f:
+            if "model_cluster" in f and not args.clustering_suffix:
                 clustering_file = None
             dataset_path_to_eval_file[f["filename"]] = [os.path.join(eval_dir, file), clustering_file]
     print(dataset_path_to_eval_file)

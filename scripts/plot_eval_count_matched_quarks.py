@@ -13,6 +13,7 @@ args = parser.parse_args()
 path = get_path(args.input, "results")
 
 models = sorted([x for x in os.listdir(path) if not os.path.isfile(os.path.join(path, x))])
+models = [x for x in models if "C1010" not in x]
 
 out_file_PR = os.path.join(get_path(args.input, "results"), "precision_recall.pdf")
 out_file_avg_number_matched_quarks = os.path.join(get_path(args.input, "results"), "avg_number_matched_quarks.pdf")
@@ -22,7 +23,7 @@ fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
-    result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
+    #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
     result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
@@ -42,7 +43,7 @@ fig, ax = plt.subplots(2, len(models), figsize=(sz * len(models), sz * 2))
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
-    result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
+    #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
     result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))

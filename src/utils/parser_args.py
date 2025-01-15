@@ -105,6 +105,8 @@ parser.add_argument(
     help="Loss function to use (oc is object condensation, quark_distance aims to cluster things around the corresponding dark quark)"
 )
 
+parser.add_argument("--gt-radius", type=float, default=0.8, help="GT radius R - within the radius of a dark quark, GT points to the dark quark, out of the radius it's noise")
+
 parser.add_argument("--attr-loss-weight", type=float, default=1.0, help="weight for the attractive loss")
 parser.add_argument("--repul-loss-weight", type=float, default=1.0, help="weight for the repulsive loss")
 parser.add_argument("--coord-loss-weight", type=float, default=0.0, help="weight for the coordinate loss")

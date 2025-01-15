@@ -14,12 +14,12 @@ parser.add_argument("--input", type=str, required=True)
 parser.add_argument("--output-suffix", type=str, required=False, default="")
 parser.add_argument("--min-cluster-size", type=int, default=10)
 parser.add_argument("--min-samples", type=int, default=20)
+parser.add_argument("--epsilon", type=float, default=0.1)
 
 args = parser.parse_args()
 path = get_path(args.input, "results")
 
 #dir_results = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
-
 
 for file in os.listdir(path):
     if file.startswith("eval_") and file.endswith(".pkl"):
@@ -34,7 +34,7 @@ for file in os.listdir(path):
             else:
                 coords = result["pred"][:, :4]
             labels = get_clustering_labels(coords, result["event_idx"], min_cluster_size=args.min_cluster_size,
-                                           min_samples=args.min_samples)
+                                           min_samples=args.min_samples, epsilon=args.epsilon)
             with open(labels_path, "wb") as f:
                 pickle.dump(labels, f)
             print("Saved labels to", labels_path)

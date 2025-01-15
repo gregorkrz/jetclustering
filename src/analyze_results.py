@@ -25,6 +25,24 @@ def plot_score_histograms(result, eval_path):
     score_histogram(y_true, y_pred, sz=5).savefig(os.path.join(eval_path, "binary_classifier_scores.pdf"))
     per_pt_score_histogram(y_true, y_pred, pt).savefig(os.path.join(eval_path, "binary_classifier_scores_per_pt.pdf"))
     plot_roc_curve(y_true, y_pred).savefig(os.path.join(eval_path, "roc_curve.pdf"))
+import numpy as np
+def plot_four_momentum_spectrum(result, eval_path):
+    y_true = (result["GT_cluster"] >= 0)
+    y_pred = result["pred"][:, :4]
+    mass_squared = y_pred[:, 0]**2 - y_pred[:, 1]**2 - y_pred[:, 2]**2 - y_pred[:, 3]**2
+    signal_masses = mass_squared[y_true]
+    bkg_masses = mass_squared[~y_true]
+    all_masses = mass_squared
+    fig, ax = plt.subplots()
+    bins = np.linspace(-25, 25, 200)
+    #ax.hist(signal_masses, bins=bins, histtype="step", label="Signal")
+    #ax.hist(bkg_masses, bins=bins, histtype="step", label="Background")
+    ax.hist(all_masses, bins=bins, histtype="step", label="All")
+    ax.set_xlabel("m^2")
+    ax.set_yscale("log")
+    ax.set_ylabel("count")
+    ax.legend()
+    fig.savefig(os.path.join(eval_path, "mass_squared.pdf"))
 
 def plot_cm(result, eval_path):
     # Confusion matrices
@@ -56,7 +74,8 @@ for file in os.listdir(input_dir):
         def plotting_blueprint(result, eval_path):
             pass
 
-        plotting_jobs = [plot_score_histograms, plot_cm]
+        #plotting_jobs = [plot_score_histograms, plot_cm]
+        plotting_jobs = [plot_four_momentum_spectrum]
         from time import time
 
         for job in plotting_jobs:

@@ -327,12 +327,11 @@ def renumber_clusters(tensor):
         mapping[u] = i
     return mapping[tensor]
 
-
 def get_gt_func(args):
     # Gets the GT function: the function accepts an Event batch
     # and returns the ground truth labels (GT idx of a dark quark it belongs to, or -1 for noise)
     # By default, it returns the dark quark that is closest to the event, IF it's closer than R.
-    R = 0.8
+    R = args.gt_radius
     def get_idx_for_event(obj, i):
         return obj.batch_number[i], obj.batch_number[i + 1]
     def get_labels(b, pfcands, special=False, get_coordinates=False):
@@ -375,7 +374,6 @@ def get_gt_func(args):
                 labels_coordinates[s_dq:e_dq] = torch.cat([E_dq.unsqueeze(-1), pxyz_dq], dim=1)
                 offset += len(E_dq)
         if get_coordinates:
-            print("labels coords", labels_coordinates)
             return TensorCollection(labels=labels, labels_coordinates=labels_coordinates, labels_no_renumber=labels_no_renumber)
         return labels
     def gt(events):

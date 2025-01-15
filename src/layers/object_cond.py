@@ -1002,7 +1002,7 @@ def object_condensation_loss(
                 x_true = target_coords
             #norms = torch.norm(x_coords - x_true, p=2, dim=1)
             # cosine similarity
-            norms = torch.nn.functional.cosine_similarity(x_coords, x_true, dim=1)
+            norms = 2 - (torch.nn.functional.cosine_similarity(x_coords, x_true[:, 1:4], dim=1) + 1)
         a = {"norms_loss": torch.mean(norms)}
         loss = a["norms_loss"]
         if beta_type == "pt+bc":
