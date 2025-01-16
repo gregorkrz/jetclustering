@@ -1,4 +1,3 @@
-
 #!/bin/bash
 sbatch <<EOT
 #!/bin/bash
@@ -19,6 +18,5 @@ srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz
 
 exit 0
 EOT
-
 
 # run: bash jobs/wrapper_training_4_LGATr_finetune.sh 0.7

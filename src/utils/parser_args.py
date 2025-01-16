@@ -126,30 +126,40 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--scalars-oc",
+    help="For L-GATr, use scalar virtual coordinates in the OC loss",
+    action="store_true",
+    default=False,
+)
+
+parser.add_argument(
     "--spatial-part-only",
     help="For L-GATr: if turned on, the spatial part is only going to be used for the loss.",
     action="store_true",
     default=False,
 )
 
+
+# defaults: --min-cluster-size 11 --min-samples 18 --epsilon 0.48
+
 parser.add_argument(
     "--min-cluster-size",
     help="parameter of the HDBSCAN clustering",
     type=int,
-    default=10
+    default=11
 )
 
 parser.add_argument(
     "--min-samples",
     help="parameter of the HDBSCAN clustering",
     type=int,
-    default=20
+    default=18
 )
 parser.add_argument(
     "--epsilon",
     help="parameter of the HDBSCAN clustering",
     type=float,
-    default=0.01
+    default=0.48
 )
 
 

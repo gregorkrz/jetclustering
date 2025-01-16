@@ -408,7 +408,7 @@ class EventDataset(torch.utils.data.Dataset):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
         pfcands_pt = pfcands.pt
         pfcands_pxyz = pfcands.pxyz
-        assert len(pfcands_pt) == event_filter_e - event_filter_s
+        assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={}".format(filter)
         #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
         jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)

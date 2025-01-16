@@ -925,7 +925,8 @@ def object_condensation_loss(
         beta_type="default",
         lorentz_norm=False,
         spatial_part_only=False,
-        loss_quark_distance=False
+        loss_quark_distance=False,
+        oc_scalars=False
 ):
     """
     :param batch: Model input
@@ -946,6 +947,8 @@ def object_condensation_loss(
         clust_space_dim = S - 1
         noise_logits = pred[:, clust_space_dim]
     original_coords = batch.input_vectors
+    if oc_scalars:
+        original_coords = original_coords[:, 1:4]
     if dis:
         distance_threshold = torch.reshape(pred[:, -1], [-1, 1])
     else:

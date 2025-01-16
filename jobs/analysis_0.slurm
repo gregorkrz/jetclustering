@@ -6,7 +6,7 @@
 #SBATCH --job-name=SVJ  # Name the job
 #SBATCH --output=jobs/analysis_0_output2.log       # Redirect stdout to a log file
 #SBATCH --error=jobs/analysis_0_error2.log         # Redirect stderr to a log file
-#SBATCH -n 8
+#SBATCH -n 6
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
@@ -24,13 +24,28 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 # Identity eval
 #singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval/identity  --eval-dir train/Eval_Identity_2025_01_13_17_08_48 --jets-object model_jets  &
 # Identity eval with FT clustering
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_clustering/identity  --eval-dir train/Eval_Identity_2025_01_13_17_08_48 --jets-object model_jets --clustering-suffix FT  &
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_clustering/identity  --eval-dir train/Eval_Identity_2025_01_13_17_08_48 --jets-object model_jets --clustering-suffix FT  &
 
 # Eval of step13k L-GATr #Eval_LGATr_SB_spatial_part_only_1_step_13k_2025_01_13_17_28_03
 #singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval/LGATr_rinv_03_m_900_S13k --eval-dir train/Eval_LGATr_SB_spatial_part_only_1_step_13k_2025_01_13_17_28_03 --jets-object model_jets  &
 # FT clustering
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_clustering/LGATr_rinv_03_m_900_S13k --eval-dir train/Eval_LGATr_SB_spatial_part_only_1_step_13k_2025_01_13_17_28_03 --jets-object model_jets --clustering-suffix FT   &
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_clustering/LGATr_rinv_03_m_900_S13k --eval-dir train/Eval_LGATr_SB_spatial_part_only_1_step_13k_2025_01_13_17_28_03 --jets-object model_jets --clustering-suffix FT   &
+# Ft clustering + 40k L-GATr model
+# Eval_LGATr_SB_spatial_part_only_1_2025_01_13_14_31_58
+#singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_clustering/LGATr_rinv_03_m_900 --eval-dir train/Eval_LGATr_SB_spatial_part_only_1_2025_01_13_14_31_58 --jets-object model_jets --clustering-suffix FT   &
 
+
+### Eval finetuning
+
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_R/LGATr_R06 --eval-dir train/Eval_GT_R_lgatr_R06_2025_01_16_10_22_17 --jets-object model_jets    &
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_R/LGATr_R10 --eval-dir train/Eval_big_train_lgatr_R10_2025_01_16_10_26_10 --jets-object model_jets    &
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_R/LGATr_R07 --eval-dir train/Eval_GT_R_lgatr_R07_2025_01_16_12_06_53 --jets-object model_jets    &
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_R/LGATr_R09 --eval-dir train/Eval_GT_R_lgatr_R09_2025_01_16_10_11_03 --jets-object model_jets    &
+
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals2/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval_FT_clustering/LGATr_train_all_26k --eval-dir train/Eval_all_train_26k_2025_01_16_12_07_15 --jets-object model_jets   &
+
+
+################
 
 wait
 echo "All scripts done"

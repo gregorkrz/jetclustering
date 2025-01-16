@@ -317,8 +317,10 @@ def get_loss_func(args):
                                             beta_type=args.beta_type,
                                             lorentz_norm=args.lorentz_norm,
                                             spatial_part_only=args.spatial_part_only,
-                                            loss_quark_distance=args.loss=="quark_distance")
+                                            loss_quark_distance=args.loss=="quark_distance",
+                                            oc_scalars=args.scalars_oc)
     return loss
+
 
 def renumber_clusters(tensor):
     unique = tensor.unique()

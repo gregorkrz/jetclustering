@@ -154,7 +154,7 @@ def evaluate(
             for event_batch in tq:
                 count += event_batch.n_events # number of samples
                 y = gt_func(event_batch)
-                batch, y = get_batch(event_batch, batch_config, y, test=False)
+                batch, y = get_batch(event_batch, batch_config, y, test=predict)
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)

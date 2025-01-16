@@ -6,8 +6,9 @@ from xformers.ops.fmha import BlockDiagonalMask
 
 
 class LGATrModel(torch.nn.Module):
-    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out):
+    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords):
         super().__init__()
+        self.return_scalar_coords = return_scalar_coords
         self.n_scalars = n_scalars
         self.hidden_mv_channels = hidden_mv_channels
         self.hidden_s_channels = hidden_s_channels
@@ -66,7 +67,13 @@ class LGATrModel(torch.nn.Module):
         original_scalar = extract_scalar(embedded_outputs)
         if self.beta is not None:
             beta = self.beta(torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1))
-            x = torch.cat((x_clusters[0, :, 0, :], torch.sigmoid(beta.view(-1, 1))), dim=1)
+            if self.return_scalar_coords:
+                x = output_scalars[0, :, :3]
+                #print(x.shape)
+                #print(x[:5])
+                x = torch.cat((x, torch.sigmoid(beta.view(-1, 1))), dim=1)
+            else:
+                x = torch.cat((x_clusters[0, :, 0, :], torch.sigmoid(beta.view(-1, 1))), dim=1)
         else:
             x = x_clusters[:, 0, :]
         if torch.isnan(x).any():
@@ -91,5 +98,6 @@ def get_model(args):
         hidden_s_channels=64,
         blocks=10,
         embed_as_vectors=args.embed_as_vectors,
-        n_scalars_out=n_scalars_out
+        n_scalars_out=n_scalars_out,
+        return_scalar_coords=args.scalars_oc
     )
