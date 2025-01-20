@@ -1,8 +1,6 @@
 # File copied from https://raw.githubusercontent.com/heidelberg-hepml/lorentz-gatr/refs/heads/main/experiments/baselines/transformer.py
-
 from functools import partial
 from typing import Optional, Tuple
-
 import torch
 from einops import rearrange
 from torch import nn
@@ -57,7 +55,6 @@ class MultiHeadQKVLinear(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         self.linear = nn.Linear(in_channels, 3 * hidden_channels * num_heads)
-        print("self.linear", self.linear, in_channels, hidden_channels, num_heads)
 
     def forward(self, inputs):
         """Forward pass.
@@ -72,8 +69,6 @@ class MultiHeadQKVLinear(nn.Module):
             Values
         """
         qkv = self.linear(inputs)  # (..., num_items, 3 * hidden_channels * num_heads)
-        print("---inputs", inputs.shape)
-        print("qkv", qkv.shape)
         q, k, v = rearrange(
             qkv,
             "... items (qkv hidden_channels num_heads) -> qkv ... num_heads items hidden_channels",
@@ -212,7 +207,6 @@ class BaselineSelfAttention(nn.Module):
         q, k, v = self.qkv_linear(
             inputs
         )  # each: (..., num_heads, num_items, num_channels, 16)
-        print("qshape", q.shape, "kshape", k.shape, "vshape", v.shape, "inputs shape", inputs.shape)
         # Rotary positional encoding
         if self.pos_encoding is not None:
             q = self.pos_encoding(q)
@@ -239,7 +233,6 @@ class BaselineSelfAttention(nn.Module):
 
         # Add batch dimension if needed
         bh_shape = q.shape[:-2]
-        print(q.shape)
         q = to_nd(q, 4)
         k = to_nd(k, 4)
         v = to_nd(v, 4)

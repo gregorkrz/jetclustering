@@ -35,6 +35,8 @@ colors = {
 }
 
 #%%
+# The 'default' models:
+
 models = {
     "GATr_rinv_03_m_900": "train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45",
     "GATr_rinv_07_m_900": "train/Test_betaPt_BC_all_datasets_2025_01_08_10_54_58",
@@ -42,12 +44,23 @@ models = {
     "LGATr_rinv_07_m_900_s31k": "train/Eval_LGATr_SB_spatial_part_only_1_2025_01_13_14_31_58"
 }
 
-output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison", "results")
+# Models with the varying R study
+
+models = {
+    #"R06": "train/Eval_GT_R_lgatr_R06_2025_01_16_13_41_48",
+    #"R07": "train/Eval_GT_R_lgatr_R07_2025_01_16_13_41_41",
+    #"R09": "train/Eval_GT_R_lgatr_R09_2025_01_16_13_41_45",
+    "R=0.8": "train/Test_LGATr_all_datasets_2025_01_08_19_27_54",
+    "R=1.0": "train/Eval_GT_R_lgatr_R10_2025_01_16_13_41_52",
+    "R=1.4": "train/Eval_GT_R_lgatr_R14_2025_01_18_13_28_47"
+}
+
+output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison_FT_R_1", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
 sz = 3
-n_events_per_file = 15
+n_events_per_file = 25
 # len(models) columns, n_events_per_file rows
 from src.layers.object_cond import calc_eta_phi
 
@@ -55,11 +68,16 @@ for ds in range(20):
     print("-------- DS:", ds)
     fig, ax = plt.subplots(n_events_per_file, len(models) * 2,
                            figsize=(len(models) * sz * 2, n_events_per_file * sz))
+    # also one only with real coordinates
+    fig1, ax1 = plt.subplots(n_events_per_file, len(models),
+                            figsize=(len(models) * sz, n_events_per_file * sz))
+
     for mn, model in enumerate(sorted(models.keys())):
         print("    -------- model:", model)
         dataset_path = models[model]
         filename = get_path(os.path.join(dataset_path, f"eval_{str(ds)}.pkl"), "results")
         clusters_file = get_path(os.path.join(dataset_path, f"clustering_{str(ds)}.pkl"), "results")
+        #clusters_file=None
         if not os.path.exists(filename):
             continue
         result = CPU_Unpickler(open(filename, "rb")).load()
@@ -80,12 +98,19 @@ for ds in range(20):
             model_coords = calc_eta_phi(model_coords, 0)
             plot_event(dataset[e], colors=c, ax=ax[e, 2*mn])
             plot_event(dataset[e], colors=c, ax=ax[e, 2*mn+1], custom_coords=model_coords)
+            plot_event(dataset[e], colors=c, ax=ax1[e, mn])
             uj = dataset[e].model_jets_unfiltered
             # print the pt of the jet in the middle of each cluster with font size 12
             for i in range(len(uj.pt)):
                 ax[e, 2*mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
+                ax1[e, mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
                 #ax[e, 2*mn+1].text(model_coords[0][i], model_coords[1][i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
             ax[e, 2*mn].set_title(model)
+            ax1[e, mn].set_title(model)
             ax[e, 2*mn + 1].set_title(model + " (virt. coord.)")
         fig.tight_layout()
-        fig.savefig(os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf"))
+        fig1.tight_layout()
+        fname = os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
+        fig.savefig(fname)
+        fig1.savefig(os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
+        print("Saving to", fname)

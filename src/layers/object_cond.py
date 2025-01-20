@@ -99,7 +99,7 @@ def calc_LV_Lbeta(
     )
     n_clusters = n_clusters_per_event.sum()
     n_hits, cluster_space_dim = cluster_space_coords.size()
-    batch_size = batch.max() + 1
+    batch_size = batch.max().detach().cpu().item() + 1
     n_hits_per_event = scatter_count(batch)
 
     # Index of cluster -> event (n_clusters,)
@@ -557,8 +557,9 @@ def calc_LV_Lbeta(
 
     L_beta = L_beta_noise + L_beta_sig
     if beta_type == "pt" or beta_type == "pt+bc":
-        L_beta = torch.zeros_like(L_beta)
-
+        L_beta = torch.tensor(0.)
+        L_beta_sig = torch.tensor(0.)
+        L_beta_noise = torch.tensor(0.)
     #L_alpha_coordinates = torch.mean(torch.norm(x_alpha_original - x_alpha, p=2, dim=1))
     x_original = original_coords / torch.norm(original_coords, p=2, dim=1).view(-1, 1)
     x_virtual  = cluster_space_coords / torch.norm(cluster_space_coords, p=2, dim=1).view(-1, 1)
@@ -576,12 +577,11 @@ def calc_LV_Lbeta(
         L_bc = torch.nn.BCELoss(weight=weight)(
             noise_logits, 1-is_noise.float()
         )
-
-    if torch.isnan(L_beta / batch_size):
-        print("isnan!!!")
-        print(L_beta, batch_size)
-        print("L_beta_noise", L_beta_noise)
-        print("L_beta_sig", L_beta_sig)
+    #if torch.isnan(L_beta / batch_size):
+    #    print("isnan!!!")
+    #    print(L_beta, batch_size)
+    #    print("L_beta_noise", L_beta_noise)
+    #    print("L_beta_sig", L_beta_sig)
     result = {
         "loss_potential": L_V,  # 0
         "loss_beta": L_beta,

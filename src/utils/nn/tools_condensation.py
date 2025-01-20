@@ -158,6 +158,7 @@ def evaluate(
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)
+                print("Y-pred", y_pred.shape)
                 if not predict:
                     loss, loss_dict = loss_func(batch, y_pred, y)
                     loss = loss.item()

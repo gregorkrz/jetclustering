@@ -74,7 +74,7 @@ if not args.plot_only:
         model_clusters_file = None
         model_output_file = None
         if subdataset not in precision_and_recall:
-            precision_and_recall[subdataset] = [0, 0, 0, 0]
+            precision_and_recall[subdataset] = [0, 0, 0]
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
@@ -182,7 +182,12 @@ if not args.plot_only:
         #    "matched": bc_scores_matched[key],
         #    "unmatched": bc_scores_unmatched[key]
         #}
-        result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
+        if  precision_and_recall[key][1] == 0 or precision_and_recall[key][2] == 0:
+            result_PR[mMed][mDark][rinv] = [0, 0]
+            print(mMed, mDark, rinv)
+            print("PR zero", key, precision_and_recall[key])
+        else:
+            result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))

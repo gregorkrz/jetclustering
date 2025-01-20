@@ -10,11 +10,12 @@ from src.jetfinder.clustering import get_clustering_labels
 # keeping the clustering script here for now, so that it's separated from the GPU-heavy tasks like inference (clustering may be changed frequently...)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", type=str, required=True)
-parser.add_argument("--output-suffix", type=str, required=False, default="")
-parser.add_argument("--min-cluster-size", type=int, default=10)
-parser.add_argument("--min-samples", type=int, default=20)
-parser.add_argument("--epsilon", type=float, default=0.1)
+parser.add_argument("--input", type=str, required=True) # train/Eval_GT_R_lgatr_R14_2025_01_18_13_28_47
+parser.add_argument("--output-suffix", type=str, required=False, default="") # SP
+parser.add_argument("--min-cluster-size", type=int, default=11)
+parser.add_argument("--min-samples", type=int, default=18)
+parser.add_argument("--epsilon", type=float, default=0.48)
+parser.add_argument("--spatial-part-only", action="store_true")
 
 args = parser.parse_args()
 path = get_path(args.input, "results")
@@ -33,6 +34,8 @@ for file in os.listdir(path):
                 coords = result["pred"][:, :3]
             else:
                 coords = result["pred"][:, :4]
+                if args.spatial_part_only:
+                    coords = coords[:, 1:4]
             labels = get_clustering_labels(coords, result["event_idx"], min_cluster_size=args.min_cluster_size,
                                            min_samples=args.min_samples, epsilon=args.epsilon)
             with open(labels_path, "wb") as f:

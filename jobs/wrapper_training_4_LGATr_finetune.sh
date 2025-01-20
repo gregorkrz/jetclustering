@@ -19,4 +19,8 @@ srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz
 exit 0
 EOT
 
-# run: bash jobs/wrapper_training_4_LGATr_finetune.sh 0.7
+# run: bash jobs/wrapper_training_4_LGATr_finetune.sh 1.1
+# bash jobs/wrapper_training_4_LGATr_finetune.sh 1.2
+# bash jobs/wrapper_training_4_LGATr_finetune.sh 1.4
+# bash jobs/wrapper_training_4_LGATr_finetune.sh 2.0
+# bash jobs/wrapper_training_4_LGATr_finetune.sh 2.5

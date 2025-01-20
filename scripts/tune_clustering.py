@@ -7,6 +7,7 @@ from src.jetfinder.clustering import get_clustering_labels
 import optuna
 from src.dataset.dataset import EventDataset
 from src.evaluation.clustering_metrics import compute_f1_score
+import torch
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -84,6 +85,8 @@ def objective(trial):
             filt = event_idx < dataset_cap
             event_idx = event_idx[filt]
             coords = coords[filt]
+        if args.cos_sim:
+            coords = coords / torch.norm(coords, dim=1, keepdim=True)
         labels = get_clustering_labels(coords, event_idx, min_cluster_size=min_clust_size,
                                        min_samples=min_samples, epsilon=epsilon, bar=True,
                                        lorentz_cos_sim=args.lorentz_cos_sim,

@@ -9,7 +9,7 @@ class TransformerModel(torch.nn.Module):
         self.n_scalars = n_scalars
         self.input_dim = n_scalars + 3
         self.output_dim = 3
-        internal_dim = 256
+        internal_dim = 128
         #self.custom_decoder = nn.Linear(internal_dim, self.output_dim)
         n_heads = 4
         #self.transformer = nn.TransformerEncoder(
@@ -22,6 +22,8 @@ class TransformerModel(torch.nn.Module):
         #    ),
         #    num_layers=4,
         #)
+        if n_scalars_out > 0:
+            self.output_dim += 1 # betas regression
         self.transformer = Transformer(
             in_channels=self.input_dim,
             out_channels=self.output_dim,
@@ -31,8 +33,6 @@ class TransformerModel(torch.nn.Module):
         )
         self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
-        if n_scalars_out > 0:
-            self.output_dim += 1 # betas regression
 
     def forward(self, data):
         # data: instance of EventBatch
@@ -43,13 +43,12 @@ class TransformerModel(torch.nn.Module):
         assert inputs_transformer.shape[1] == self.input_dim
         mask = self.build_attention_mask(data.batch_idx)
         x = self.batch_norm(inputs_transformer).unsqueeze(0)
-        print("X shape", x.shape)
         # convert inputs to float16
-        x = self.transformer(x, attention_mask=mask)
+        x = self.transformer(x, attention_mask=mask)[0]
         #x = self.custom_decoder(x)
-        print("shape of x", x.shape)
         assert x.shape[1] == self.output_dim, "Expected %d, got %d" % (self.output_dim, x.shape[1])
         assert x.shape[0] == inputs_transformer.shape[0], "Expected %d, got %d" % (inputs_transformer.shape[0], x.shape[0])
+        x[:, -1] = torch.sigmoid(x[:, -1])
         return x
 
     def build_attention_mask(self, batch_numbers):
