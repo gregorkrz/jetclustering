@@ -13,7 +13,7 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 #singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.tune_clustering --input "/work/gkrzmanc/jetclustering/results/train/Eval_LGATr_ValidationSetSTD2_2025_01_13_17_40_58" --dataset-cap 10000
 
 # CosSim
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.tune_clustering --input "/work/gkrzmanc/jetclustering/results/train/Eval_Quark_dist_loss_2025_01_18_13_11_16" --dataset-cap 10000 --cos-sim
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.tune_clustering --input "/work/gkrzmanc/jetclustering/results/train/Eval_Quark_dist_loss_2025_01_18_13_11_16" --dataset-cap 10000  --normalize --spatial-components-only
 
 
 # sbatch jobs/tune_clustering_LGATr.slurm

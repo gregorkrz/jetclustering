@@ -28,8 +28,10 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 # Finetuned parameters for L-GATr_m_900_rinv_0.3 ran on the model at 40k+ steps (not 13k) Eval_LGATr_SB_spatial_part_only_1_2025_01_13_14_31_58
 #srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_LGATr_SB_spatial_part_only_1_2025_01_13_14_31_58 --output-suffix FT --min-cluster-size 11 --min-samples 18 --epsilon 0.48
 
-srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_GT_R_lgatr_R14_2025_01_18_13_28_47 --output-suffix SP --min-cluster-size 11 --min-samples 18 --epsilon 0.48
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_GT_R_lgatr_R14_2025_01_18_13_28_47 --output-suffix SP1 --min-cluster-size 11 --min-samples 18 --epsilon 0.48 --spatial-part-only
 
+# Run
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_Quark_dist_loss_2025_01_18_13_11_16 --output-suffix FT1 --min-cluster-size 8 --min-samples 3 --epsilon 0.09 --spatial-part-only
 
 
 # Run the job:

@@ -693,6 +693,8 @@ class EventJets(EventCollection):
         #    assert False
         self.mass = to_tensor(mass)
         self.area = area
+        self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
+
         if self.area is not None:
             self.area = to_tensor(self.area)
         if batch_number is not None:

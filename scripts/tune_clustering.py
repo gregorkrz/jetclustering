@@ -26,6 +26,7 @@ parser.add_argument("--dataset-cap", type=int, required=False, default=-1)
 parser.add_argument("--spatial-components-only", action="store_true")
 parser.add_argument("--lorentz-cos-sim", action="store_true")
 parser.add_argument("--cos-sim", action="store_true")
+parser.add_argument("--normalize", action="store_true")
 
 args = parser.parse_args()
 path = get_path(args.input, "results")
@@ -38,6 +39,8 @@ if args.lorentz_cos_sim:
     suffix = "_lorentz_cos_sim"
 if args.cos_sim:
     suffix = "_cos_sim"
+if args.normalize:
+    suffix = "_norm"
 
 study_file = os.path.join(path, "clustering_tuning_{}{}.log".format(args.dataset, suffix))
 
@@ -71,6 +74,8 @@ def objective(trial):
         suffix = "cs-" + suffix
     if args.lorentz_cos_sim:
         suffix = "lcs-" + suffix
+    if args.normalize:
+        suffix = "norm-" + suffix
     clustering_file = os.path.join(path, "clustering_{}_{}.pkl".format(suffix, args.dataset))
     if not os.path.exists(clustering_file):
         if eval_result["pred"].shape[1] == 4:
@@ -85,7 +90,7 @@ def objective(trial):
             filt = event_idx < dataset_cap
             event_idx = event_idx[filt]
             coords = coords[filt]
-        if args.cos_sim:
+        if args.cos_sim or args.normalize:
             coords = coords / torch.norm(coords, dim=1, keepdim=True)
         labels = get_clustering_labels(coords, event_idx, min_cluster_size=min_clust_size,
                                        min_samples=min_samples, epsilon=epsilon, bar=True,

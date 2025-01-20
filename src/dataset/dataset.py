@@ -408,12 +408,15 @@ class EventDataset(torch.utils.data.Dataset):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
         pfcands_pt = pfcands.pt
         pfcands_pxyz = pfcands.pxyz
+        pfcands_E = pfcands.E
         assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={}".format(filter)
         #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
         jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
         jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
-        jets_mass = torch.zeros_like(jets_eta)
+        #jets_mass = torch.zeros_like(jets_eta)
+        jets_E = scatter_sum(to_tensor(pfcands_E), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
+        jets_mass = torch.sqrt(jets_E**2 - jets_pxyz.norm(dim=-1)**2)
         cluster_labels = self.model_clusters[event_filter_s:event_filter_e]
         bc_scores = self.model_output["pred"][event_filter_s:event_filter_e, -1]
         if filter:

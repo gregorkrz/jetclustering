@@ -61,6 +61,16 @@ def get_bc_scores_for_jets(event):
         result.append(scores[clusters == c.item()])
     return result
 
+def calculate_m(objects, mt=False):
+    # set a mask returning only the two highest pt jets
+    mask = objects.pt.argsort(descending=True)[:2]
+    total_E = objects.E[mask].sum()
+    total_pxyz = objects.pxyz[mask].sum(dim=0)
+    if mt:
+        return np.sqrt(total_E**2 - total_pxyz[0]**2 - total_pxyz[1]**2).item()
+    return np.sqrt(total_E**2 - total_pxyz[2]**2 - total_pxyz[1]**2 - total_pxyz[0]**2).item()
+
+
 if not args.plot_only:
     n_matched_quarks = {}
     unmatched_quarks = {}
@@ -68,6 +78,7 @@ if not args.plot_only:
     bc_scores_matched = {}
     bc_scores_unmatched = {}
     precision_and_recall = {} # Array of [n_relevant_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
+    mass_resolution = {} # contains {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []} # mt = transverse mass, m = invariant mass
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
@@ -75,6 +86,8 @@ if not args.plot_only:
         model_output_file = None
         if subdataset not in precision_and_recall:
             precision_and_recall[subdataset] = [0, 0, 0]
+        if subdataset not in mass_resolution:
+            mass_resolution[subdataset] = {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []}
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
@@ -105,6 +118,10 @@ if not args.plot_only:
             n_jets = len(jets_object)
             precision_and_recall[subdataset][1] += n_jets
             precision_and_recall[subdataset][2] += len(data.matrix_element_gen_particles)
+            mass_resolution[subdataset]['m_true'].append(calculate_m(data.matrix_element_gen_particles))
+            mass_resolution[subdataset]['m_pred'].append(calculate_m(jets_object))
+            mass_resolution[subdataset]['mt_true'].append(calculate_m(data.matrix_element_gen_particles, mt=True))
+            mass_resolution[subdataset]['mt_pred'].append(calculate_m(jets_object, mt=True))
             if len(jets_object):
                 quark_to_jet = np.min(distance_matrix, axis=1)
                 quark_to_jet[quark_to_jet > R] = -1
@@ -112,14 +129,14 @@ if not args.plot_only:
                 n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
                 precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
                 filt = quark_to_jet == -1
-                if args.jets_object == "model_jets":
-                    matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
-                    unmatched_jet_idx = sorted(list(set(list(range(n_jets))) - set(matched_jet_idx)))
-                    scores = get_bc_scores_for_jets(data)
-                    for i in matched_jet_idx:
-                        bc_scores_matched[subdataset] = bc_scores_matched.get(subdataset, []) + [torch.mean(scores[i]).item()]
-                    for i in unmatched_jet_idx:
-                        bc_scores_unmatched[subdataset] = bc_scores_unmatched.get(subdataset, []) + [torch.mean(scores[i]).item()]
+                #if args.jets_object == "model_jets":
+                    #matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
+                    #unmatched_jet_idx = sorted(list(set(list(range(n_jets))) - set(matched_jet_idx)))
+                    #scores = get_bc_scores_for_jets(data)
+                    #for i in matched_jet_idx:
+                    #    bc_scores_matched[subdataset] = bc_scores_matched.get(subdataset, []) + [torch.mean(scores[i]).item()]
+                    #for i in unmatched_jet_idx:
+                    #    bc_scores_unmatched[subdataset] = bc_scores_unmatched.get(subdataset, []) + [torch.mean(scores[i]).item()]
             else:
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [0]
                 n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets]
@@ -161,6 +178,7 @@ if not args.plot_only:
     result_fakes = {}
     result_bc = {}
     result_PR = {}
+    result_m = {}
     for key in avg_n_matched_quarks:
         mMed, mDark, rinv = get_properties(key)
         if mMed not in result:
@@ -169,12 +187,14 @@ if not args.plot_only:
             result_fakes[mMed] = {}
             result_bc[mMed] = {}
             result_PR[mMed] = {}
+            result_m[mMed] = {}
         if mDark not in result[mMed]:
             result[mMed][mDark] = {}
             result_unmatched[mMed][mDark] = {}
             result_fakes[mMed][mDark] = {}
             result_bc[mMed][mDark] = {}
             result_PR[mMed][mDark] = {}
+            result_m[mMed][mDark] = {}
         result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
         result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
         result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
@@ -188,11 +208,13 @@ if not args.plot_only:
             print("PR zero", key, precision_and_recall[key])
         else:
             result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
+        result_m[mMed][mDark][rinv] = {key: np.array(val) for key, val in mass_resolution[key].items()}
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
     pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
+    pickle.dump(result_m, open(os.path.join(output_path, "result_m.pkl"), "wb"))
     # write the number of events to n_events.txt
     with open(os.path.join(output_path, "n_events.txt"), "w") as f:
         f.write(str(n))
