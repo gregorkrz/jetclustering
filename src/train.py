@@ -27,12 +27,15 @@ from src.utils.train_utils import (
     get_model,
     get_optimizer_and_scheduler,
 )
+from src.evaluation.clustering_metrics import compute_f1_score_from_result
 from src.dataset.functions_graph import graph_batch_func
 from src.utils.parser_args import parser
 from src.utils.paths import get_path
 import warnings
 import pickle
 import os
+
+
 
 def find_free_port():
     """https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number"""
@@ -86,7 +89,7 @@ training_mode = bool(args.data_train)
 if training_mode:
     # val_loaders and test_loaders are a dictionary file -> dataloader with only one dataset
     # train_loader is a single dataloader of all the files
-    train_loader, val_loaders = train_load(args)
+    train_loader, val_loaders, val_dataset = train_load(args)
 else:
     test_loaders = test_load(args)
 
@@ -151,7 +154,7 @@ if training_mode:
     best_valid_metric = np.inf
     grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
     steps = 0
-    evaluate(
+    res = evaluate(
         model,
         val_loaders,
         dev,
@@ -163,6 +166,8 @@ if training_mode:
         args=args,
         batch_config=batch_config
     )
+    f1 = compute_f1_score_from_result(res, val_dataset)
+    wandb.log({"val_f1_score": f1}, step=steps)
     for epoch in range(1, args.num_epochs + 1):
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
@@ -180,7 +185,8 @@ if training_mode:
             local_rank=local_rank,
             current_step=steps,
             val_loader=val_loaders,
-            batch_config=batch_config
+            batch_config=batch_config,
+            val_dataset=val_dataset
         )
 
 if args.data_test:

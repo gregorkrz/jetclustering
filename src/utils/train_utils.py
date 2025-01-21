@@ -84,9 +84,9 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=True
+        shuffle=False
     )
-    return train_loader, val_loader
+    return train_loader, val_loader, val_data
 
 def test_load(args):
     test_files = to_filelist(args, "test")

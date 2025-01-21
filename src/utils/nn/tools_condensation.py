@@ -17,6 +17,8 @@ import pickle
 from src.dataset.functions_data import get_batch
 from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 from src.jetfinder.clustering import get_clustering_labels
+from src.evaluation.clustering_metrics import compute_f1_score_from_result
+
 
 def train_epoch(
     args,
@@ -32,7 +34,8 @@ def train_epoch(
     local_rank=0,
     current_step=0,
     val_loader=None,
-    batch_config=None
+    batch_config=None,
+    val_dataset=None
 ):
     model.train()
     step_count = current_step
@@ -91,7 +94,7 @@ def train_epoch(
                 state_dict,
                 path
             )
-            evaluate(
+            res = evaluate(
                 model,
                 val_loader,
                 dev,
@@ -104,6 +107,8 @@ def train_epoch(
                 batch_config=batch_config,
                 predict=False
             )
+            f1 = compute_f1_score_from_result(res, val_dataset)
+            wandb.log({"val_f1_score": f1}, step=step_count)
         #_logger.info(
         #    "Epoch %d, step %d: loss=%.5f, time=%.2fs"
         #    % (epoch, step_count, loss, step_end_time - prev_time)
@@ -123,7 +128,7 @@ def evaluate(
     local_rank=0,
     args=None,
     batch_config=None,
-    predict=False
+    predict=False,
 ):
     model.eval()
     count = 0
@@ -132,7 +137,7 @@ def evaluate(
     total_loss_dict = {}
     plot_batches = [0, 1]
     n_batches = 0
-    if predict:
+    if predict or True: # predict also on validation set
         predictions = {
             "event_idx": [],
             "GT_cluster": [],
@@ -145,7 +150,7 @@ def evaluate(
             "radius_cluster_GenJets": [],
             "radius_cluster_FatJets": [],
             "model_cluster": []
-    }
+        }
         if args.beta_type != "pt+bc":
             del predictions["BC_score"]
     last_event_idx = 0
@@ -187,7 +192,7 @@ def evaluate(
                             "AvgLoss": "%.5f" % (total_loss / n_batches),
                         }
                     )
-                if predict:
+                if predict or True:
                     event_idx = batch.batch_idx + last_event_idx
                     predictions["event_idx"].append(event_idx)
                     predictions["GT_cluster"].append(y.detach().cpu())
@@ -202,16 +207,18 @@ def evaluate(
                     if predictions["pred"][-1].shape[1] == 4:
                         coords = predictions["pred"][-1][:, :3]
                     else:
-                        coords = predictions["pred"][-1][:, :4]
-                    predictions["model_cluster"].append(
-                            torch.tensor(get_clustering_labels(
+                        coords = predictions["pred"][-1][:, 1:4]
+                    clustering_labels = torch.tensor(
+                        get_clustering_labels(
                                 coords.detach().cpu().numpy(),
                                 event_idx.detach().cpu().numpy(),
                                 min_cluster_size=args.min_cluster_size,
                                 min_samples=args.min_samples,
                                 epsilon=args.epsilon)
                             )
-                        )
+                    predictions["model_cluster"].append(
+                        clustering_labels
+                    )
                     last_event_idx = event_idx.max().item() + 1
     if local_rank == 0 and not predict:
         wandb.log({"val_loss": total_loss / n_batches}, step=step)
@@ -222,7 +229,9 @@ def evaluate(
         "Evaluated on %d samples in total (avg. speed %.1f samples/s)"
         % (count, count / time_diff)
     )
-    if predict:
+    if predict or True:
+        #for key in predictions:
+        #    predictions[key] = torch.cat(predictions[key], dim=0)
         predictions = {key: torch.cat(predictions[key], dim=0) for key in predictions}
         #predictions["event_idx"] = torch.cat(predictions["event_idx"], dim=0)
         #predictions["GT_cluster"] = torch.cat(predictions["GT_cluster"], dim=0)

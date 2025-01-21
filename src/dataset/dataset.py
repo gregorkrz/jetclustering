@@ -342,7 +342,7 @@ def get_batch_bounds(batch_idx):
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, ):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -367,7 +367,10 @@ class EventDataset(torch.utils.data.Dataset):
         #for key in self.attrs:
         #    self.evt_idx_to_batch_idx[key] = {}
         if model_output_file is not None:
-            self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
+            if type(model_output_file) == str:
+                self.model_output = CPU_Unpickler(open(model_output_file, "rb")).load()
+            else:
+                self.model_output = model_output_file
             self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
             self.n_events = self.model_output["event_idx"].max().int().item()  # sometimes the last batch gets cut off, which causes problems
             if model_clusters_file is not None:
@@ -382,6 +385,19 @@ class EventDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.n_events
    # def __next__(self):
+    def add_model_output(self, model_output):
+        if model_output is not None:
+            if type(model_output) == str:
+                self.model_output = CPU_Unpickler(open(model_output, "rb")).load()
+            else:
+                self.model_output = model_output
+            self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
+            self.n_events = self.model_output["event_idx"].max().int().item()  # sometimes the last batch gets cut off, which causes problems
+            self.model_clusters = self.model_output["model_cluster"]
+            # model_output["batch_idx"] contains the batch index for each event. model_clusters is an array of the model labels for each event.
+        else:
+            self.model_output = None
+            self.model_clusters = None
 
     def get_idx(self, i):
         start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
@@ -403,6 +419,26 @@ class EventDataset(torch.utils.data.Dataset):
     def mask_jets(jets, cutoff=100):
         mask = jets.pt >= cutoff
         return EventJets(jets.pt[mask], jets.eta[mask], jets.phi[mask], jets.mass[mask])
+
+    @staticmethod
+    def get_model_jets_static(i, pfcands, model_output, model_clusters):
+        event_filter_s, event_filter_e = model_output["event_idx_bounds"][i].int().item(), model_output["event_idx_bounds"][i + 1].int().item()
+        pfcands_pt = pfcands.pt
+        pfcands_pxyz = pfcands.pxyz
+        pfcands_E = pfcands.E
+        assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error!, len(pfcands_pt)==%d, event_filter_e-event_filter_s=%d" % (len(pfcands_pt), event_filter_e - event_filter_s)
+        # jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
+        jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
+        jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
+        jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
+        # jets_mass = torch.zeros_like(jets_eta)
+        jets_E = scatter_sum(to_tensor(pfcands_E), model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
+        jets_mass = torch.sqrt(jets_E ** 2 - jets_pxyz.norm(dim=-1) ** 2)
+        cluster_labels = model_clusters[event_filter_s:event_filter_e]
+        bc_scores = model_output["pred"][event_filter_s:event_filter_e, -1]
+        cutoff = 100
+        mask = jets_pt >= cutoff
+        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])#, bc_scores, cluster_labels
 
     def get_model_jets(self, i, pfcands, filter=True):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
