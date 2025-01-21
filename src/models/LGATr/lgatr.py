@@ -54,7 +54,7 @@ class LGATrModel(torch.nn.Module):
         spurions = embed_spurions(beam_reference="xyplane", add_time_reference=True,
                                   device=multivectors.device, dtype=multivectors.dtype)
         spurions = spurions[None, None, ...].repeat(1, num_points, 1, 1)  # (batchsize, num_points, 2, 16)
-        multivectors = torch.cat((multivectors, spurions), dim=-2)  # (batchsize, num_points, 3, 16)
+        multivectors = torch.cat((multivectors, spurions), dim=-2)  # (batchsize, num_points, 3, 16) - just embed the spurions as two extra multivector channels
         mask = self.build_attention_mask(data.batch_idx)
         embedded_outputs, output_scalars = self.gatr(
             multivectors, scalars=inputs_scalar, attention_mask=mask

@@ -342,7 +342,7 @@ def get_batch_bounds(batch_idx):
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, ):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":

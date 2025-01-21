@@ -34,5 +34,9 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 #srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_Quark_dist_loss_2025_01_18_13_11_16 --output-suffix FT1 --min-cluster-size 8 --min-samples 3 --epsilon 0.09 --spatial-part-only
 
 
+# No coords loss
+# {'min_cluster_size': 5, 'min_samples': 19, 'epsilon': 0.17149658495077644}
+srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_LGATr_no_coords_loss_1_2025_01_20_16_22_21 --output-suffix FT --min-cluster-size 5 --min-samples 19 --epsilon 0.17 --spatial-part-only
+
 # Run the job:
 # sbatch jobs/clustering.slurm

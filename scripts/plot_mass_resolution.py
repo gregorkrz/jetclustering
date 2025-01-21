@@ -31,21 +31,62 @@ radius = {
 out_file = {}
 
 sz = 5
-fig, ax = plt.subplots(len(models), 2, figsize=(sz * 2, sz * len(models)))
+fig, ax = plt.subplots(len(models), 2, figsize=(sz * 2, sz/2 * len(models)))
 
-bins = np.linspace(0, 2, 200)
+bins = np.linspace(0, 2, 100)
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
     f = os.path.join(output_path, "result_m.pkl")
     if not os.path.isfile(f):
         continue
     result = pickle.load(open(f, "rb"))
+    f1 = os.path.join(output_path, "result_PR.pkl")
+    result1 = pickle.load(open(f1, "rb"))
     r = result[900][20][0.3]
-    ax[i, 0].hist(r["m_pred"] / r["m_true"], bins=bins)
-    ax[i, 1].hist(r["mt_pred"] / r["mt_true"], bins=bins)
+    r1 = result1[900][20][0.3][1] # n jets
+    ax[i, 0].hist(r["m_pred"] / r["m_true"], bins=bins, histtype="step")
+    ax[i, 1].hist(r["mt_pred"] / r["mt_true"], bins=bins, histtype="step")
     ax[i, 0].set_title(model)
     ax[i, 1].set_title(model)
     ax[i, 0].set_xlabel("m_pred / m_true")
     ax[i, 1].set_xlabel("mt_pred / mt_true")
+    ax[i, 0].set_yscale("log")
+    ax[i, 1].set_yscale("log")
 fig.tight_layout()
 fig.savefig(os.path.join(path, "mass_histograms.pdf"))
+
+
+
+#######
+
+sz = 5
+r_invs = {"03": 0.3, "07": 0.7, "05": 0.5}
+c = {}
+for r_inv in r_invs:
+    fig, ax = plt.subplots(len(result), 2, figsize=(sz * 2, sz/2 * len(models)))
+    bins = np.linspace(0, 2, 100)
+    for i, mmed in tqdm(enumerate(sorted(result.keys()))):
+        for j, model in enumerate(models):
+            output_path = os.path.join(path, model, "count_matched_quarks")
+            f = os.path.join(output_path, "result_m.pkl")
+            if not os.path.isfile(f):
+                continue
+            if f not in c:
+                c[f] = pickle.load(open(f, "rb"))
+            result = c[f]
+            r = result[mmed][20][r_invs[r_inv]]
+            ax[i, 0].hist(r["m_pred"] / r["m_true"], bins=bins, histtype="step", label=model)
+            ax[i, 1].hist(r["mt_pred"] / r["mt_true"], bins=bins, histtype="step", label=model)
+        ax[i, 0].set_title("m_med = " + str(mmed))
+        ax[i, 1].set_title("m_med = " + str(mmed))
+        ax[i, 0].set_xlabel("m_pred / m_true")
+        ax[i, 1].set_xlabel("mt_pred / mt_true")
+        ax[i, 0].set_yscale("log")
+        ax[i, 1].set_yscale("log")
+        ax[i, 0].legend()
+        ax[i, 1].legend()
+    fig.tight_layout()
+    fig.savefig(os.path.join(path, "mass_histograms_model_comparison_{}.pdf".format(r_inv)))
+
+##########
+

@@ -47,6 +47,7 @@ if args.eval_dir:
     print(dataset_path_to_eval_file)
 
 if args.output == "":
+
     args.output = args.input
 
 output_path = os.path.join(get_path(args.output, "results"), "count_matched_quarks")
@@ -87,7 +88,7 @@ if not args.plot_only:
         if subdataset not in precision_and_recall:
             precision_and_recall[subdataset] = [0, 0, 0]
         if subdataset not in mass_resolution:
-            mass_resolution[subdataset] = {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []}
+            mass_resolution[subdataset] = {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': [], 'n_jets': []}
         if args.eval_dir:
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
@@ -122,6 +123,7 @@ if not args.plot_only:
             mass_resolution[subdataset]['m_pred'].append(calculate_m(jets_object))
             mass_resolution[subdataset]['mt_true'].append(calculate_m(data.matrix_element_gen_particles, mt=True))
             mass_resolution[subdataset]['mt_pred'].append(calculate_m(jets_object, mt=True))
+            mass_resolution[subdataset]['n_jets'].append(n_jets)
             if len(jets_object):
                 quark_to_jet = np.min(distance_matrix, axis=1)
                 quark_to_jet[quark_to_jet > R] = -1
