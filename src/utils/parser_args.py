@@ -47,6 +47,56 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-n-blocks",
+    "--num-blocks",
+    type=int,
+    help="Number of blocks for GATr/LGATr/Transformer",
+    required=False,
+    default=10
+)
+
+##### Transformer-specific arguments #####
+
+parser.add_argument(
+    "-internal-dim",
+    "--internal-dim",
+    type=int,
+    help="Internal dim for transformer",
+    required=False,
+    default=128
+)
+
+parser.add_argument(
+    "-heads",
+    "--n-heads",
+    type=int,
+    help="N attention heads for transformer",
+    required=False,
+    default=4
+)
+
+##### L-GATr-specific arguments #####
+
+parser.add_argument(
+    "-mv-ch",
+    "--hidden-mv-channels",
+    type=int,
+    help="Hidden multivector channels for gatr and l-gatr",
+    required=False,
+    default=16
+)
+
+parser.add_argument(
+    "-s-ch",
+    "--hidden-s-channels",
+    type=int,
+    help="Hidden scalar channels for GATr and L-GATr",
+    required=False,
+    default=64
+)
+
+
+parser.add_argument(
     "--load-model-weights",
     type=str,
     default=None,
@@ -79,6 +129,7 @@ parser.add_argument(
 
 parser.add_argument("--batch-size", "-bs", type=int, default=128, help="batch size")
 parser.add_argument("--num-epochs", type=int, default=20, help="number of epochs")
+parser.add_argument("--num-steps", type=int, default=-1, help="Number of steps. If set to -1, it will be ignored and only num_epochs will be considered. Otherwise, training will stop after the reached number of steps.")
 
 parser.add_argument(
     "--gpus",

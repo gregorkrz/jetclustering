@@ -25,6 +25,8 @@ radius = {
     "LGATr_R12": 1.2,
     "LGATr_R13": 1.3,
     "LGATr_R14": 1.4,
+    "LGATr_R20": 2.0,
+    "LGATr_R25": 2.5
 }
 
 
@@ -86,6 +88,8 @@ for i, rinv in enumerate(rinvs):
     if rinv not in to_plot:
         to_plot[rinv] = {}
     for j, model in enumerate(models):
+        if model not in radius:
+            continue
         r = radius[model]
         output_path = os.path.join(path, model, "count_matched_quarks")
         result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))

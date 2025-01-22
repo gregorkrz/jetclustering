@@ -4,14 +4,14 @@ import torch.nn as nn
 from xformers.ops.fmha import BlockDiagonalMask
 
 class TransformerModel(torch.nn.Module):
-    def __init__(self, n_scalars, n_scalars_out):
+    def __init__(self, n_scalars, n_scalars_out, n_blocks, n_heads, internal_dim):
         super().__init__()
         self.n_scalars = n_scalars
         self.input_dim = n_scalars + 3
         self.output_dim = 3
-        internal_dim = 128
+        #internal_dim = 128
         #self.custom_decoder = nn.Linear(internal_dim, self.output_dim)
-        n_heads = 4
+        #n_heads = 4
         #self.transformer = nn.TransformerEncoder(
         #    nn.TransformerEncoderLayer(
         #        d_model=n_heads*self.input_dim,
@@ -29,7 +29,7 @@ class TransformerModel(torch.nn.Module):
             out_channels=self.output_dim,
             hidden_channels=internal_dim,
             num_heads=n_heads,
-            num_blocks=10,
+            num_blocks=n_blocks,
         )
         self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
@@ -64,5 +64,9 @@ def get_model(args):
         n_scalars_out = 1
     return TransformerModel(
         n_scalars=12,
-        n_scalars_out=n_scalars_out
+        n_scalars_out=n_scalars_out,
+        n_blocks=args.num_blocks,
+        n_heads=args.n_heads,
+        internal_dim=args.internal_dim,
     )
+

@@ -27,6 +27,9 @@ radius = {
     "LGATr_R12": 1.2,
     "LGATr_R13": 1.3,
     "LGATr_R14": 1.4,
+    "LGATr_R20": 2.0,
+    "LGATr_R25": 2.5
+
 }
 
 out_file = {}

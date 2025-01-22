@@ -109,6 +109,9 @@ def train_epoch(
             )
             f1 = compute_f1_score_from_result(res, val_dataset)
             wandb.log({"val_f1_score": f1}, step=step_count)
+        if args.num_steps != -1 and step_count >= args.num_steps:
+            print("Quitting training as the required number of steps has been reached.")
+            return "quit_training"
         #_logger.info(
         #    "Epoch %d, step %d: loss=%.5f, time=%.2fs"
         #    % (epoch, step_count, loss, step_end_time - prev_time)

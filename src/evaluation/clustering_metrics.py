@@ -75,6 +75,8 @@ def compute_f1_score_from_result(result, dataset):
             quark_to_jet = np.min(distance_matrix, axis=1)
             quark_to_jet[quark_to_jet > R] = -1
             counts["n_matched_dark_quarks"] += np.sum(quark_to_jet != -1)
+    if counts["n_jets"] == 0 or counts["n_dark_quarks"] == 0:
+        return 0
     precision = counts["n_matched_dark_quarks"] / counts["n_jets"]
     recall = counts["n_matched_dark_quarks"] / counts["n_dark_quarks"]
     f1_score = 2 * precision * recall / (precision + recall)

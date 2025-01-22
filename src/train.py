@@ -120,6 +120,7 @@ else:
 model = get_model(args, dev)
 num_parameters_counted = count_parameters(model)
 print("Number of parameters:", num_parameters_counted)
+wandb.config.num_parameters = num_parameters_counted
 
 orig_model = model
 loss = get_loss_func(args)
@@ -168,7 +169,10 @@ if training_mode:
     )
     f1 = compute_f1_score_from_result(res, val_dataset)
     wandb.log({"val_f1_score": f1}, step=steps)
-    for epoch in range(1, args.num_epochs + 1):
+    epochs = args.num_epochs
+    if args.num_steps != -1:
+        epochs = 999999999
+    for epoch in range(1, epochs + 1):
         _logger.info("-" * 50)
         _logger.info("Epoch #%d training" % epoch)
         steps = train_epoch(
@@ -188,6 +192,8 @@ if training_mode:
             batch_config=batch_config,
             val_dataset=val_dataset
         )
+        if steps == "quit_training":
+            break
 
 if args.data_test:
     if args.backend is not None and local_rank != 0:
