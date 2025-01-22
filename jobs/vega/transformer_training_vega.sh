@@ -23,5 +23,5 @@ EOT
 
 # Args: n_blocks internal_dim n_heads (default: 10, 128, 4) - >gives around 1 millioon parameters
 # bash jobs/vega/transformer_training_vega.sh 3 32 4 -> gives around 25k parameters
-# bash jobs/vega/transformer_training_vega.sh 5 32 4
+# bash jobs/vega/transformer_training_vega.sh 5 32 4 --> around 6k parameters, a very small model
 

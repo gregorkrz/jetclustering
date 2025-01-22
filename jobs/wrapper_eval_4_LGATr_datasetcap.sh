@@ -30,4 +30,4 @@ EOT
 
 # train/lgatr_CONT_ds_cap_5000_2025_01_21_19_46_13/step_20000_epoch_257.ckpt
 #bash jobs/wrapper_eval_4_LGATr_datasetcap.sh 5000_S40k train/lgatr_CONT_ds_cap_5000_2025_01_21_19_46_13/step_20000_epoch_257.ckpt
-
+#bash jobs/wrapper_eval_4_LGATr_datasetcap.sh 1000_S40k train/lgatr_CONT_ds_cap_1000_2025_01_21_19_41_51/step_22000_epoch_1467.ckpt

@@ -38,6 +38,8 @@ fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
 
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
+    if not os.path.exists(os.path.join(output_path, "result.pkl")):
+        continue
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
@@ -58,6 +60,8 @@ print("Saved to", out_file_PR)
 fig, ax = plt.subplots(2, len(models), figsize=(sz * len(models), sz * 2))
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
+    if not os.path.exists(os.path.join(output_path, "result.pkl")):
+        continue
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
@@ -92,6 +96,8 @@ for i, rinv in enumerate(rinvs):
             continue
         r = radius[model]
         output_path = os.path.join(path, model, "count_matched_quarks")
+        if not os.path.exists(os.path.join(output_path, "result_PR.pkl")):
+            continue
         result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
         #if radius not in to_plot[rinv]:
         #    to_plot[rinv][radius] = {}
