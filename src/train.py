@@ -162,6 +162,19 @@ if training_mode:
     best_valid_metric = np.inf
     grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
     steps = 0
+    evaluate(
+        model,
+        val_loaders,
+        dev,
+        0,
+        steps,
+        loss_func=loss,
+        gt_func=gt,
+        local_rank=local_rank,
+        args=args,
+        batch_config=batch_config,
+        predict=False
+    )
     res = evaluate(
         model,
         val_loaders,
@@ -172,8 +185,10 @@ if training_mode:
         gt_func=gt,
         local_rank=local_rank,
         args=args,
-        batch_config=batch_config
+        batch_config=batch_config,
+        predict=True
     )
+    # It was the quickest to do it like this
     f1 = compute_f1_score_from_result(res, val_dataset)
     wandb.log({"val_f1_score": f1}, step=steps)
     epochs = args.num_epochs

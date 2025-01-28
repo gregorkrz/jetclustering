@@ -35,8 +35,11 @@ def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None
         fig.tight_layout()
         return fig
 
-def scatter_plot(ax, xs, ys, label, color):
+def scatter_plot(ax, xs, ys, label, color=None):
     idx = np.argsort(xs)
     xs = np.array(xs)[idx]
     ys = np.array(ys)[idx]
-    ax.plot(xs, ys, ".--", label=label, color=color)
+    if color is not None:
+        ax.plot(xs, ys, ".--", label=label, color=color)
+    else:
+        ax.plot(xs, ys, ".--", label=label, color=color)

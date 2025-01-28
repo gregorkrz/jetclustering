@@ -29,6 +29,13 @@ parser.add_argument(
     type=str,
     required=False
 )
+parser.add_argument(
+    "-ckpt-step",
+    "--ckpt-step",
+    type=int,
+    required=False,
+    default=0
+) # to make it easier to find the actual number of steps
 
 parser.add_argument(
     "-load-from-run",
