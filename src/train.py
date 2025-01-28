@@ -17,6 +17,7 @@ torch.autograd.set_detect_anomaly(True)
 
 from src.utils.train_utils import count_parameters, get_gt_func, get_loss_func
 from src.utils.utils import clear_empty_paths
+from src.utils.wandb_utils import get_run_by_name, update_args
 from src.logger.logger import _logger, _configLogger
 from src.dataset.dataset import SimpleIterDataset
 from src.utils.import_tools import import_module
@@ -49,6 +50,11 @@ def find_free_port():
 
 # Create directories and initialize wandb run
 args = parser.parse_args()
+
+if args.load_from_run:
+    print("Loading args from run", args.load_from_run)
+    run = get_run_by_name(args.load_from_run)
+    args = update_args(args, run)
 timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
 args.run_name = f"{args.run_name}_{timestamp}"
 if args.load_model_weights:
@@ -66,7 +72,8 @@ wandb.run.name = args.run_name
 wandb.config.run_path = run_path
 wandb.config.update(args.__dict__)
 wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_") or key.startswith("CUDA_") or key.startswith("SLURM_")}
-
+if args.tag:
+    wandb.run.tags = [args.tag.strip()]
 args.local_rank = (
     None if args.backend is None else int(os.environ.get("LOCAL_RANK", "0"))
 )

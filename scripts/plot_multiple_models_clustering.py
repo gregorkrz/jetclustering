@@ -52,10 +52,11 @@ models = {
     #"R09": "train/Eval_GT_R_lgatr_R09_2025_01_16_13_41_45",
     "R=0.8": "train/Test_LGATr_all_datasets_2025_01_08_19_27_54",
     "R=1.0": "train/Eval_GT_R_lgatr_R10_2025_01_16_13_41_52",
-    "R=1.4": "train/Eval_GT_R_lgatr_R14_2025_01_18_13_28_47"
+    "R=1.4": "train/Eval_GT_R_lgatr_R14_2025_01_18_13_28_47",
+    "R=2.0": "train/Eval_GT_R_lgatr_R20_2025_01_22_10_51_30"
 }
 
-output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison_FT_R_1", "results")
+output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison_FT_R_2", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 

@@ -23,6 +23,21 @@ parser.add_argument(
     nargs="*",
     help="validation files",
 )
+parser.add_argument(
+    "-tag",
+    "--tag",
+    type=str,
+    required=False
+)
+
+parser.add_argument(
+    "-load-from-run",
+    "--load-from-run",
+    required=False,
+    default="",
+    type=str,
+    help="WandB run name from which to pull the training settings"
+)
 
 parser.add_argument("--train-dataset-size", type=int, default=None, help="number of events to use from the training dataset")
 parser.add_argument("--val-dataset-size", type=int, default=None, help="number of events to use from the validation dataset")

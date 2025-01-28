@@ -112,7 +112,7 @@ def get_color(model):
     # else, get the radius
     R = radius[model]
     # normalize R between 0 and 1 (originally between 0.3 and 1.4)
-    r = (R - 0.3) / (1.4 - 0.3)
+    r = (R - 0.3) / (2.5 - 0.3)
     return blues(r)
 
 

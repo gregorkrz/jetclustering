@@ -93,9 +93,9 @@ def get_model(args):
         n_scalars_out = 8
     return GATrModel(
         n_scalars=12,
-        hidden_mv_channels=16,
-        hidden_s_channels=64,
-        blocks=10,
+        hidden_mv_channels=args.hidden_mv_channels,
+        hidden_s_channels=args.hidden_s_channels,
+        blocks=args.num_blocks,
         embed_as_vectors=args.embed_as_vectors,
         n_scalars_out=n_scalars_out
     )
