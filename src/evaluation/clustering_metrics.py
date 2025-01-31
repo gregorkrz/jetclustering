@@ -47,7 +47,6 @@ def compute_f1_score_from_result(result, dataset):
         "n_jets": 0,
         "n_dark_quarks": 0
     } # Array of [n_relevant_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
-    n = 0
     result["event_idx_bounds"] = get_batch_bounds(result["event_idx"])
     l = result["event_idx"].max().int().item()
     for x in tqdm(range(len(dataset))):
@@ -55,7 +54,8 @@ def compute_f1_score_from_result(result, dataset):
             break
         data = dataset[x]
         jets_object = EventDataset.get_model_jets_static(x, data.pfcands, result, result["model_cluster"])
-        n += 1
+        if jets_object is None:
+            continue
         jets = [jets_object.eta, jets_object.phi]
         dq = [data.matrix_element_gen_particles.eta, data.matrix_element_gen_particles.phi]
         # calculate deltaR between each jet and each quark

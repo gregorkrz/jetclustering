@@ -11,11 +11,12 @@ sbatch <<EOT
 #SBATCH --error=jobs/vega/training_gatr_err_$1_$2_$3.log
 
 source env.sh
+export WANDB_DIR=/scratch/slurm/$SLURM_JOB_ID
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
 
-srun singularity exec  -B /ceph/hpc/home/krzmancg --nv docker://gkrz/lgatr:v3 python -m src.train -train scouting_PFNano_signals2/SVJ_hadronic_std3/s-channel_mMed-900_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-2000 -val scouting_PFNano_signals2/SVJ_hadronic_std2/s-channel_mMed-700_mDark-20_rinv-0.7 -net src/models/GATr/Gatr.py -bs 64  --gpus 0 --run-name GATr_training_$1_$2_$3 --val-dataset-size 15000 --num-steps 100000 --attr-loss-weight 0.1 --coord-loss-weight 0.1 --beta-type pt+bc --gt-radius 0.8 --num-blocks $1 -mv-ch $2 -s-ch $3 --validation-steps 2000
+srun singularity exec  -B /ceph/hpc/home/krzmancg --nv docker://gkrz/lgatr:v3 python -m src.train -train scouting_PFNano_signals2/SVJ_hadronic_std3/s-channel_mMed-900_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-2000 -val scouting_PFNano_signals2/SVJ_hadronic_std2/s-channel_mMed-700_mDark-20_rinv-0.7 -net src/models/GATr/Gatr.py -bs 64  --gpus 0 --run-name GATr_training_$1_$2_$3 --val-dataset-size 15000 --num-steps 100000 --attr-loss-weight 0.1 --coord-loss-weight 0.1 --beta-type pt+bc --gt-radius 0.8 --num-blocks $1 -mv-ch $2 -s-ch $3 --validation-steps 2000 --load-model-weights train/GATr_training_8_16_64_2025_01_28_16_20_19/step_64000_epoch_48.ckpt
 
 exit 0
 EOT
@@ -25,3 +26,8 @@ EOT
 # bash jobs/vega/gatr_training_vega.sh 2 4 4
 # bash jobs/vega/gatr_training_vega.sh 3 4 4
 # bash jobs/vega/gatr_training_vega.sh 5 4 16
+# bash jobs/vega/gatr_training_vega.sh 8 16 64
+
+
+
+# bash jobs/vega/gatr_training_vega.sh 3 16 16

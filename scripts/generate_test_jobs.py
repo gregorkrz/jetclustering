@@ -41,7 +41,7 @@ def get_log_number(tag):
     return max(list(numbers)) + 1
 
 def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
-    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/"
+    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/ "
     partition = "gpu"
     account = "gpu_gres"
     if template.lower().strip() == "vega":

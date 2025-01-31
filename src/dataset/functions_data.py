@@ -503,7 +503,6 @@ def renumber_clusters(tensor):
         mapping[u] = i
     return mapping[tensor]
 
-
 class TensorCollection:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -521,6 +520,27 @@ class TensorCollection:
         return d
     #def __getitem__(self, i):
     #    return TensorCollection(**{k: v[i] for k, v in self.__dict__.items()})
+
+def get_corrected_batch(event_batch, cluster_idx):
+    # return a batch with fake nodes in it (as .fake_nodes_idx property) and cluster_idx should be set to -1 for the nodes that don't belong anywhere
+    # cluster_idx should be a tensor of the same length as the input vectors
+    clusters = torch.where(cluster_idx != -1)[0]
+    new_batch_idx = cluster_idx[clusters]
+    # for each cluster, add a fake node that has zeros for vectors, scalars and pt
+    batch_idx_fake_nodes = torch.sort(new_batch_idx.unique())
+    vectors_fake_nodes = torch.zeros(len(batch_idx_fake_nodes), event_batch.input_vectors.shape[1])
+    scalars_fake_nodes = torch.zeros(len(batch_idx_fake_nodes), event_batch.input_scalars.shape[1])
+    pt_fake_nodes = torch.zeros(len(batch_idx_fake_nodes))
+    #event_batch.input_vectors[clusters]
+    #event_batch.input_scalars[clusters]
+    #event_batch.pt[clusters]
+    return EventBatch(
+        input_vectors=torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0),
+        input_scalars=torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0),
+        pt=torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0),
+        batch_idx=torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0),
+        fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
+    )
 
 
 def get_batch(event, batch_config, y, test=False):
@@ -856,13 +876,15 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None, fake_nodes_idx=None):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx
         self.pt = pt
         self.filter = filter
         self.dropped_batches = dropped_batches
+        if fake_nodes_idx is not None:
+            self.fake_nodes_idx = fake_nodes_idx
     def to(self, device):
         self.input_vectors = self.input_vectors.to(device)
         self.input_scalars = self.input_scalars.to(device)

@@ -393,7 +393,6 @@ def get_model(args, dev):
     network_options = {}  # TODO: implement network options
     network_module = import_module(args.network_config, name="_network_module")
     model = network_module.get_model(args=args, **network_options)
-
     if args.load_model_weights:
         print("Loading model state dict from %s" % args.load_model_weights)
         model_state = torch.load(args.load_model_weights, map_location=dev)["model"]
@@ -401,6 +400,23 @@ def get_model(args, dev):
         _logger.info(
             "Model initialized with weights from %s\n ... Missing: %s\n ... Unexpected: %s"
             % (args.load_model_weights, missing_keys, unexpected_keys)
+        )
+        assert len(missing_keys) == 0
+        assert len(unexpected_keys) == 0
+    return model
+
+def get_model_obj_score(args, dev):
+    network_options = {}  # TODO: implement network options
+    network_module = import_module(args.network_config, name="_network_module")
+    model = network_module.get_model(obj_score=True, args=args, **network_options)
+    if args.load_objectness_score_weights:
+        assert args.train_objectness_score
+        print("Loading objectness score model state dict from %s" % args.load_objectness_score_weights)
+        model_state = torch.load(args.load_objectness_score_weights, map_location=dev)["model"]
+        missing_keys, unexpected_keys = model.load_state_dict(model_state, strict=False)
+        _logger.info(
+            "Objectness score model initialized with weights from %s\n ... Missing: %s\n ... Unexpected: %s"
+            % (args.load_objectness_score_weights, missing_keys, unexpected_keys)
         )
         assert len(missing_keys) == 0
         assert len(unexpected_keys) == 0

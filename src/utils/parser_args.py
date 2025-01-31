@@ -297,3 +297,19 @@ parser.add_argument(
     default=False,
     help="use mixed precision training (fp16)",
 )
+parser.add_argument(
+    "-obj-score",
+    "--train-objectness-score",
+    action="store_true",
+    help="Whether to train the objectness classifier next to the usual clustering loss",
+)
+
+parser.add_argument(
+    "-obj-score-weights",
+    "--load-objectness-score-weights",
+    type=str,
+    help="Ckpt file for the objectness score model",
+    default="",
+    required=False
+)
+

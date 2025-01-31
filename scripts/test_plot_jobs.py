@@ -60,7 +60,7 @@ srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analys
     return file
 
 def get_slurm_file_text(tag, eval_job_name, log_number):
-    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/"
+    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/  -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/ "
     partition = "standard"
     account = "t3"
     d = "jobs/logs/{}".format(tag)
@@ -85,7 +85,7 @@ srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analys
 runs, run_config = get_eval_run_names(args.tag)
 print("RUNS:", runs)
 
-# Submit also ak and ak8
+'''# Submit also ak and ak8
 if not os.path.exists("jobs/slurm_files"):
     os.makedirs("jobs/slurm_files")
 if not os.path.exists("jobs/logs"):
@@ -99,7 +99,8 @@ with open("jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number), "
 if not args.no_submit:
     os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
 
-print("---- Submitted AK8 run -----")
+print("---- Submitted AK8 run -----")'''
+
 import pickle
 
 for i, run in enumerate(runs):
@@ -109,10 +110,12 @@ for i, run in enumerate(runs):
         os.makedirs("jobs/logs")
     log_number = get_log_number(args.tag)
     slurm_file_text = get_slurm_file_text(args.tag, run, log_number)
-    rel_path_save = f"{args.input}/batch_eval/{args.tag}/{run}"
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)
+    else:
+        print("Skipping", run)
+        continue
     # save run config here
     with open(f"{rel_path_save}/run_config.pkl", "wb") as f:
         pickle.dump(run_config[i], f)

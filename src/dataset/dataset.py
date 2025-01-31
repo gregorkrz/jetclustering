@@ -426,7 +426,9 @@ class EventDataset(torch.utils.data.Dataset):
         pfcands_pt = pfcands.pt
         pfcands_pxyz = pfcands.pxyz
         pfcands_E = pfcands.E
-        assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error!, len(pfcands_pt)==%d, event_filter_e-event_filter_s=%d" % (len(pfcands_pt), event_filter_e - event_filter_s)
+        #assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error!, len(pfcands_pt)==%d, event_filter_e-event_filter_s=%d" % (len(pfcands_pt), event_filter_e - event_filter_s)
+        if not len(pfcands_pt) == event_filter_e - event_filter_s:
+            return None
         # jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
         jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)

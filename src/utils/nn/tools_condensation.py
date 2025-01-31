@@ -7,14 +7,16 @@ from collections import defaultdict, Counter
 from src.utils.metrics import evaluate_metrics
 from src.data.tools import _concat
 from src.logger.logger import _logger
+from torch_scatter import scatter_sum
 import wandb
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from pathlib import Path
+from src.layers.object_cond import calc_eta_phi
 import os
 import pickle
-from src.dataset.functions_data import get_batch
+from src.dataset.functions_data import get_batch, get_corrected_batch
 from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 from src.jetfinder.clustering import get_clustering_labels
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
@@ -35,9 +37,13 @@ def train_epoch(
     current_step=0,
     val_loader=None,
     batch_config=None,
-    val_dataset=None
+    val_dataset=None,
+    obj_score_model=None
 ):
-    model.train()
+    if obj_score_model is None:
+        model.train()
+    else:
+        obj_score_model.train()
     step_count = current_step
     start_time = time.time()
     prev_time = time.time()
@@ -62,6 +68,21 @@ def train_epoch(
             "time_model_forward": model_forward_time_end - model_forward_time_start,
             "time_loss": loss_time_end - model_forward_time_end,
         }, step=step_count)
+        if obj_score_model is not None:
+            # Compute the objectness score
+            clusters = get_clustering_labels(y_pred[:, 1:4].detach().cpu().numpy(),
+                                             event_batch.batch_idx.detach().cpu().numpy(),
+                                             min_cluster_size=args.min_cluster_size,
+                                             min_samples=args.min_samples, epsilon=args.epsilon)
+            clusters_pxyz = scatter_sum(event_batch.pfcands.pxyz, clusters + 1, dim=0)[1:]
+            clusters_eta, clusters_phi = calc_eta_phi(clusters_pxyz, return_stacked=False)
+            clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
+            filter = clusters_pt >= 100 # Don't train on the clusters that eventually get cut off
+            batch_corr = get_corrected_batch(batch, clusters)
+            objectness_score = obj_score_model(batch_corr)[filter] # Obj. score is [0, 1]
+
+            #target_obj_score = (get_labels_jets(y_pred, event_batch.pfcands, event_batch.fatjets) != -1)
+            loss_obj_score = torch.nn.functional.BCELoss()(objectness_score, target_obj_score)
         if grad_scaler is None:
             loss.backward()
             opt.step()
@@ -107,6 +128,9 @@ def train_epoch(
                 batch_config=batch_config,
                 predict=False
             )
+            if obj_score_model is not None:
+                res, res_obj_score = res
+                # TODO: use the obj score here for quick evaluation
             f1 = compute_f1_score_from_result(res, val_dataset)
             wandb.log({"val_f1_score": f1}, step=step_count)
         if args.num_steps != -1 and step_count >= args.num_steps:
@@ -132,6 +156,7 @@ def evaluate(
     args=None,
     batch_config=None,
     predict=False,
+    model_obj_score=None # if not None, it will compute the objectness score of each cluster using the proposed method
 ):
     model.eval()
     count = 0
@@ -152,8 +177,10 @@ def evaluate(
             "AK8_cluster": [],
             "radius_cluster_GenJets": [],
             "radius_cluster_FatJets": [],
-            "model_cluster": []
+            "model_cluster": [],
         }
+        if model_obj_score is not None:
+            obj_score_predictions = []
         if args.beta_type != "pt+bc":
             del predictions["BC_score"]
     last_event_idx = 0
@@ -219,6 +246,10 @@ def evaluate(
                                 min_samples=args.min_samples,
                                 epsilon=args.epsilon)
                             )
+                    if model_obj_score is not None:
+                        batch_corr = get_corrected_batch(batch, clustering_labels)
+                        objectness_score = model_obj_score(batch_corr)
+                        obj_score_predictions.append(objectness_score.detach().cpu())
                     predictions["model_cluster"].append(
                         clustering_labels
                     )
@@ -247,5 +278,7 @@ def evaluate(
         #predictions["radius_cluster_FatJets"] = torch.cat(predictions["radius_cluster_FatJets"], dim=0)
         #predictions["mass"] = torch.cat(predictions["mass"], dim=0)
         #predictions["model_cluster"] = torch.cat(predictions["model_cluster"], dim=0)
+        if model_obj_score is not None:
+            return predictions, obj_score_predictions
         return predictions
     return total_loss / count # Average loss is the validation metric here

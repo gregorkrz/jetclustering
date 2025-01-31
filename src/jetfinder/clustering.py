@@ -32,9 +32,10 @@ def get_distance_matrix_Lorentz(v):
     return dot_product #/ (magnitude * magnitude.T)
 
 
-def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20, epsilon=0.1, bar=False, lorentz_cos_sim=False, cos_sim=False):
+def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20, epsilon=0.1, bar=False, lorentz_cos_sim=False, cos_sim=False, return_labels_event_idx=False):
     labels = []
     it = np.unique(batch_idx)
+    labels_event_idx = []
     if bar:
         it = tqdm(it)
     for i in it:
@@ -52,4 +53,6 @@ def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20
                                     cluster_selection_epsilon=epsilon, **kwargs)
         cluster_labels = clusterer.fit_predict(c)
         labels.append(cluster_labels)
+        if return_labels_event_idx:
+            labels_event_idx.append()
     return np.concatenate(labels)

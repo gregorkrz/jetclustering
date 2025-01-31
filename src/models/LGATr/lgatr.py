@@ -6,7 +6,7 @@ from xformers.ops.fmha import BlockDiagonalMask
 
 
 class LGATrModel(torch.nn.Module):
-    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords):
+    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords, obj_score=False):
         super().__init__()
         self.return_scalar_coords = return_scalar_coords
         self.n_scalars = n_scalars
@@ -16,6 +16,7 @@ class LGATrModel(torch.nn.Module):
         self.embed_as_vectors = embed_as_vectors
         self.input_dim = 3
         self.n_scalars_out = n_scalars_out
+        self.obj_score = obj_score
         self.gatr = GATr(
             in_mv_channels=3,
             out_mv_channels=1,
@@ -66,6 +67,11 @@ class LGATrModel(torch.nn.Module):
         x_clusters = extract_vector(embedded_outputs)
         original_scalar = extract_scalar(embedded_outputs)
         if self.beta is not None:
+            if self.obj_score:
+                # assert that data has fake_nodes_idx from which we read the objectness score
+                assert "fake_nodes_idx" in data.__dict__
+                beta = self.beta(torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1))
+                return torch.sigmoid(beta)
             beta = self.beta(torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1))
             if self.return_scalar_coords:
                 x = output_scalars[0, :, :3]
@@ -86,7 +92,7 @@ class LGATrModel(torch.nn.Module):
             torch.bincount(batch_numbers.long()).tolist()
         )
 
-def get_model(args):
+def get_model(args, obj_score=False):
     n_scalars_out = 8
     if args.beta_type == "pt":
         n_scalars_out = 0
@@ -99,6 +105,7 @@ def get_model(args):
         blocks=args.num_blocks,
         embed_as_vectors=args.embed_as_vectors,
         n_scalars_out=n_scalars_out,
-        return_scalar_coords=args.scalars_oc
+        return_scalar_coords=args.scalars_oc,
+        obj_score=obj_score
     )
 

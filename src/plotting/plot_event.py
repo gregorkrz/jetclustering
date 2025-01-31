@@ -142,6 +142,7 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
 def get_idx_for_event(obj, i):
     return obj.batch_number[i], obj.batch_number[i+1]
 
+
 def get_labels_jets(b, pfcands, jets):
     # b: Batch of events
     R = 0.8

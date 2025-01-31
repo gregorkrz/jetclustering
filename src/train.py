@@ -27,6 +27,7 @@ from src.utils.train_utils import (
     test_load,
     get_model,
     get_optimizer_and_scheduler,
+    get_model_obj_score
 )
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
 from src.dataset.functions_graph import graph_batch_func
@@ -125,6 +126,11 @@ else:
     dev = torch.device("cpu")
 
 model = get_model(args, dev)
+if args.train_objectness_score:
+    model_obj_score = get_model_obj_score(args, dev)
+    model_obj_score = model_obj_score.to(dev)
+else:
+    model_obj_score = None
 num_parameters_counted = count_parameters(model)
 print("Number of parameters:", num_parameters_counted)
 wandb.config.num_parameters = num_parameters_counted
@@ -173,7 +179,8 @@ if training_mode:
         local_rank=local_rank,
         args=args,
         batch_config=batch_config,
-        predict=False
+        predict=False,
+        model_obj_score=model_obj_score
     )
     res = evaluate(
         model,
@@ -186,7 +193,8 @@ if training_mode:
         local_rank=local_rank,
         args=args,
         batch_config=batch_config,
-        predict=True
+        predict=True,
+        model_obj_score=model_obj_score
     )
     # It was the quickest to do it like this
     f1 = compute_f1_score_from_result(res, val_dataset)
