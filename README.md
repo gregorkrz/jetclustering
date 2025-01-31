@@ -21,7 +21,7 @@ For AK8: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNan
 For AK8 GenJets: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --dataset-cap 1000 --jets-object genjets`
 
 
-For any model: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval/GATr_rinv_03_m_900  --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45  --dataset-cap 1000 --jets-object model_jets` (Add `--eval-dir` with the path to the eval run containing the clustering and the jets. Optionally, add --clustering-suffix in case there are multiple clusterings saved in the file.)
+For any model: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval/GATr_rinv_03_m_900  --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45  --dataset-cap 1000 --jets-object model_jets` Add `--eval-dir` with the path to the eval run containing the coordinates and clustering labels. Optionally, add `--clustering-suffix` in case there are multiple clusterings saved in the same folder. (usually not unless you were fine-tuning the clustering)
 
 
 The script produces output in the `results` folder. The script goes over the events up to dataset-cap (optional). 
