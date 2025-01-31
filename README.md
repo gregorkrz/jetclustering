@@ -14,13 +14,37 @@ See the script at `sbatch jobs/preprocess_v0.slurm` (make sure to update your lo
 ## Evaluation of clustering
 
 For AK8: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --dataset-cap 1000`
+
+
 For AK8 GenJets: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --dataset-cap 1000 --jets-object genjets`
+
+
 For any model: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval/GATr_rinv_03_m_900  --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45  --dataset-cap 1000 --jets-object model_jets` (Add `--eval-dir` with the path to the eval run containing the clustering and the jets. Optionally, add --clustering-suffix in case there are multiple clusterings saved in the file.)
+
 
 The script produces output in the `results` folder. The script goes over the events up to dataset-cap (optional). 
 
 
-### Training models
+## Training
+
+
+
+## Evaluation
+In order to move things faster, scripts to evaluate the trained models faster at a given ckpt are given. 
+
+To evaluate at step 10k of the given training run: `python -m scripts.generate_test_jobs -template t3 -run Transformer_training_40k_5_64_4_2025_01_22_15_55_39 -step 10000 -tag params_study`
+* Important: The step provided counts from the starting point of training the model: for example, if the run breaks in the middle and it's restarted from the latest ckpt, the command will identify that and load a checkpoint from the previous run if it contains one. You only need to provide the latest training with the `-run` argument.
+* The `-tag` argument identifies the given study and can be later used to retrieve all the evals of all the models for a given run.
+
+
+After the GPU eval, the CPU eval from above needs to be ran: `python -m scripts.test_plot_jobs --tag params_study`. The script will identify the runs that need to have evaluation figures produced. Uncommend the AK8 part in the file to also evaluate with AK8. Inside the produced folder, it also produces run_config.pkl that can be used later to make plots (of e.g. metrics vs number of params, model architecture, and amount of training).
+
+
+
+Use the scripts in `scripts/` to produce the joint plots of F1 score, precision, recall etc.
+
+
+
 
 ### Datasets
 
