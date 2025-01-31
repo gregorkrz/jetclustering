@@ -27,7 +27,7 @@ The script produces output in the `results` folder. The script goes over the eve
 
 ## Training
 
-
+See mainly `jobs/vega/lgatr_training.sh`, `jobs/vega/transformer_training.sh`, `jobs/vega/gatr_training_vega.sh` - you might need to modify the slurm file a bit to fit the system you are running on
 
 ## Evaluation
 In order to move things faster, scripts to evaluate the trained models faster at a given ckpt are given. 
