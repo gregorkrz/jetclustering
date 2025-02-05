@@ -65,8 +65,15 @@
 #python -m scripts.generate_test_jobs -template t3 -run gatr_ds_cap_5000_2025_01_29_08_34_51 -step 20000 -tag small_dataset
 #python -m scripts.generate_test_jobs -template t3 -run gatr_ds_cap_5000_2025_01_29_08_34_51 -step 40000 -tag small_dataset
 
-python -m scripts.generate_test_jobs -template t3 -run Transformer_training_40k_5_64_4_2025_01_22_15_55_39 -step 10000 -tag params_study
-python -m scripts.generate_test_jobs -template t3 -run LGATr_training_40k_3_16_16_2025_01_22_13_20_49 -step 10000 -tag params_study
+#python -m scripts.generate_test_jobs -template t3 -run Transformer_training_40k_5_64_4_2025_01_22_15_55_39 -step 5000 -tag params_study
+#python -m scripts.generate_test_jobs -template t3 -run LGATr_training_40k_3_16_16_2025_01_22_13_20_49 -step 5000 -tag params_study
+
+#python -m scripts.generate_test_jobs -template t3 -run Transformer_training_40k_5_64_4_2025_01_22_15_55_39 -step 2000 -tag params_study
+#python -m scripts.generate_test_jobs -template t3 -run LGATr_training_40k_3_16_16_2025_01_22_13_20_49 -step 2000 -tag params_study
 
 
-
+#GATr_training_8_16_64_2025_01_30_10_46_08
+python -m scripts.generate_test_jobs -template t3 -run GATr_training_8_16_64_2025_01_30_10_46_08 -step 80000 -tag params_study
+#python -m scripts.generate_test_jobs -template t3 -run GATr_training_8_16_64_2025_01_30_10_46_08 -step 40000 -tag params_study
+#python -m scripts.generate_test_jobs -template t3 -run GATr_training_8_16_64_2025_01_30_10_46_08 -step 2000 -tag params_study
+python -m scripts.generate_test_jobs -template t3 -run GATr_training_8_16_64_2025_01_30_10_46_08 -step 4000 -tag params_study

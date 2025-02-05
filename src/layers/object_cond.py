@@ -890,7 +890,6 @@ def L_clusters_calc(batch, cluster_space_coords, cluster_index, frac_combination
         number_of_pairs += norms_pos.shape[0]
     if number_of_pairs > 0:
         L_clusters = L_clusters / number_of_pairs
-
     return L_clusters
 
 def calc_eta_phi(coords, return_stacked=True):
@@ -926,7 +925,8 @@ def object_condensation_loss(
         lorentz_norm=False,
         spatial_part_only=False,
         loss_quark_distance=False,
-        oc_scalars=False
+        oc_scalars=False,
+        loss_obj_score=False
 ):
     """
     :param batch: Model input
@@ -965,6 +965,8 @@ def object_condensation_loss(
         raise NotImplementedError
     if not loss_quark_distance:
         clustering_index_l = labels
+        if loss_obj_score:
+            clustering_index_l = labels.labels+1
         a = calc_LV_Lbeta(
             original_coords,
             batch,

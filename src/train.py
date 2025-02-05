@@ -67,10 +67,12 @@ run_path = get_path(run_path, "results")
 os.makedirs(run_path, exist_ok=False)
 assert os.path.exists(run_path)
 print("Created directory", run_path)
+print("-------------------------------------")
 args.run_path = run_path
 wandb.init(project=args.wandb_projectname, entity=os.environ["SVJ_WANDB_ENTITY"])
 wandb.run.name = args.run_name
-wandb.config.run_path = run_path
+print("Setting the run name to", args.run_name)
+#wandb.config.run_path = run_path
 wandb.config.update(args.__dict__)
 wandb.config.env_vars = {key: os.environ[key] for key in os.environ if key.startswith("SVJ_") or key.startswith("CUDA_") or key.startswith("SLURM_")}
 if args.tag:
@@ -126,6 +128,7 @@ else:
     dev = torch.device("cpu")
 
 model = get_model(args, dev)
+
 if args.train_objectness_score:
     model_obj_score = get_model_obj_score(args, dev)
     model_obj_score = model_obj_score.to(dev)
@@ -144,6 +147,7 @@ if "lgatr" in args.network_config.lower():
     batch_config = {"use_four_momenta": True}
 
 batch_config["quark_dist_loss"] = args.loss == "quark_distance"
+batch_config["obj_score"] = args.train_objectness_score
 print("batch_config:", batch_config)
 if training_mode:
     model = orig_model.to(dev)
@@ -157,6 +161,8 @@ if training_mode:
             find_unused_parameters=True,
         )
     opt, scheduler = get_optimizer_and_scheduler(args, model, dev)
+    if args.train_objectness_score:
+        opt_os, scheduler_os = get_optimizer_and_scheduler(args, model_obj_score, dev)
     # DataParallel
     if args.backend is None:
         if gpus is not None and len(gpus) > 1:
@@ -197,6 +203,8 @@ if training_mode:
         model_obj_score=model_obj_score
     )
     # It was the quickest to do it like this
+    if model_obj_score is not None:
+        res, res_obj_score = res
     f1 = compute_f1_score_from_result(res, val_dataset)
     wandb.log({"val_f1_score": f1}, step=steps)
     epochs = args.num_epochs
@@ -220,7 +228,10 @@ if training_mode:
             current_step=steps,
             val_loader=val_loaders,
             batch_config=batch_config,
-            val_dataset=val_dataset
+            val_dataset=val_dataset,
+            obj_score_model=model_obj_score,
+            opt_obj_score=opt_os,
+            sched_obj_score=scheduler_os
         )
         if steps == "quit_training":
             break
@@ -249,7 +260,8 @@ if args.data_test:
             local_rank=local_rank,
             args=args,
             batch_config=batch_config,
-            predict=True
+            predict=True,
+            obj_score_model=model_obj_score
         )
         _logger.info(f"Finished evaluating {filename}")
         result["filename"] = filename

@@ -498,7 +498,7 @@ def concat_events(list_events):
 
 def renumber_clusters(tensor):
     unique = tensor.unique()
-    mapping = torch.zeros(unique.max() + 1)
+    mapping = torch.zeros(unique.max().int().item() + 1)
     for i, u in enumerate(unique):
         mapping[u] = i
     return mapping[tensor]
@@ -524,28 +524,39 @@ class TensorCollection:
 def get_corrected_batch(event_batch, cluster_idx):
     # return a batch with fake nodes in it (as .fake_nodes_idx property) and cluster_idx should be set to -1 for the nodes that don't belong anywhere
     # cluster_idx should be a tensor of the same length as the input vectors
-    clusters = torch.where(cluster_idx != -1)[0]
-    new_batch_idx = cluster_idx[clusters]
+    clusters = torch.where(torch.tensor(cluster_idx) != -1)[0]
+    new_batch_idx = torch.tensor(cluster_idx[clusters])
     # for each cluster, add a fake node that has zeros for vectors, scalars and pt
-    batch_idx_fake_nodes = torch.sort(new_batch_idx.unique())
+    batch_idx_fake_nodes = torch.sort(new_batch_idx.unique())[0]
+
     vectors_fake_nodes = torch.zeros(len(batch_idx_fake_nodes), event_batch.input_vectors.shape[1])
+    vectors_fake_nodes = vectors_fake_nodes.to(event_batch.input_vectors.device)
     scalars_fake_nodes = torch.zeros(len(batch_idx_fake_nodes), event_batch.input_scalars.shape[1])
+    scalars_fake_nodes = scalars_fake_nodes.to(event_batch.input_scalars.device)
     pt_fake_nodes = torch.zeros(len(batch_idx_fake_nodes))
+    pt_fake_nodes = pt_fake_nodes.to(event_batch.pt.device)
     #event_batch.input_vectors[clusters]
     #event_batch.input_scalars[clusters]
     #event_batch.pt[clusters]
+    #return EventBatch(
+    #    input_vectors=torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0),
+    #    input_scalars=torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0),
+    #    pt=torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0),
+    #    batch_idx=torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0),
+    #    fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
+    # )
+    print("New batch idx", renumber_clusters(new_batch_idx))
     return EventBatch(
-        input_vectors=torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0),
-        input_scalars=torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0),
-        pt=torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0),
-        batch_idx=torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0),
-        fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
+        input_vectors=event_batch.input_vectors[clusters],
+        input_scalars=event_batch.input_scalars[clusters],
+        pt=event_batch.pt[clusters],
+        batch_idx=renumber_clusters(new_batch_idx)
+        #fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
     )
-
 
 def get_batch(event, batch_config, y, test=False):
     # Returns the EventBatch class, with correct scalars etc.
-    # if test=True, it will put all events in the batch, i.e. no filtering of the events without signal.
+    # If test=True, it will put all events in the batch, i.e. no filtering of the events without signal.
     batch_idx_pfcands = torch.zeros(len(event.pfcands)).long()
     #batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
     for i in range(len(event.pfcands.batch_number) - 1):
@@ -553,6 +564,10 @@ def get_batch(event, batch_config, y, test=False):
     batch_filter = []
     if batch_config.get("quark_dist_loss", False):
         lbl = y.labels
+    elif batch_config.get("obj_score", False):
+        lbl = y.labels
+        dq_coords = y.dq_coords
+        dq_coords_batch_idx = y.dq_coords_batch_idx
     else:
         lbl = y
     if not (test or batch_config.get("quark_dist_loss", False)): # dont filter for quark distance loss
@@ -595,6 +610,8 @@ def get_batch(event, batch_config, y, test=False):
     batch_scalars = batch_scalars_pfcands # torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
     assert batch_idx.max() == event.n_events - 1
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
+    if batch_config.get("obj_score", False):
+        filt_dq = ~torch.isin(dq_coords_batch_idx, torch.tensor(batch_filter))
     dropped_batches = batch_idx[filt].unique()
     if (~filt).sum() > 0:
         print("Found events with no signal!!! Dropping it in training", (~filt).sum() / len(filt), batch_filter)
@@ -603,6 +620,11 @@ def get_batch(event, batch_config, y, test=False):
         print("ALL", batch_idx.unique())
     if batch_config.get("quark_dist_loss", False):
         y_filt = y
+    elif batch_config.get("obj_score", False):
+        print(dq_coords[0].shape, filt_dq.shape, lbl.shape, filt.shape, dq_coords[1].shape)
+        print(dq_coords_batch_idx[filt_dq])
+        y_filt = TensorCollection(labels=lbl[filt], dq_eta=dq_coords[0][filt_dq], dq_phi=dq_coords[1][filt_dq],
+                                  dq_coords_batch_idx=renumber_clusters(dq_coords_batch_idx[filt_dq].int()))
     else:
         y_filt = y[filt]
         print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
@@ -634,7 +656,7 @@ class EventPFCands(EventCollection):
         pfcands_idx=None,
         batch_number=None,
         offline=False,
-        pf_cand_jet_idx=None, # optional: provide either this or pfcands_idx & jet_idx
+        pf_cand_jet_idx=None, # Optional: provide either this or pfcands_idx & jet_idx
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)

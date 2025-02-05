@@ -4,6 +4,7 @@ import tqdm
 import time
 import torch
 from collections import defaultdict, Counter
+
 from src.utils.metrics import evaluate_metrics
 from src.data.tools import _concat
 from src.logger.logger import _logger
@@ -20,6 +21,7 @@ from src.dataset.functions_data import get_batch, get_corrected_batch
 from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 from src.jetfinder.clustering import get_clustering_labels
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
+from src.utils.train_utils import get_target_obj_score
 
 
 def train_epoch(
@@ -38,7 +40,9 @@ def train_epoch(
     val_loader=None,
     batch_config=None,
     val_dataset=None,
-    obj_score_model=None
+    obj_score_model=None,
+    opt_obj_score=None,
+    sched_obj_score=None
 ):
     if obj_score_model is None:
         model.train()
@@ -59,7 +63,11 @@ def train_epoch(
         with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
             batch.to(dev)
         model_forward_time_start = time.time()
-        y_pred = model(batch)
+        if obj_score_model is not None:
+            with torch.no_grad():
+                y_pred = model(batch) # Only train the objectness score model
+        else:
+            y_pred = model(batch)
         model_forward_time_end = time.time()
         loss, loss_dict = loss_func(batch, y_pred, y)
         loss_time_end = time.time()
@@ -70,26 +78,50 @@ def train_epoch(
         }, step=step_count)
         if obj_score_model is not None:
             # Compute the objectness score
-            clusters = get_clustering_labels(y_pred[:, 1:4].detach().cpu().numpy(),
-                                             event_batch.batch_idx.detach().cpu().numpy(),
+            coords = y_pred[:, 1:4] # TODO: update this to match the model architecture
+            clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
+                                             batch.batch_idx.detach().cpu().numpy(),
                                              min_cluster_size=args.min_cluster_size,
-                                             min_samples=args.min_samples, epsilon=args.epsilon)
-            clusters_pxyz = scatter_sum(event_batch.pfcands.pxyz, clusters + 1, dim=0)[1:]
+                                             min_samples=args.min_samples, epsilon=args.epsilon,
+                                             return_labels_event_idx=True)
+           # Loop through the events in a batch
+            input_pxyz = event_batch.pfcands.pxyz[batch.filter.cpu()]
+            clusters_pxyz = scatter_sum(input_pxyz, torch.tensor(clusters) + 1, dim=0)[1:]
             clusters_eta, clusters_phi = calc_eta_phi(clusters_pxyz, return_stacked=False)
+            #pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=False)
             clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
-            filter = clusters_pt >= 100 # Don't train on the clusters that eventually get cut off
+            filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
             batch_corr = get_corrected_batch(batch, clusters)
-            objectness_score = obj_score_model(batch_corr)[filter] # Obj. score is [0, 1]
-
-            #target_obj_score = (get_labels_jets(y_pred, event_batch.pfcands, event_batch.fatjets) != -1)
-            loss_obj_score = torch.nn.functional.BCELoss()(objectness_score, target_obj_score)
-        if grad_scaler is None:
-            loss.backward()
-            opt.step()
+            objectness_score = obj_score_model(batch_corr)[filter].flatten() # Obj. score is [0, 1]
+            target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter], clusters_pt[filter], torch.tensor(event_idx_clusters)[filter], y.dq_eta, y.dq_phi, y.dq_coords_batch_idx)#[filter]
+            n_positive, n_negative = target_obj_score.sum(), (1-target_obj_score).sum()
+            # set weights for the loss according to the class imbalance
+            #pos_weight = n_negative / (n_positive + n_negative)
+            #neg_weight = n_positive / (n_positive + n_negative)
+            n_all = n_positive + n_negative
+            pos_weight = n_all / n_positive if n_positive > 0 else 0
+            neg_weight = n_all / n_negative if n_negative > 0 else 0
+            weight = pos_weight * target_obj_score + neg_weight * (1 - target_obj_score)
+            # Weights for BCELoss: per-element weight
+            weights = torch.where(target_obj_score == 1, pos_weight, neg_weight)
+            print("N positive:", n_positive.item(), "N negative:", n_negative.item())
+            print("Predictions:", objectness_score[:10], "Targets:", target_obj_score[:10])
+            objectness_score = objectness_score.clamp(min=-10, max=10)
+            #loss_obj_score = torch.nn.BCEWithLogitsLoss(weight=weights)(objectness_score, target_obj_score)
+            loss_obj_score = torch.mean(weights * (objectness_score - target_obj_score) ** 2)
+            loss = loss_obj_score
+            loss_dict["loss_obj_score"] = loss_obj_score
+        if obj_score_model is None:
+            if grad_scaler is None:
+                loss.backward()
+                opt.step()
+            else:
+                grad_scaler.scale(loss).backward()
+                grad_scaler.step(opt)
+                grad_scaler.update()
         else:
-            grad_scaler.scale(loss).backward()
-            grad_scaler.step(opt)
-            grad_scaler.update()
+            loss.backward()
+            opt_obj_score.step()
         step_end_time = time.time()
         loss = loss.item()
         wandb.log({key: value.detach().cpu().item() for key, value in loss_dict.items()}, step=step_count)
@@ -98,23 +130,43 @@ def train_epoch(
         del loss
         if (local_rank == 0) and (step_count % args.validation_steps) == 0:
             dirname = args.run_path
-            model_state_dict = (
-                model.module.state_dict()
-                if isinstance(
-                    model,
-                    (
-                        torch.nn.DataParallel,
-                        torch.nn.parallel.DistributedDataParallel,
-                    ),
+            if obj_score_model is not None:
+                model_state_dict = (
+                    model.module.state_dict()
+                    if isinstance(
+                        model,
+                        (
+                            torch.nn.DataParallel,
+                            torch.nn.parallel.DistributedDataParallel,
+                        ),
+                    )
+                    else model.state_dict()
                 )
-                else model.state_dict()
-            )
-            state_dict = {"model": model_state_dict, "optimizer": opt.state_dict(), "scheduler": scheduler.state_dict()}
-            path = os.path.join(dirname, "step_%d_epoch_%d.ckpt" % (step_count, epoch))
-            torch.save(
-                state_dict,
-                path
-            )
+                state_dict = {"model": model_state_dict, "optimizer": opt.state_dict(), "scheduler": scheduler.state_dict()}
+                path = os.path.join(dirname, "step_%d_epoch_%d.ckpt" % (step_count, epoch))
+                torch.save(
+                    state_dict,
+                    path
+                )
+            else:
+                model_state_dict = (
+                    obj_score_model.module.state_dict()
+                    if isinstance(
+                        model,
+                        (
+                            torch.nn.DataParallel,
+                            torch.nn.parallel.DistributedDataParallel,
+                        ),
+                    )
+                    else model.state_dict()
+                )
+                state_dict = {"model": model_state_dict, "optimizer": opt_obj_score.state_dict(),
+                              "scheduler": sched_obj_score.state_dict()}
+                path = os.path.join(dirname, "OS_step_%d_epoch_%d.ckpt" % (step_count, epoch))
+                torch.save(
+                    state_dict,
+                    path
+                )
             res = evaluate(
                 model,
                 val_loader,
@@ -126,7 +178,8 @@ def train_epoch(
                 local_rank=local_rank,
                 args=args,
                 batch_config=batch_config,
-                predict=False
+                predict=False,
+                model_obj_score=obj_score_model
             )
             if obj_score_model is not None:
                 res, res_obj_score = res
@@ -193,7 +246,6 @@ def evaluate(
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)
-                print("Y-pred", y_pred.shape)
                 if not predict:
                     loss, loss_dict = loss_func(batch, y_pred, y)
                     loss = loss.item()
@@ -208,8 +260,10 @@ def evaluate(
                     Path(plot_folder).mkdir(parents=True, exist_ok=True)
                     if args.loss == "quark_distance":
                         label_true = y.labels_no_renumber.detach().cpu()
+                    elif args.train_objectness_score:
+                        label_true = y.labels.detach().cpu()
                     else:
-                        label_true = y.detach().cpu()
+                       label_true = y.detach().cpu()
                     #plot_batch_eval_OC(event_batch, label_true,
                     #                   y_pred.detach().cpu(), batch.batch_idx.detach().cpu(),
                     #                   os.path.join(plot_folder, "batch_" + str(n_batches) + ".pdf"),
@@ -225,7 +279,10 @@ def evaluate(
                 if predict or True:
                     event_idx = batch.batch_idx + last_event_idx
                     predictions["event_idx"].append(event_idx)
-                    predictions["GT_cluster"].append(y.detach().cpu())
+                    if not model_obj_score:
+                        predictions["GT_cluster"].append(y.detach().cpu())
+                    else:
+                        predictions["GT_cluster"].append(y.labels.detach().cpu())
                     predictions["pred"].append(y_pred.detach().cpu())
                     predictions["eta"].append(event_batch.pfcands.eta.detach().cpu())
                     predictions["phi"].append(event_batch.pfcands.phi.detach().cpu())
@@ -244,7 +301,8 @@ def evaluate(
                                 event_idx.detach().cpu().numpy(),
                                 min_cluster_size=args.min_cluster_size,
                                 min_samples=args.min_samples,
-                                epsilon=args.epsilon)
+                                epsilon=args.epsilon,
+                                return_labels_event_idx=False)
                             )
                     if model_obj_score is not None:
                         batch_corr = get_corrected_batch(batch, clustering_labels)

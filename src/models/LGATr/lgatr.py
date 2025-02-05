@@ -3,7 +3,7 @@ from lgatr.interface import embed_vector, extract_scalar, embed_spurions, extrac
 import torch
 import torch.nn as nn
 from xformers.ops.fmha import BlockDiagonalMask
-
+from torch_scatter import scatter_sum
 
 class LGATrModel(torch.nn.Module):
     def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords, obj_score=False):
@@ -31,7 +31,15 @@ class LGATrModel(torch.nn.Module):
         #self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
         if n_scalars_out > 0:
-            self.beta = nn.Linear(n_scalars_out + 1, 1)
+            if obj_score:
+                self.beta = nn.Sequential(
+                    nn.Linear(n_scalars_out + 1, 10),
+                    nn.Tanh(),
+                    nn.Linear(10, 1),
+                    nn.Sigmoid()
+                )
+            else:
+                self.beta = nn.Linear(n_scalars_out + 1, 1)
         else:
             self.beta = None
 
@@ -69,9 +77,13 @@ class LGATrModel(torch.nn.Module):
         if self.beta is not None:
             if self.obj_score:
                 # assert that data has fake_nodes_idx from which we read the objectness score
-                assert "fake_nodes_idx" in data.__dict__
-                beta = self.beta(torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1))
-                return torch.sigmoid(beta)
+                #assert "fake_nodes_idx" in data.__dict__
+                #values = torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1)
+                scalar_embeddings = torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1)
+                values = scatter_sum(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
+                beta = self.beta(values)
+                #beta = self.beta(values)
+                return beta
             beta = self.beta(torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1))
             if self.return_scalar_coords:
                 x = output_scalars[0, :, :3]

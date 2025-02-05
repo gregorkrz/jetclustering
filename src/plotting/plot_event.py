@@ -7,6 +7,8 @@ from matplotlib import cm
 from sklearn.metrics import confusion_matrix
 from src.plotting.histograms import score_histogram, confusion_matrix_plot
 from src.plotting.plot_coordinates import plot_coordinates
+from src.layers.object_cond import calc_eta_phi
+
 
 def plot_event_comparison(event, ax=None, special_pfcands_size=1, special_pfcands_color="gray"):
     eta_dq = event.matrix_element_gen_particles.eta
@@ -197,10 +199,11 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, b
         n_columns = 4
     fig, ax = plt.subplots(max_events, n_columns, figsize=(n_columns * sz, sz * max_events))
     # columns: Input coords, colored by beta ; Input coords, colored by GT labels; model coords, colored by beta; model coords, colored by GT labels
+    print("N events")
     for i in range(event_batch.n_events):
         if i >= max_events:
             break
-        if i in dropped_batches:
+        if i not in dropped_batches:
             continue
         event = event_batch[i]
         filt = batch_idx == i
@@ -234,8 +237,7 @@ def plot_batch_eval_OC(event_batch, y_true, y_pred, batch_idx, filename, args, b
             2: clist[2],
             3: clist[3]
         }
-        phi = torch.arctan2(p_xyz[:, 1], p_xyz[:, 0]) #torch.asin(p_xyz[:, 1] / p_xyz.norm(dim=1))
-        eta = torch.arctanh(p_xyz[:, 2] / p_xyz.norm(dim=1))
+        eta, phi = calc_eta_phi(p_xyz, return_stacked=False)
         plot_event(event, colors=plt.cm.brg(betas), ax=ax[i, 0])
         cbar = plt.colorbar(mappable=cm.ScalarMappable(cmap=plt.cm.brg), ax=ax[i, 0]) # How to specify the palette?
         ax[i, 0].set_title(r"input coords, $\beta$ colors")

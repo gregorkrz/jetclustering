@@ -104,7 +104,7 @@ def test_load(args):
         )
     return test_loaders
 
-def get_optimizer_and_scheduler(args, model, device):
+def get_optimizer_and_scheduler(args, model, device, load_model_weights="load_model_weights"):
     """
     Optimizer and scheduler.
     :param args:
@@ -196,10 +196,10 @@ def get_optimizer_and_scheduler(args, model, device):
     elif args.optimizer == "radam":
         opt = torch.optim.RAdam(parameters, lr=args.start_lr, **optimizer_options)
 
-    if args.load_model_weights is not None:
-        _logger.info("Resume training from file %s" % args.load_model_weights)
+    if args.__dict__[load_model_weights] is not None:
+        _logger.info("Resume training from file %s" % args.__dict__[load_model_weights])
         model_state = torch.load(
-            args.load_model_weights,
+            args.__dict__[load_model_weights],
             map_location=device,
         )
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
@@ -298,15 +298,44 @@ def get_optimizer_and_scheduler(args, model, device):
         scheduler._update_per_step = (
             False  # mark it to update the lr every step, instead of every epoch
         )
-    if args.load_model_weights is not None:
+    if args.__dict__[load_model_weights] is not None:
        scheduler.load_state_dict(model_state["scheduler"])
     return opt, scheduler
+
+
+def get_target_obj_score(clusters_eta, clusters_phi, clusters_pt, event_idx_clusters, dq_eta, dq_phi, dq_event_idx):
+    # return the target scores for each cluster (reteurns list of 1's and 0's)
+    # dq_coords: list of [eta, phi] for each dark quark
+    # dq_event_idx: list of event_idx for each dark quarks
+    target = []
+    for event in event_idx_clusters.unique():
+        filt = event_idx_clusters == event
+        clusters = torch.stack([clusters_eta[filt], clusters_phi[filt], clusters_pt[filt]], dim=1)
+        dq_coords_event = torch.stack([dq_eta[dq_event_idx == event], dq_phi[dq_event_idx == event]], dim=1)
+        dist_matrix = torch.cdist(
+            dq_coords_event,
+            clusters[:, :2].to(dq_coords_event.device),
+            p=2
+        )
+        if len(dist_matrix) == 0:
+            target.append(torch.zeros(len(clusters)).int().to(dist_matrix.device))
+            continue
+        closest_dq_dist, closest_dq_idx = dist_matrix.min(dim=0)
+        #print("Clusters", clusters[:, :2])
+        #print("dist_matrix", dist_matrix)
+        #print("Closest DQ dist", closest_dq_dist)
+        #print("Dq coords event")
+        #print(dq_coords_event)
+        #print("Clusters pt", clusters_pt[filt])
+        target.append((closest_dq_dist < 0.8).float())
+    return torch.cat(target).flatten()
+
 
 def get_loss_func(args):
     # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
     def loss(model_input, model_output, gt_labels):
             batch_numbers = model_input.batch_idx
-            if args.loss != "quark_distance":
+            if not (args.loss == "quark_distance" or args.train_objectness_score):
                 labels = gt_labels+1
             else:
                 labels = gt_labels
@@ -318,7 +347,8 @@ def get_loss_func(args):
                                             lorentz_norm=args.lorentz_norm,
                                             spatial_part_only=args.spatial_part_only,
                                             loss_quark_distance=args.loss=="quark_distance",
-                                            oc_scalars=args.scalars_oc)
+                                            oc_scalars=args.scalars_oc,
+                                            loss_obj_score=args.train_objectness_score)
     return loss
 
 
@@ -336,7 +366,7 @@ def get_gt_func(args):
     R = args.gt_radius
     def get_idx_for_event(obj, i):
         return obj.batch_number[i], obj.batch_number[i + 1]
-    def get_labels(b, pfcands, special=False, get_coordinates=False):
+    def get_labels(b, pfcands, special=False, get_coordinates=False, get_dq_coords=False):
         # b: Batch of events
         # if get_coordinates is true, it returns the coordinates of the labels rather than the clustering labels themselves.
         labels = torch.zeros(len(pfcands)).long()
@@ -344,6 +374,12 @@ def get_gt_func(args):
             labels_coordinates = torch.zeros(len(b.matrix_element_gen_particles.pt), 4).float()
             labels_no_renumber = torch.ones_like(labels)*-1
             offset = 0
+        if get_dq_coords:
+            dq_coords = [b.matrix_element_gen_particles.eta, b.matrix_element_gen_particles.phi]
+            #dq_coords_batch_idx = b.matrix_element_gen_particles.batch_number
+            dq_coords_batch_idx = torch.zeros(b.matrix_element_gen_particles.pt.shape)
+            for i in range(len(b.matrix_element_gen_particles.batch_number) - 1):
+                dq_coords_batch_idx[b.matrix_element_gen_particles.batch_number[i]:b.matrix_element_gen_particles.batch_number[i + 1]] = i
         for i in range(len(b)):
             s_dq, e_dq = get_idx_for_event(b.matrix_element_gen_particles, i)
             dq_eta = b.matrix_element_gen_particles.eta[s_dq:e_dq]
@@ -377,12 +413,15 @@ def get_gt_func(args):
                 offset += len(E_dq)
         if get_coordinates:
             return TensorCollection(labels=labels, labels_coordinates=labels_coordinates, labels_no_renumber=labels_no_renumber)
+        if get_dq_coords:
+            return TensorCollection(labels=labels, dq_coords=dq_coords, dq_coords_batch_idx=dq_coords_batch_idx)
         return labels
     def gt(events):
         #special_labels = get_labels(events, events.special_pfcands, special=True)
         #print("Special pfcands labels", special_labels)
         #return torch.cat([get_labels(events, events.pfcands), special_labels])
-        return get_labels(events, events.pfcands, get_coordinates=args.loss=="quark_distance")
+        return get_labels(events, events.pfcands, get_coordinates=args.loss=="quark_distance",
+                          get_dq_coords=args.train_objectness_score)
     return gt
 
 
