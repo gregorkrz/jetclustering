@@ -538,13 +538,15 @@ def get_corrected_batch(event_batch, cluster_idx):
     #event_batch.input_vectors[clusters]
     #event_batch.input_scalars[clusters]
     #event_batch.pt[clusters]
-    #return EventBatch(
-    #    input_vectors=torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0),
-    #    input_scalars=torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0),
-    #    pt=torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0),
-    #    batch_idx=torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0),
-    #    fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
-    # )
+    return EventBatch(
+        input_vectors=torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0),
+        input_scalars=torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0),
+        pt=torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0),
+        batch_idx=torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0),
+        fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
+     )
+
+    # For returning without the fake nodes (!!!!!)
     print("New batch idx", renumber_clusters(new_batch_idx))
     return EventBatch(
         input_vectors=event_batch.input_vectors[clusters],

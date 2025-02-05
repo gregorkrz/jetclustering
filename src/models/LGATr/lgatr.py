@@ -76,11 +76,14 @@ class LGATrModel(torch.nn.Module):
         original_scalar = extract_scalar(embedded_outputs)
         if self.beta is not None:
             if self.obj_score:
+                extract_from_virtual_nodes = True
                 # assert that data has fake_nodes_idx from which we read the objectness score
                 #assert "fake_nodes_idx" in data.__dict__
-                #values = torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1)
                 scalar_embeddings = torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1)
-                values = scatter_sum(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
+                if extract_from_virtual_nodes:
+                    values = torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1)
+                else:
+                    values = scatter_sum(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
                 beta = self.beta(values)
                 #beta = self.beta(values)
                 return beta

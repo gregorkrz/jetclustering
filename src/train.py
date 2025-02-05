@@ -204,7 +204,7 @@ if training_mode:
     )
     # It was the quickest to do it like this
     if model_obj_score is not None:
-        res, res_obj_score = res
+        res, res_obj_score, res_obj_score_target = res
     f1 = compute_f1_score_from_result(res, val_dataset)
     wandb.log({"val_f1_score": f1}, step=steps)
     epochs = args.num_epochs
@@ -263,6 +263,10 @@ if args.data_test:
             predict=True,
             obj_score_model=model_obj_score
         )
+        if model_obj_score is not None:
+            result, result_obj_score, result_obj_score_target = result
+            result["result_obj_score"] = result_obj_score
+            result["result_obj_score_target"] = result_obj_score_target
         _logger.info(f"Finished evaluating {filename}")
         result["filename"] = filename
         os.makedirs(run_path, exist_ok=True)
