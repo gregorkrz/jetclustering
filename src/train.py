@@ -162,7 +162,7 @@ if training_mode:
         )
     opt, scheduler = get_optimizer_and_scheduler(args, model, dev)
     if args.train_objectness_score:
-        opt_os, scheduler_os = get_optimizer_and_scheduler(args, model_obj_score, dev)
+        opt_os, scheduler_os = get_optimizer_and_scheduler(args, model_obj_score, dev, load_model_weights="load_objectness_score_weights")
     # DataParallel
     if args.backend is None:
         if gpus is not None and len(gpus) > 1:

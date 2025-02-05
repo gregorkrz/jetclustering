@@ -117,7 +117,6 @@ parser.add_argument(
     default=64
 )
 
-
 parser.add_argument(
     "--load-model-weights",
     type=str,
@@ -309,7 +308,7 @@ parser.add_argument(
     "--load-objectness-score-weights",
     type=str,
     help="Ckpt file for the objectness score model",
-    default="",
+    default=None,
     required=False
 )
 

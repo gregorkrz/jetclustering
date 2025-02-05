@@ -431,7 +431,7 @@ def count_parameters(model):
 def get_model(args, dev):
     network_options = {}  # TODO: implement network options
     network_module = import_module(args.network_config, name="_network_module")
-    model = network_module.get_model(args=args, **network_options)
+    model = network_module.get_model(obj_score=False, args=args, **network_options)
     if args.load_model_weights:
         print("Loading model state dict from %s" % args.load_model_weights)
         model_state = torch.load(args.load_model_weights, map_location=dev)["model"]
