@@ -2,7 +2,8 @@ from src.models.transformer.tr_blocks import Transformer
 import torch
 import torch.nn as nn
 from xformers.ops.fmha import BlockDiagonalMask
-from torch_scatter import scatter_max
+from torch_scatter import scatter_max, scatter_add, scatter_mean
+import numpy as np
 
 
 class TransformerModel(torch.nn.Module):
@@ -56,24 +57,38 @@ class TransformerModel(torch.nn.Module):
         print("input_dim", self.input_dim, inputs_transformer.shape)
         assert inputs_transformer.shape[1] == self.input_dim
         mask = self.build_attention_mask(data.batch_idx)
-        x = self.batch_norm(inputs_transformer).unsqueeze(0)
+        #x = self.batch_norm(inputs_transformer).unsqueeze(0)
+        #print("X before transformer pass", inputs_transformer[:10])
+        print("--- printing inputs into the transformer ---")
+        for batch in np.unique(data.batch_idx):
+            if batch < 5:
+                print("   -> batch ", batch, ":", inputs_transformer[data.batch_idx == batch][:5])
+
+        x = inputs_transformer.unsqueeze(0)
         x = self.transformer(x, attention_mask=mask)[0]
+        print("--- printing outputs from the transformer ---")
+        for batch in np.unique(data.batch_idx):
+            if batch < 5:
+                print("   -> batch ", batch, ":", x[data.batch_idx == batch][:5])
+        print("-----------------------------------------")
+        # maybe print the first 5 elements of each batch, before and after the transformer, to see why they become different at some point.
         #x = self.custom_decoder(x)
         assert x.shape[1] == self.output_dim, "Expected %d, got %d" % (self.output_dim, x.shape[1])
         assert x.shape[0] == inputs_transformer.shape[0], "Expected %d, got %d" % (inputs_transformer.shape[0], x.shape[0])
         if not self.obj_score:
             x[:, -1] = torch.sigmoid(x[:, -1])
         else:
-            extract_from_virtual_nodes = False
+            extract_from_virtual_nodes = True
             if extract_from_virtual_nodes:
                 x = self.final_mlp(x[data.fake_nodes_idx]) # x is the raw logits
             else:
-                print("x shape", x.shape)
-                print("data batch idx shape", data.batch_idx.shape)
-                m  = scatter_max(x, torch.tensor(data.batch_idx).to(x.device), dim=0)
-                print(m.shape)
-                x = self.final_mlp(m)
+                m  = scatter_mean(x, torch.tensor(data.batch_idx).long().to(x.device), dim=0)
+                print("m shape", m.shape)
+                print("x shape")
+                assert not "fake_nodes_idx" in data.__dict__
+                x = self.final_mlp(m).flatten()
         return x
+
     def build_attention_mask(self, batch_numbers):
         return BlockDiagonalMask.from_seqlens(
             torch.bincount(batch_numbers.long()).tolist()

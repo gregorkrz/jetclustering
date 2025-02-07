@@ -521,6 +521,7 @@ class TensorCollection:
     #def __getitem__(self, i):
     #    return TensorCollection(**{k: v[i] for k, v in self.__dict__.items()})
 
+
 def get_corrected_batch(event_batch, cluster_idx):
     # return a batch with fake nodes in it (as .fake_nodes_idx property) and cluster_idx should be set to -1 for the nodes that don't belong anywhere
     # cluster_idx should be a tensor of the same length as the input vectors
@@ -539,22 +540,27 @@ def get_corrected_batch(event_batch, cluster_idx):
     #event_batch.input_scalars[clusters]
     #event_batch.pt[clusters]
     #
-    #return EventBatch(
-    #    input_vectors=torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0),
-    #    input_scalars=torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0),
-    #    pt=torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0),
-    #    batch_idx=torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0),
-    #    fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
-    # )
-    # For returning without the fake nodes (!!!!!)
-    print("New batch idx", renumber_clusters(new_batch_idx))
+    input_vectors = torch.cat([event_batch.input_vectors[clusters], vectors_fake_nodes], dim=0)
+    input_scalars = torch.cat([event_batch.input_scalars[clusters], scalars_fake_nodes], dim=0)
+    pt = torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0)
+    batch_idx = torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0)
+    batch_sort_idx = torch.argsort(batch_idx) # the models need batch idx in ascending order in order to correctly construct the attention mask
     return EventBatch(
-        input_vectors=event_batch.input_vectors[clusters],
-        input_scalars=event_batch.input_scalars[clusters],
-        pt=event_batch.pt[clusters],
-        batch_idx=renumber_clusters(new_batch_idx)
-        #fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
+        input_vectors=input_vectors[batch_sort_idx],
+        input_scalars=input_scalars[batch_sort_idx],
+        pt=pt[batch_sort_idx],
+        batch_idx=batch_idx[batch_sort_idx],
+        fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
     )
+    #For returning without the fake nodes (!!!!!)
+    #print("New batch idx", renumber_clusters(new_batch_idx))
+    #return EventBatch(
+    #    input_vectors=event_batch.input_vectors[clusters],
+    #    input_scalars=event_batch.input_scalars[clusters],
+    #    pt=event_batch.pt[clusters],
+    #    batch_idx=renumber_clusters(new_batch_idx)
+    #    fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
+    #)
 
 def get_batch(event, batch_config, y, test=False):
     # Returns the EventBatch class, with correct scalars etc.

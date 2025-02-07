@@ -149,7 +149,7 @@ def train_epoch(
         del loss
         if (local_rank == 0) and (step_count % args.validation_steps) == 0:
             dirname = args.run_path
-            if obj_score_model is not None:
+            if obj_score_model is None:
                 model_state_dict = (
                     model.module.state_dict()
                     if isinstance(
@@ -177,7 +177,7 @@ def train_epoch(
                             torch.nn.parallel.DistributedDataParallel,
                         ),
                     )
-                    else model.state_dict()
+                    else obj_score_model.state_dict()
                 )
                 state_dict = {"model": model_state_dict, "optimizer": opt_obj_score.state_dict(),
                               "scheduler": sched_obj_score.state_dict()}
