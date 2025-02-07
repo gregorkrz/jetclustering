@@ -5,7 +5,7 @@
 
 import os
 
-def get_path(path, type="code"):
+def get_path(path, type="code", fallback=False):
     assert type in ["code", "data", "preprocessed_data", "results"]
     path = path.strip()
     if path.startswith("/"):
@@ -17,5 +17,7 @@ def get_path(path, type="code"):
     if type == "preprocessed_data":
         return os.path.join(os.environ["SVJ_PREPROCESSED_DATA_ROOT"], path)
     if type == "results":
-        return os.path.join(os.environ["SVJ_RESULTS_ROOT"], path)
-
+        results = os.path.join(os.environ["SVJ_RESULTS_ROOT"], path)
+        if fallback and not os.path.exists(results):
+            return os.path.join(os.environ["SVJ_RESULTS_ROOT_FALLBACK"], path) # return the record on the Storage Element
+        return results

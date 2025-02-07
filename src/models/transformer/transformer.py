@@ -2,13 +2,18 @@ from src.models.transformer.tr_blocks import Transformer
 import torch
 import torch.nn as nn
 from xformers.ops.fmha import BlockDiagonalMask
+from torch_scatter import scatter_max
+
 
 class TransformerModel(torch.nn.Module):
-    def __init__(self, n_scalars, n_scalars_out, n_blocks, n_heads, internal_dim):
+    def __init__(self, n_scalars, n_scalars_out, n_blocks, n_heads, internal_dim, obj_score):
         super().__init__()
         self.n_scalars = n_scalars
         self.input_dim = n_scalars + 3
+        if obj_score:
+            self.input_dim += 1
         self.output_dim = 3
+        self.obj_score = obj_score
         #internal_dim = 128
         #self.custom_decoder = nn.Linear(internal_dim, self.output_dim)
         #n_heads = 4
@@ -24,6 +29,8 @@ class TransformerModel(torch.nn.Module):
         #)
         if n_scalars_out > 0:
             self.output_dim += 1 # betas regression
+        if self.obj_score:
+            self.output_dim = 10
         self.transformer = Transformer(
             in_channels=self.input_dim,
             out_channels=self.output_dim,
@@ -32,6 +39,12 @@ class TransformerModel(torch.nn.Module):
             num_blocks=n_blocks,
         )
         self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
+        if self.obj_score:
+            self.final_mlp = nn.Sequential(
+                nn.Linear(self.output_dim, 10),
+                nn.LeakyReLU(),
+                nn.Linear(10, 1),
+            )
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
 
     def forward(self, data):
@@ -40,33 +53,53 @@ class TransformerModel(torch.nn.Module):
         inputs_scalar = data.input_scalars
         assert inputs_scalar.shape[1] == self.n_scalars, "Expected %d, got %d" % (self.n_scalars, inputs_scalar.shape[1])
         inputs_transformer = torch.cat([inputs_scalar, inputs_v], dim=1)
+        print("input_dim", self.input_dim, inputs_transformer.shape)
         assert inputs_transformer.shape[1] == self.input_dim
         mask = self.build_attention_mask(data.batch_idx)
         x = self.batch_norm(inputs_transformer).unsqueeze(0)
-        # convert inputs to float16
         x = self.transformer(x, attention_mask=mask)[0]
         #x = self.custom_decoder(x)
         assert x.shape[1] == self.output_dim, "Expected %d, got %d" % (self.output_dim, x.shape[1])
         assert x.shape[0] == inputs_transformer.shape[0], "Expected %d, got %d" % (inputs_transformer.shape[0], x.shape[0])
-        x[:, -1] = torch.sigmoid(x[:, -1])
+        if not self.obj_score:
+            x[:, -1] = torch.sigmoid(x[:, -1])
+        else:
+            extract_from_virtual_nodes = False
+            if extract_from_virtual_nodes:
+                x = self.final_mlp(x[data.fake_nodes_idx]) # x is the raw logits
+            else:
+                print("x shape", x.shape)
+                print("data batch idx shape", data.batch_idx.shape)
+                m  = scatter_max(x, torch.tensor(data.batch_idx).to(x.device), dim=0)
+                print(m.shape)
+                x = self.final_mlp(m)
         return x
-
     def build_attention_mask(self, batch_numbers):
         return BlockDiagonalMask.from_seqlens(
             torch.bincount(batch_numbers.long()).tolist()
         )
 
-def get_model(args):
+def get_model(args, obj_score=False):
     n_scalars_out = 8
     if args.beta_type == "pt":
         n_scalars_out = 0
     elif args.beta_type == "pt+bc":
         n_scalars_out = 1
+    if obj_score:
+        return TransformerModel(
+            n_scalars=12,
+            n_scalars_out=10,
+            n_blocks=5,
+            n_heads=args.n_heads,
+            internal_dim=64,
+            obj_score=obj_score
+        )
     return TransformerModel(
         n_scalars=12,
         n_scalars_out=n_scalars_out,
         n_blocks=args.num_blocks,
         n_heads=args.n_heads,
         internal_dim=args.internal_dim,
+        obj_score=obj_score
     )
 

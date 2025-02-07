@@ -103,7 +103,7 @@ parser.add_argument(
     "-mv-ch",
     "--hidden-mv-channels",
     type=int,
-    help="Hidden multivector channels for gatr and l-gatr",
+    help="Hidden multivector channels for GATr and L-GATr",
     required=False,
     default=16
 )

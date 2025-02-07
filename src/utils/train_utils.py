@@ -11,8 +11,9 @@ from src.utils.import_tools import import_module
 from src.dataset.functions_graph import graph_batch_func
 from src.dataset.functions_data import concat_events
 from src.utils.paths import get_path
-
+from src.layers.object_cond import calc_eta_phi
 from src.layers.object_cond import object_condensation_loss
+
 
 def to_filelist(args, mode="train"):
     if mode == "train":
@@ -59,7 +60,7 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=True
+        shuffle=False
     )
     '''val_loaders = {}
     for filename in val_files:
@@ -316,19 +317,52 @@ def get_target_obj_score(clusters_eta, clusters_phi, clusters_pt, event_idx_clus
             dq_coords_event,
             clusters[:, :2].to(dq_coords_event.device),
             p=2
-        )
+        ).T
         if len(dist_matrix) == 0:
             target.append(torch.zeros(len(clusters)).int().to(dist_matrix.device))
             continue
         closest_dq_dist, closest_dq_idx = dist_matrix.min(dim=0)
+        closest_cluster_dist, closest_cluster_idx = dist_matrix.min(dim=1)
         #print("Clusters", clusters[:, :2])
         #print("dist_matrix", dist_matrix)
         #print("Closest DQ dist", closest_dq_dist)
         #print("Dq coords event")
         #print(dq_coords_event)
         #print("Clusters pt", clusters_pt[filt])
-        target.append((closest_dq_dist < 0.8).float())
+        # for each dark quark, the closest cluster that is within 0.8 distance gets target set to 1 or otherwise to 0. If there are two clsuters in radius 0.8 around the dark quark, we only select one!!
+        #target.append((closest_dq_dist < 0.8).float())
+        #target.append((closest_dq_dist < 0.8).float())
+        closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
+        closest_quark_idx[closest_quark_dist > 0.8] = -1
+        target.append((closest_quark_idx != -1).float())
     return torch.cat(target).flatten()
+
+def plot_obj_score_debug(dq_eta, dq_phi, dq_batch_idx, clusters_eta, clusters_phi, clusters_pt, clusters_batch_idx, clusters_labels, input_pxyz, input_event_idx, input_clusters, pred_obj_score_clusters):
+    # For debugging the Objectness Score head.
+    import matplotlib.pyplot as plt
+    n_events = dq_batch_idx.max().int().item() + 1
+    pfcands_pt = torch.sqrt(input_pxyz[:, 0] ** 2 + input_pxyz[:, 1] ** 2)
+    pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=0)
+    fig, ax = plt.subplots(1, n_events, figsize=(n_events * 3, 3))
+    colors = {0: "grey", 1: "green"}
+    for i in range(n_events):
+        # Plot the clusters as dots that are green for label 1 and gray for label 0
+        filt = clusters_batch_idx == i
+        ax[i].scatter(clusters_eta[filt].cpu(), clusters_phi[filt].cpu(), c=[colors[x] for x in clusters_labels[filt].tolist()], cmap="coolwarm", s=clusters_pt[filt].cpu(), alpha=0.5)
+        # with a light gray text, also plot the target objectness score for each cluster
+        for j in range(len(clusters_eta[filt])):
+            ax[i].text(clusters_eta[filt][j].cpu()-0.5, clusters_phi[filt][j].cpu()-0.5, str(round(pred_obj_score_clusters[filt][j].item(), 2)), fontsize=6, color="gray", alpha=0.7)
+        # Plot the dark quarks as red dots
+        filt = dq_batch_idx == i
+        ax[i].scatter(dq_eta[filt].cpu(), dq_phi[filt].cpu(), c="red", alpha=0.5)
+        ax[i].scatter(pfcands_eta[input_event_idx == i].cpu(), pfcands_phi[input_event_idx == i].cpu(), c=input_clusters[input_event_idx == i].cpu(), cmap="coolwarm", s=pfcands_pt[input_event_idx == i].cpu(), alpha=0.5)
+        # put pt of the clusters in gray text on top of them
+        filt = clusters_batch_idx == i
+        for j in range(len(clusters_eta[filt])):
+            ax[i].text(clusters_eta[filt][j].cpu(), clusters_phi[filt][j].cpu(), str(round(clusters_pt[filt][j].item(), 2)), fontsize=8, color="black")
+
+    fig.tight_layout()
+    return fig
 
 
 def get_loss_func(args):
@@ -446,7 +480,7 @@ def get_model(args, dev):
 
 def get_model_obj_score(args, dev):
     network_options = {}  # TODO: implement network options
-    network_module = import_module(args.network_config, name="_network_module")
+    network_module = import_module("src/models/transformer/transformer.py", name="_network_module")
     model = network_module.get_model(obj_score=True, args=args, **network_options)
     if args.load_objectness_score_weights:
         assert args.train_objectness_score

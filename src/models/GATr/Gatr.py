@@ -85,7 +85,7 @@ class GATrModel(torch.nn.Module):
             torch.bincount(batch_numbers.long()).tolist()
         )
 
-def get_model(args):
+def get_model(args, obj_score=False):
     n_scalars_out = 8
     if args.beta_type == "pt":
         n_scalars_out = 0

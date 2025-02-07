@@ -3,7 +3,7 @@ from lgatr.interface import embed_vector, extract_scalar, embed_spurions, extrac
 import torch
 import torch.nn as nn
 from xformers.ops.fmha import BlockDiagonalMask
-from torch_scatter import scatter_sum
+from torch_scatter import scatter_sum, scatter_max
 
 class LGATrModel(torch.nn.Module):
     def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords, obj_score=False):
@@ -34,9 +34,9 @@ class LGATrModel(torch.nn.Module):
             if obj_score:
                 self.beta = nn.Sequential(
                     nn.Linear(n_scalars_out + 1, 10),
-                    nn.Tanh(),
+                    nn.LeakyReLU(),
                     nn.Linear(10, 1),
-                    nn.Sigmoid()
+                    #nn.Sigmoid()
                 )
             else:
                 self.beta = nn.Linear(n_scalars_out + 1, 1)
@@ -76,14 +76,20 @@ class LGATrModel(torch.nn.Module):
         original_scalar = extract_scalar(embedded_outputs)
         if self.beta is not None:
             if self.obj_score:
-                extract_from_virtual_nodes = True
+                extract_from_virtual_nodes = False
                 # assert that data has fake_nodes_idx from which we read the objectness score
                 #assert "fake_nodes_idx" in data.__dict__
+                # print batch number 3 and 4 inputs
+                #for nbatch in [3, 4]:
+                #    print("#### batch no. ", nbatch , "#######")
+               #     print(" -> scalar inputs", inputs_scalar[data.batch_idx==nbatch].shape, inputs_scalar[data.batch_idx == nbatch])
+               #     print(" -> vector inputs", data.input_vectors[data.batch_idx==nbatch].shape, data.input_vectors[data.batch_idx == nbatch])
+               #     print("############")
                 scalar_embeddings = torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1)
                 if extract_from_virtual_nodes:
                     values = torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1)
                 else:
-                    values = scatter_sum(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
+                    values = scatter_max(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
                 beta = self.beta(values)
                 #beta = self.beta(values)
                 return beta
@@ -113,6 +119,18 @@ def get_model(args, obj_score=False):
         n_scalars_out = 0
     elif args.beta_type == "pt+bc":
         n_scalars_out = 8
+    if obj_score:
+        return LGATrModel(
+            n_scalars=12,
+            hidden_mv_channels=8,
+            hidden_s_channels=16,
+            blocks=5,
+            embed_as_vectors=False,
+            n_scalars_out=n_scalars_out,
+            return_scalar_coords=args.scalars_oc,
+            obj_score=obj_score
+        )
+
     return LGATrModel(
         n_scalars=12,
         hidden_mv_channels=args.hidden_mv_channels,

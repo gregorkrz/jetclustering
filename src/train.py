@@ -59,7 +59,9 @@ if args.load_from_run:
 timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
 args.run_name = f"{args.run_name}_{timestamp}"
 if args.load_model_weights:
-    args.load_model_weights = get_path(args.load_model_weights, "results")
+    args.load_model_weights = get_path(args.load_model_weights, "results", fallback=True)
+if args.load_objectness_score_weights:
+    args.load_objectness_score_weights = get_path(args.load_objectness_score_weights, "results", fallback=True)
 run_path = os.path.join(args.prefix, "train", args.run_name)
 clear_empty_paths(get_path(os.path.join(args.prefix, "train"), "results"))  # Clear paths of failed runs that don't have any files or folders in them
 run_path = get_path(run_path, "results")

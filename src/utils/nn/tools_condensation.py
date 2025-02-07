@@ -8,7 +8,7 @@ from collections import defaultdict, Counter
 from src.utils.metrics import evaluate_metrics
 from src.data.tools import _concat
 from src.logger.logger import _logger
-from torch_scatter import scatter_sum
+from torch_scatter import scatter_sum, scatter_max
 import wandb
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
@@ -21,7 +21,7 @@ from src.dataset.functions_data import get_batch, get_corrected_batch
 from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 from src.jetfinder.clustering import get_clustering_labels
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
-from src.utils.train_utils import get_target_obj_score
+from src.utils.train_utils import get_target_obj_score, plot_obj_score_debug # for debugging only!
 
 
 def train_epoch(
@@ -59,6 +59,8 @@ def train_epoch(
         step_count += 1
         y = y.to(dev)
         opt.zero_grad()
+        if obj_score_model is not None:
+            opt_obj_score.zero_grad()
         torch.autograd.set_detect_anomaly(True)
         with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
             batch.to(dev)
@@ -78,7 +80,8 @@ def train_epoch(
         }, step=step_count)
         if obj_score_model is not None:
             # Compute the objectness score
-            coords = y_pred[:, 1:4] # TODO: update this to match the model architecture
+            coords = y_pred[:, 1:4]
+            # TODO: update this to match the model architecture, as it's written here it's only suitable for L-GATr
             clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
                                              batch.batch_idx.detach().cpu().numpy(),
                                              min_cluster_size=args.min_cluster_size,
@@ -86,14 +89,22 @@ def train_epoch(
                                              return_labels_event_idx=True)
            # Loop through the events in a batch
             input_pxyz = event_batch.pfcands.pxyz[batch.filter.cpu()]
+            input_pt = torch.sqrt(torch.sum(input_pxyz[:, :2] ** 2, dim=-1))
             clusters_pxyz = scatter_sum(input_pxyz, torch.tensor(clusters) + 1, dim=0)[1:]
+            clusters_highest_pt_particle = scatter_max(input_pt, torch.tensor(clusters) + 1, dim=0)[0][1:]
             clusters_eta, clusters_phi = calc_eta_phi(clusters_pxyz, return_stacked=False)
             #pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=False)
             clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
             filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
             batch_corr = get_corrected_batch(batch, clusters)
             objectness_score = obj_score_model(batch_corr)[filter].flatten() # Obj. score is [0, 1]
-            target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter], clusters_pt[filter], torch.tensor(event_idx_clusters)[filter], y.dq_eta, y.dq_phi, y.dq_coords_batch_idx)#[filter]
+            target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter], clusters_pt[filter],
+                                                    torch.tensor(event_idx_clusters)[filter], y.dq_eta, y.dq_phi,
+                                                    y.dq_coords_batch_idx)
+            target_obj_score = clusters_highest_pt_particle[filter].to(objectness_score.device)
+            #fig = plot_obj_score_debug(y.dq_eta, y.dq_phi, y.dq_coords_batch_idx, clusters_eta[filter], clusters_phi[filter], clusters_pt[filter],
+            #                           torch.tensor(event_idx_clusters)[filter], target_obj_score, input_pxyz, batch.batch_idx.detach().cpu(), torch.tensor(clusters), objectness_score)
+            #fig.savefig(os.path.join(args.run_path, "obj_score_debug_{}.pdf".format(step_count)))
             n_positive, n_negative = target_obj_score.sum(), (1-target_obj_score).sum()
             # set weights for the loss according to the class imbalance
             #pos_weight = n_negative / (n_positive + n_negative)
@@ -101,13 +112,16 @@ def train_epoch(
             n_all = n_positive + n_negative
             pos_weight = n_all / n_positive if n_positive > 0 else 0
             neg_weight = n_all / n_negative if n_negative > 0 else 0
-            weight = pos_weight * target_obj_score + neg_weight * (1 - target_obj_score)
+            print("Positive weight:", pos_weight, "Negative weight:", neg_weight)
+            #weight = pos_weight * target_obj_score + neg_weight * (1 - target_obj_score)
             # Weights for BCELoss: per-element weight
             weights = torch.where(target_obj_score == 1, pos_weight, neg_weight)
             print("N positive:", n_positive.item(), "N negative:", n_negative.item())
-            print("First 10 predictions:", objectness_score[:10], "First 10 targets:", target_obj_score[:10])
-            objectness_score = objectness_score.clamp(min=-10, max=10)
-            loss_obj_score = torch.nn.BCELoss(weight=weights)(objectness_score, target_obj_score)
+            print("First 20 predictions:", objectness_score[:20], "First 20 targets:", target_obj_score[:20])
+            #objectness_score = objectness_score.clamp(min=-10, max=10)
+            ##### TEMPORARY: PREDICT HIGHEST PT OF PARTICLE !!!!!! ######
+            loss_obj_score = torch.mean(torch.square(target_obj_score - objectness_score)) # temporarily just regress the highest pt particle to check for expresiveness of the model
+            #loss_obj_score = torch.nn.BCEWithLogitsLoss(weight=weights)(objectness_score, target_obj_score)
             #loss_obj_score = torch.mean(weights * (objectness_score - target_obj_score) ** 2)
             loss = loss_obj_score
             loss_dict["loss_obj_score"] = loss_obj_score
@@ -120,8 +134,13 @@ def train_epoch(
                 grad_scaler.step(opt)
                 grad_scaler.update()
         else:
-            loss.backward()
-            opt_obj_score.step()
+            if grad_scaler is None:
+                loss.backward()
+                opt_obj_score.step()
+            else:
+                grad_scaler.scale(loss).backward()
+                grad_scaler.step(opt_obj_score)
+                grad_scaler.update()
         step_end_time = time.time()
         loss = loss.item()
         wandb.log({key: value.detach().cpu().item() for key, value in loss_dict.items()}, step=step_count)
@@ -182,7 +201,7 @@ def train_epoch(
                 model_obj_score=obj_score_model
             )
             if obj_score_model is not None:
-                res, res_obj_score = res
+                res, res_obj_score, res_obj_score1 = res
                 # TODO: use the obj score here for quick evaluation
             f1 = compute_f1_score_from_result(res, val_dataset)
             wandb.log({"val_f1_score": f1}, step=step_count)
@@ -325,20 +344,21 @@ def evaluate(
                                                                 clusters_pt[filter],
                                                                 torch.tensor(event_idx_clusters)[filter], y.dq_eta,
                                                                 y.dq_phi, y.dq_coords_batch_idx)  # [filter]
-                        n_positive, n_negative = target_obj_score.sum(), (1 - target_obj_score).sum()
+                        n_positive, n_negative = target_obj_score.sum(), (1 - target_obj_score.float()).sum()
                         # set weights for the loss according to the class imbalance
                         # pos_weight = n_negative / (n_positive + n_negative)
                         # neg_weight = n_positive / (n_positive + n_negative)
                         n_all = n_positive + n_negative
                         pos_weight = n_all / n_positive if n_positive > 0 else 0
                         neg_weight = n_all / n_negative if n_negative > 0 else 0
+
                         # Weights for BCELoss: per-element weight
                         weights = torch.where(target_obj_score == 1, pos_weight, neg_weight)
                         print("N positive (eval):", n_positive.item(), "N negative (eval):", n_negative.item())
-                        print("First 10 predictions (eval):", objectness_score[:10], "First 10 targets (eval):",
-                              target_obj_score[:10])
+                        print("First 10 predictions (eval):", objectness_score[:20], "First 10 targets (eval):",
+                              target_obj_score[:20])
                         objectness_score = objectness_score.clamp(min=-10, max=10)
-                        loss_obj_score = torch.nn.BCELoss(weight=weights)(objectness_score.flatten(), target_obj_score.flatten()).cpu().item()
+                        loss_obj_score = torch.nn.BCEWithLogitsLoss(weight=weights)(objectness_score.flatten(), target_obj_score.flatten()).cpu().item()
                         obj_score_targets.append(target_obj_score)
                         k = "val_loss_obj_score"
                         if k not in total_loss_dict:
