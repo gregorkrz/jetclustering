@@ -304,6 +304,21 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--obj-score-module",
+    default="src/models/transformer/transformer.py",
+    help="Path to the objectness score model",
+    type=str
+)
+
+parser.add_argument(
+    "-obj-score-gt",
+    "--objectness-score-gt-mode",
+    default="all_in_radius",
+    choices=["all_in_radius", "closest_only"],
+    help="Whether to train the objectness classifier next to the usual clustering loss",
+)
+
+parser.add_argument(
     "-obj-score-weights",
     "--load-objectness-score-weights",
     type=str,

@@ -33,7 +33,7 @@ def get_run_initial_steps(run):
 
 def extract_relative_path(run_path):
     # just return everything after train/.. - run_path looks like /a/b/c/d/train/e/f
-    return get_path("train/" + run_path.split("train/")[-1], type="results")
+    return get_path("train/" + run_path.split("train/")[-1], type="results", fallback=True)
 
 def get_run_step_direct(run_path, step):
     # get the step of the run directly

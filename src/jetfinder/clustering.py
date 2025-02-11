@@ -36,6 +36,7 @@ def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20
                           lorentz_cos_sim=False, cos_sim=False, return_labels_event_idx=False):
     # return_labels_event_idx: If True, it will return the labels with unique numbers and event_idx tensor for each label
     labels = []
+    labels_no_reindex = []
     it = np.unique(batch_idx)
     labels_event_idx = []
     max_cluster_idx = 0
@@ -56,6 +57,7 @@ def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20
         clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples,
                                     cluster_selection_epsilon=epsilon, **kwargs)
         cluster_labels = clusterer.fit_predict(c)
+        labels_no_reindex.append(cluster_labels)
         if return_labels_event_idx:
             num_clusters = np.max(cluster_labels) + 1
             labels_event_idx.append([count] * (num_clusters))
@@ -65,5 +67,5 @@ def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20
         labels.append(cluster_labels)
     assert len(np.concatenate(labels)) == len(coords)
     if return_labels_event_idx:
-        return np.concatenate(labels), np.concatenate(labels_event_idx)
+        return np.concatenate(labels_no_reindex), np.concatenate(labels), np.concatenate(labels_event_idx)
     return np.concatenate(labels)

@@ -69,7 +69,6 @@ run_path = get_path(run_path, "results")
 os.makedirs(run_path, exist_ok=False)
 assert os.path.exists(run_path)
 print("Created directory", run_path)
-print("-------------------------------------")
 args.run_path = run_path
 wandb.init(project=args.wandb_projectname, entity=os.environ["SVJ_WANDB_ENTITY"])
 wandb.run.name = args.run_name
@@ -165,6 +164,8 @@ if training_mode:
     opt, scheduler = get_optimizer_and_scheduler(args, model, dev)
     if args.train_objectness_score:
         opt_os, scheduler_os = get_optimizer_and_scheduler(args, model_obj_score, dev, load_model_weights="load_objectness_score_weights")
+    else:
+        opt_os, scheduler_os = None, None
     # DataParallel
     if args.backend is None:
         if gpus is not None and len(gpus) > 1:
@@ -206,7 +207,7 @@ if training_mode:
     )
     # It was the quickest to do it like this
     if model_obj_score is not None:
-        res, res_obj_score, res_obj_score_target = res
+        res, res_obj_score_pred, res_obj_score_target = res
     f1 = compute_f1_score_from_result(res, val_dataset)
     wandb.log({"val_f1_score": f1}, step=steps)
     epochs = args.num_epochs
@@ -263,12 +264,12 @@ if args.data_test:
             args=args,
             batch_config=batch_config,
             predict=True,
-            obj_score_model=model_obj_score
+            model_obj_score=model_obj_score
         )
         if model_obj_score is not None:
             result, result_obj_score, result_obj_score_target = result
-            result["result_obj_score"] = result_obj_score
-            result["result_obj_score_target"] = result_obj_score_target
+            result["obj_score_pred"] = result_obj_score
+            result["obj_score_target"] = result_obj_score_target
         _logger.info(f"Finished evaluating {filename}")
         result["filename"] = filename
         os.makedirs(run_path, exist_ok=True)

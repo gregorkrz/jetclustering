@@ -49,7 +49,6 @@ def log_roc_curves(y_true, y_score, epoch):
 
     # 5 classes G(0),Q(1),S(2),C(3),B(4)
     # b tagging  (b/g, b/ud, b/c)
-    print("EPOCH", epoch, y_true.shape, y_score.shape)
     _bg = create_binary_rocs(4, 0, y_true, y_score)
     _bud = create_binary_rocs(4, 1, y_true, y_score)
     _bc = create_binary_rocs(4, 3, y_true, y_score)
@@ -154,7 +153,7 @@ def log_histograms(y_true_wandb, scores_wandb, counts_particles, epoch):
     correct_class_examples = y_true_wandb == y_pred
     errors_number_count = counts_particles[errors_class_examples]
     correct_number_count = counts_particles[correct_class_examples]
-    print("count", errors_number_count.shape, correct_number_count.shape)
+    #print("count", errors_number_count.shape, correct_number_count.shape)
     data_correct = [
         [i, correct_number_count[i]] for i in range(0, len(correct_number_count))
     ]

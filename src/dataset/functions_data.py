@@ -545,22 +545,21 @@ def get_corrected_batch(event_batch, cluster_idx):
     pt = torch.cat([event_batch.pt[clusters], pt_fake_nodes], dim=0)
     batch_idx = torch.cat([new_batch_idx, batch_idx_fake_nodes], dim=0)
     batch_sort_idx = torch.argsort(batch_idx) # the models need batch idx in ascending order in order to correctly construct the attention mask
-    return EventBatch(
-        input_vectors=input_vectors[batch_sort_idx],
-        input_scalars=input_scalars[batch_sort_idx],
-        pt=pt[batch_sort_idx],
-        batch_idx=batch_idx[batch_sort_idx],
-        fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
-    )
-    #For returning without the fake nodes (!!!!!)
-    #print("New batch idx", renumber_clusters(new_batch_idx))
     #return EventBatch(
-    #    input_vectors=event_batch.input_vectors[clusters],
-    #    input_scalars=event_batch.input_scalars[clusters],
-    #    pt=event_batch.pt[clusters],
-    #    batch_idx=renumber_clusters(new_batch_idx)
+    #    input_vectors=input_vectors[batch_sort_idx],
+    #    input_scalars=input_scalars[batch_sort_idx],
+    #    pt=pt[batch_sort_idx],
+    #    batch_idx=batch_idx[batch_sort_idx],
     #    fake_nodes_idx=batch_idx_fake_nodes + len(new_batch_idx),
     #)
+    #For returning without the fake nodes (!!!!!)
+    #print("New batch idx", renumber_clusters(new_batch_idx))
+    return EventBatch(
+        input_vectors=event_batch.input_vectors[clusters],
+        input_scalars=event_batch.input_scalars[clusters],
+        pt=event_batch.pt[clusters],
+        batch_idx=renumber_clusters(new_batch_idx),
+    )
 
 def get_batch(event, batch_config, y, test=False):
     # Returns the EventBatch class, with correct scalars etc.
@@ -629,8 +628,8 @@ def get_batch(event, batch_config, y, test=False):
     if batch_config.get("quark_dist_loss", False):
         y_filt = y
     elif batch_config.get("obj_score", False):
-        print(dq_coords[0].shape, filt_dq.shape, lbl.shape, filt.shape, dq_coords[1].shape)
-        print(dq_coords_batch_idx[filt_dq])
+        #print(dq_coords[0].shape, filt_dq.shape, lbl.shape, filt.shape, dq_coords[1].shape)
+        #print(dq_coords_batch_idx[filt_dq])
         y_filt = TensorCollection(labels=lbl[filt], dq_eta=dq_coords[0][filt_dq], dq_phi=dq_coords[1][filt_dq],
                                   dq_coords_batch_idx=renumber_clusters(dq_coords_batch_idx[filt_dq].int()))
     else:
@@ -723,6 +722,8 @@ class EventJets(EventCollection):
         phi,
         mass,
         area=None,
+        obj_score=None,
+        target_obj_score=None,
         batch_number=None
     ):
         self.pt = to_tensor(pt)
@@ -736,6 +737,10 @@ class EventJets(EventCollection):
              self.p * torch.cos(self.theta)),
             dim=1
         )
+        if obj_score is not None:
+            self.obj_score = to_tensor(obj_score)
+        if target_obj_score is not None:
+            self.target_obj_score = to_tensor(target_obj_score)
         tst = torch.abs(torch.norm(self.pxyz, dim=1) - self.p)
         #if not (tst[~torch.isnan(tst)] < 1e-2).all():
         #    print("!!!!!", (torch.abs(torch.norm(self.pxyz, dim=1) - self.p)).max())

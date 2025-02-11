@@ -1,4 +1,4 @@
-# As the data and code is moved frequently between machines, we give the paths (to the data, config file, etc...) in one of the following ways_
+# As the data and code is moved frequently between machines, we give the paths (to the data, config file, etc...) in one of the following ways:
 #  - either as an absolute path, i.e. /eos/home-g/gkrzmanc/jetclustering/code/config_files/config_jets.yaml
 #  - or as a path relative to either the SVJ_CODE_ROOT, SVJ_DATA_ROOT, SVJ_PREPROCESSED_DATA_ROOT, or RESULTS_ROOT directories: config_files/config_jets.yaml
 # these env_vars are set in env.sh and this file is not copied between machines, i.e. lxplus and tier3.

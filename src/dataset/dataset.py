@@ -406,7 +406,7 @@ class EventDataset(torch.utils.data.Dataset):
         result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
                   key in self.attrs}
         if self.model_output is not None:
-            result["model_jets"], bc_scores_pfcands, bc_labels_pfcands = self.get_model_jets(i, pfcands=result["pfcands"])
+            result["model_jets"], bc_scores_pfcands, bc_labels_pfcands = self.get_model_jets(i, pfcands=result["pfcands"], include_target=1, dq=result["matrix_element_gen_particles"])
             result["pfcands"].bc_scores_pfcands = bc_scores_pfcands
             result["pfcands"].bc_labels_pfcands = bc_labels_pfcands
             if self.include_model_jets_unfiltered:
@@ -414,6 +414,31 @@ class EventDataset(torch.utils.data.Dataset):
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
         return Event(**result)
+
+    @staticmethod
+    def get_target_obj_score(clusters_eta, clusters_phi, clusters_pt, event_idx_clusters, dq_eta, dq_phi, dq_event_idx):
+        # return the target scores for each cluster (reteurns list of 1's and 0's)
+        # dq_coords: list of [eta, phi] for each dark quark
+        # dq_event_idx: list of event_idx for each dark quarks
+        target = []
+        for event in event_idx_clusters.unique():
+            filt = event_idx_clusters == event
+            clusters = torch.stack([clusters_eta[filt], clusters_phi[filt], clusters_pt[filt]], dim=1)
+            dq_coords_event = torch.stack([dq_eta[dq_event_idx == event], dq_phi[dq_event_idx == event]], dim=1)
+            dist_matrix = torch.cdist(
+                dq_coords_event,
+                clusters[:, :2].to(dq_coords_event.device),
+                p=2
+            ).T
+            if len(dist_matrix) == 0:
+                target.append(torch.zeros(len(clusters)).int().to(dist_matrix.device))
+                continue
+            closest_quark_dist, closest_quark_idx = dist_matrix.min(dim=1)
+            closest_quark_idx[closest_quark_dist > 0.8] = -1
+            target.append((closest_quark_idx != -1).float())
+        if len(target):
+            return torch.cat(target).flatten()
+        return torch.tensor([])
 
     @staticmethod
     def mask_jets(jets, cutoff=100):
@@ -440,14 +465,15 @@ class EventDataset(torch.utils.data.Dataset):
         bc_scores = model_output["pred"][event_filter_s:event_filter_e, -1]
         cutoff = 100
         mask = jets_pt >= cutoff
-        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])#, bc_scores, cluster_labels
+        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])
 
-    def get_model_jets(self, i, pfcands, filter=True):
+    def get_model_jets(self, i, pfcands, filter=True, dq=None, include_target=False):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
         pfcands_pt = pfcands.pt
         pfcands_pxyz = pfcands.pxyz
         pfcands_E = pfcands.E
-        assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={}".format(filter)
+        obj_score = None
+        assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={} len(pfcands_pt)={} event_filter_e={} event_filter_s={}".format(filter, len(pfcands_pt), event_filter_e, event_filter_s)
         #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
         jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
@@ -457,12 +483,29 @@ class EventDataset(torch.utils.data.Dataset):
         jets_mass = torch.sqrt(jets_E**2 - jets_pxyz.norm(dim=-1)**2)
         cluster_labels = self.model_clusters[event_filter_s:event_filter_e]
         bc_scores = self.model_output["pred"][event_filter_s:event_filter_e, -1]
+        if not torch.is_tensor(self.model_output["obj_score_pred"]):
+            self.model_output["obj_score_pred"] = torch.cat(self.model_output["obj_score_pred"])
+            print("Concatenated obj_score_pred")
+        target_obj_score = None
         if filter:
             cutoff = 100
             mask = jets_pt >= cutoff
+            if "obj_score_pred" in self.model_output:
+                obj_score = self.model_output["obj_score_pred"][(self.model_output["event_clusters_idx"] == i)]
+                assert len(obj_score) == len(jets_pt), "Error! len(obj_score)=%d, len(jets_pt)=%d" % (
+                len(obj_score), len(jets_pt))
+                if include_target:
+                    target_obj_score = EventDataset.get_target_obj_score(jets_eta, jets_phi, jets_pt, torch.zeros(jets_pt.size(0)), dq.eta, dq.phi, torch.zeros(dq.eta.size(0)))
         else:
             mask = torch.ones_like(jets_pt, dtype=torch.bool)
-        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask]), bc_scores, cluster_labels
+        if obj_score is not None:
+            obj_score = obj_score[mask]
+            assert len(jets_pt[mask]) == len(obj_score), "Error! len(jets_pt[mask])=%d, len(obj_score)=%d" % (len(jets_pt[mask]), len(obj_score))
+        if target_obj_score is not None:
+            target_obj_score = target_obj_score[mask]
+            assert len(jets_pt[mask]) == len(target_obj_score), "Error! len(jets_pt[mask])=%d, len(obj_score)=%d" % (len(jets_pt[mask]), len(obj_score))
+
+        return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask], obj_score=obj_score, target_obj_score=target_obj_score), bc_scores, cluster_labels
     def get_iter(self):
         while self.i < self.n_events:
             yield self.get_idx(self.i)

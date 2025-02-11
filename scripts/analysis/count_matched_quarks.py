@@ -47,7 +47,6 @@ if args.eval_dir:
     print(dataset_path_to_eval_file)
 
 if args.output == "":
-
     args.output = args.input
 
 output_path = os.path.join(get_path(args.output, "results"), "count_matched_quarks")
@@ -71,6 +70,9 @@ def calculate_m(objects, mt=False):
         return np.sqrt(total_E**2 - total_pxyz[0]**2 - total_pxyz[1]**2).item()
     return np.sqrt(total_E**2 - total_pxyz[2]**2 - total_pxyz[1]**2 - total_pxyz[0]**2).item()
 
+thresholds = np.linspace(0.1, 1, 20)
+# also add 100 points between 0 and 0.1 at the beginning
+thresholds = np.concatenate([np.linspace(0, 0.1, 100), thresholds])
 
 if not args.plot_only:
     n_matched_quarks = {}
@@ -79,6 +81,7 @@ if not args.plot_only:
     bc_scores_matched = {}
     bc_scores_unmatched = {}
     precision_and_recall = {} # Array of [n_relevant_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
+    pr_obj_score_thresholds = {} # same as precision_and_recall, except it gives a dictionary instead of the array, and the keys are the thresholds for objectness score
     mass_resolution = {} # contains {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []} # mt = transverse mass, m = invariant mass
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
@@ -87,6 +90,9 @@ if not args.plot_only:
         model_output_file = None
         if subdataset not in precision_and_recall:
             precision_and_recall[subdataset] = [0, 0, 0]
+            pr_obj_score_thresholds[subdataset] = {}
+            for i in range(len(thresholds)):
+                pr_obj_score_thresholds[subdataset][i] = [0, 0, 0]
         if subdataset not in mass_resolution:
             mass_resolution[subdataset] = {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': [], 'n_jets': []}
         if args.eval_dir:
@@ -119,6 +125,12 @@ if not args.plot_only:
             n_jets = len(jets_object)
             precision_and_recall[subdataset][1] += n_jets
             precision_and_recall[subdataset][2] += len(data.matrix_element_gen_particles)
+            if "obj_score" in jets_object.__dict__:
+                print("Also evaluating using objectness score")
+                for i in range(len(thresholds)):
+                    filt = torch.sigmoid(jets_object.obj_score) >= thresholds[i]
+                    pr_obj_score_thresholds[subdataset][i][1] += torch.sum(filt).item()
+                    pr_obj_score_thresholds[subdataset][i][2] += len(data.matrix_element_gen_particles)
             mass_resolution[subdataset]['m_true'].append(calculate_m(data.matrix_element_gen_particles))
             mass_resolution[subdataset]['m_pred'].append(calculate_m(jets_object))
             mass_resolution[subdataset]['mt_true'].append(calculate_m(data.matrix_element_gen_particles, mt=True))
@@ -130,6 +142,15 @@ if not args.plot_only:
                 n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                 n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
                 precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
+                if "obj_score" in jets_object.__dict__:
+                    for i in range(len(thresholds)):
+                        filt = torch.sigmoid(jets_object.obj_score) >= thresholds[i]
+                        dist_matrix_filt = distance_matrix[:, filt.numpy()]
+                        if filt.sum() == 0:
+                            continue
+                        quark_to_jet_filt = np.min(dist_matrix_filt, axis=1)
+                        quark_to_jet_filt[quark_to_jet_filt > R] = -1
+                        pr_obj_score_thresholds[subdataset][i][0] += np.sum(quark_to_jet_filt != -1)
                 filt = quark_to_jet == -1
                 #if args.jets_object == "model_jets":
                     #matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
@@ -180,6 +201,7 @@ if not args.plot_only:
     result_fakes = {}
     result_bc = {}
     result_PR = {}
+    result_PR_thresholds = {}
     result_m = {}
     for key in avg_n_matched_quarks:
         mMed, mDark, rinv = get_properties(key)
@@ -189,6 +211,7 @@ if not args.plot_only:
             result_fakes[mMed] = {}
             result_bc[mMed] = {}
             result_PR[mMed] = {}
+            result_PR_thresholds[mMed] = {}
             result_m[mMed] = {}
         if mDark not in result[mMed]:
             result[mMed][mDark] = {}
@@ -196,6 +219,7 @@ if not args.plot_only:
             result_fakes[mMed][mDark] = {}
             result_bc[mMed][mDark] = {}
             result_PR[mMed][mDark] = {}
+            result_PR_thresholds[mMed][mDark] = {}
             result_m[mMed][mDark] = {}
         result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
         result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
@@ -204,6 +228,7 @@ if not args.plot_only:
         #    "matched": bc_scores_matched[key],
         #    "unmatched": bc_scores_unmatched[key]
         #}
+        result_PR_thresholds[mMed][mDark][rinv] = pr_obj_score_thresholds[key]
         if  precision_and_recall[key][1] == 0 or precision_and_recall[key][2] == 0:
             result_PR[mMed][mDark][rinv] = [0, 0]
             print(mMed, mDark, rinv)
@@ -216,6 +241,7 @@ if not args.plot_only:
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
     pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
+    pickle.dump(result_PR_thresholds, open(os.path.join(output_path, "result_PR_thresholds.pkl"), "wb"))
     pickle.dump(result_m, open(os.path.join(output_path, "result_m.pkl"), "wb"))
     # write the number of events to n_events.txt
     with open(os.path.join(output_path, "n_events.txt"), "w") as f:
@@ -226,7 +252,56 @@ if args.plot_only:
     result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
     result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+    result_PR_thresholds = pickle.load(open(os.path.join(output_path, "result_PR_thresholds.pkl"), "rb"))
 
+fig, ax = plt.subplots(3, 1, figsize=(4, 12))
+
+def get_plots_for_params(mMed, mDark, rInv):
+    precisions = []
+    recalls = []
+    f1_scores = []
+    for i in range(len(thresholds)):
+        if result_PR_thresholds[mMed][mDark][rInv][i][1] == 0:
+            precisions.append(0)
+        else:
+            precisions.append(result_PR_thresholds[mMed][mDark][rInv][i][0] / result_PR_thresholds[mMed][mDark][rInv][i][1])
+        if result_PR_thresholds[mMed][mDark][rInv][i][2] == 0:
+            recalls.append(0)
+        else:
+            recalls.append(result_PR_thresholds[mMed][mDark][rInv][i][0] / result_PR_thresholds[mMed][mDark][rInv][i][2])
+    for i in range(len(thresholds)):
+        if precisions[i] + recalls[i] == 0:
+            f1_scores.append(0)
+        else:
+            f1_scores.append(2*precisions[i]*recalls[i] / (precisions[i] + recalls[i]))
+    return precisions, recalls, f1_scores
+
+
+def plot_for_params(a, b, c):
+    precisions, recalls, f1_scores = get_plots_for_params(a, b, c)
+    ax[0].plot(thresholds, precisions, ".--", label=f"mMed={a},rInv={c}")
+    ax[1].plot(thresholds, recalls, ".--", label=f"mMed={a},rInv={c}")
+    ax[2].plot(thresholds, f1_scores, ".--", label=f"mMed={a},rInv={c}")
+
+plot_for_params(900, 20, 0.3)
+plot_for_params(700, 20, 0.7)
+plot_for_params(3000, 20, 0.3)
+plot_for_params(900, 20, 0.7)
+plot_for_params(1000, 20, 0.3)
+ax[0].grid()
+ax[1].grid()
+ax[2].grid()
+ax[0].set_ylabel("Precision")
+ax[1].set_ylabel("Recall")
+ax[2].set_ylabel("F1 score")
+ax[0].legend()
+ax[1].legend()
+ax[2].legend()
+ax[0].set_xscale("log")
+ax[1].set_xscale("log")
+ax[2].set_xscale("log")
+fig.tight_layout()
+fig.savefig(os.path.join(output_path, "pr_thresholds.pdf"))
 
 matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"))
 matrix_plot(result_fakes, "Greens", "Avg. unmatched jets / event").savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"))

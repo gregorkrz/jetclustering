@@ -11,7 +11,8 @@ parser.add_argument("--steps", "-step", type=int, required=True)
 parser.add_argument("--template", "-template", type=str, required=True) # 'Vega' or 'T3'
 parser.add_argument("--tag", "-tag", type=str, required=False, default="") # 'Vega' or 'T3'
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
-
+parser.add_argument("--os-weights", "-os", default=None, type=str)  # train/scatter_mean_Obj_Score_LGATr_8_16_64_2025_02_07_16_31_26/OS_step_47000_epoch_70.ckpt # objectness score weights
+# -os train/scatter_mean_Obj_Score_LGATr_8_16_64_2025_02_07_16_31_26/OS_step_47000_epoch_70.ckpt
 args = parser.parse_args()
 
 api = wandb.Api()
@@ -53,6 +54,9 @@ def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
     d = "jobs/logs/{}".format(tag)
     err = d + "_{}_err.txt".format(log_number)
     log = d + "_{}_log.txt".format(log_number)
+    obj_score_suffix = ""
+    if args.os_weights:
+        obj_score_suffix = f" --train-objectness-score --load-objectness-score-weights {args.os_weights}"
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
@@ -66,7 +70,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps}
+srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix}
     """
     return file
 
