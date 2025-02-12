@@ -209,7 +209,7 @@ if not args.plot_only:
                         precision_and_recall_fastjets[subdataset][key] = [0, 0, 0]
                     precision_and_recall_fastjets[subdataset][key][1] += n_jets
                     precision_and_recall_fastjets[subdataset][key][2] += len(data.matrix_element_gen_particles)
-                    if len(jets_object):
+                    if len(jets_object[key]):
                         quark_to_jet = np.min(distance_matrix, axis=1)
                         quark_to_jet[quark_to_jet > R] = -1
                         precision_and_recall_fastjets[subdataset][key][0] += np.sum(quark_to_jet != -1)
@@ -230,45 +230,76 @@ if not args.plot_only:
     result_fakes = {}
     result_bc = {}
     result_PR = {}
+    result_PR_AKX = {}
     result_PR_thresholds = {}
     result_m = {}
-    for key in avg_n_matched_quarks:
-        mMed, mDark, rinv = get_properties(key)
-        if mMed not in result:
-            result[mMed] = {}
-            result_unmatched[mMed] = {}
-            result_fakes[mMed] = {}
-            result_bc[mMed] = {}
-            result_PR[mMed] = {}
-            result_PR_thresholds[mMed] = {}
-            result_m[mMed] = {}
-        if mDark not in result[mMed]:
-            result[mMed][mDark] = {}
-            result_unmatched[mMed][mDark] = {}
-            result_fakes[mMed][mDark] = {}
-            result_bc[mMed][mDark] = {}
-            result_PR[mMed][mDark] = {}
-            result_PR_thresholds[mMed][mDark] = {}
-            result_m[mMed][mDark] = {}
-        result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
-        result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
-        result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
-        #result_bc[mMed][mDark][rinv] = {
-        #    "matched": bc_scores_matched[key],
-        #    "unmatched": bc_scores_unmatched[key]
-        #}
-        result_PR_thresholds[mMed][mDark][rinv] = pr_obj_score_thresholds[key]
-        if  precision_and_recall[key][1] == 0 or precision_and_recall[key][2] == 0:
-            result_PR[mMed][mDark][rinv] = [0, 0]
-            print(mMed, mDark, rinv)
-            print("PR zero", key, precision_and_recall[key])
-        else:
-            result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
-        result_m[mMed][mDark][rinv] = {key: np.array(val) for key, val in mass_resolution[key].items()}
+    if args.jets_object != "fastjet_jets":
+        for key in avg_n_matched_quarks:
+            mMed, mDark, rinv = get_properties(key)
+            if mMed not in result:
+                result[mMed] = {}
+                result_unmatched[mMed] = {}
+                result_fakes[mMed] = {}
+                result_bc[mMed] = {}
+                result_PR[mMed] = {}
+                result_PR_AKX[mMed] = {}
+                result_PR_thresholds[mMed] = {}
+                result_m[mMed] = {}
+            if mDark not in result[mMed]:
+                result[mMed][mDark] = {}
+                result_unmatched[mMed][mDark] = {}
+                result_fakes[mMed][mDark] = {}
+                result_bc[mMed][mDark] = {}
+                result_PR[mMed][mDark] = {}
+                result_PR_thresholds[mMed][mDark] = {}
+                result_PR_AKX[mMed][mDark] = {}
+                result_m[mMed][mDark] = {}
+            result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
+            result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
+            result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
+            #result_bc[mMed][mDark][rinv] = {
+            #    "matched": bc_scores_matched[key],
+            #    "unmatched": bc_scores_unmatched[key]
+            #}
+            result_PR_thresholds[mMed][mDark][rinv] = pr_obj_score_thresholds[key]
+
+            if  precision_and_recall[key][1] == 0 or precision_and_recall[key][2] == 0:
+                result_PR[mMed][mDark][rinv] = [0, 0]
+                print(mMed, mDark, rinv)
+                print("PR zero", key, precision_and_recall[key])
+            else:
+                result_PR[mMed][mDark][rinv] = [precision_and_recall[key][0] / precision_and_recall[key][1], precision_and_recall[key][0] / precision_and_recall[key][2]]
+            result_m[mMed][mDark][rinv] = {key: np.array(val) for key, val in mass_resolution[key].items()}
+            if args.jets_object == "fastjet_jets":
+                r = precision_and_recall_fastjets[key]
+                if rinv not in result_PR_AKX[mMed][mDark]:
+                    result_PR_AKX[mMed][mDark][rinv] = {}
+                for k in r:
+                    if r[k][1] == 0 or r[k][2] == 0:
+                        result_PR_AKX[mMed][mDark][rinv][k] = [0, 0]
+                    else:
+                        result_PR_AKX[mMed][mDark][rinv][k] = [r[k][0] / r[k][1], r[k][0] / r[k][2]]
+    else:
+        for key in precision_and_recall_fastjets:
+            mMed, mDark, rinv = get_properties(key)
+            if mMed not in result_PR_AKX:
+                result_PR_AKX[mMed] = {}
+            if mDark not in result_PR_AKX[mMed]:
+                result_PR_AKX[mMed][mDark] = {}
+            r = precision_and_recall_fastjets[key]
+            if rinv not in result_PR_AKX[mMed][mDark]:
+                result_PR_AKX[mMed][mDark][rinv] = {}
+            for k in r:
+                if r[k][1] == 0 or r[k][2] == 0:
+                    result_PR_AKX[mMed][mDark][rinv][k] = [0, 0]
+                else:
+                    result_PR_AKX[mMed][mDark][rinv][k] = [r[k][0] / r[k][1], r[k][0] / r[k][2]]
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
     pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
+    if args.jets_object == "fastjet_jets":
+        pickle.dump(result_PR_AKX, open(os.path.join(output_path, "result_PR_AKX.pkl"), "wb"))
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
     pickle.dump(result_PR_thresholds, open(os.path.join(output_path, "result_PR_thresholds.pkl"), "wb"))
     pickle.dump(result_m, open(os.path.join(output_path, "result_m.pkl"), "wb"))
@@ -282,6 +313,11 @@ if args.plot_only:
     result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
     result_PR_thresholds = pickle.load(open(os.path.join(output_path, "result_PR_thresholds.pkl"), "rb"))
+
+if args.jets_object == "fastjet_jets":
+    print("Only computing fastjet jets - exiting now, the metrics have been saved to disk")
+    import sys
+    sys.exit(0)
 
 fig, ax = plt.subplots(3, 1, figsize=(4, 12))
 

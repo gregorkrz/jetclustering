@@ -503,8 +503,8 @@ class EventDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def get_fastjet_jets(event, jetdef):
-        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(event, jetdef)
-        return EventJets(pt, eta, phi, m)
+        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(event["pfcands"], jetdef)
+        return EventJets(torch.tensor(pt), torch.tensor(eta), torch.tensor(phi), torch.tensor(m))
 
     def get_model_jets(self, i, pfcands, filter=True, dq=None, include_target=False):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()
@@ -514,6 +514,7 @@ class EventDataset(torch.utils.data.Dataset):
         obj_score = None
         assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={} len(pfcands_pt)={} event_filter_e={} event_filter_s={}".format(filter, len(pfcands_pt), event_filter_e, event_filter_s)
         #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
+        print(self.model_clusters[event_filter_s:event_filter_e])
         jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
         jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
@@ -531,6 +532,7 @@ class EventDataset(torch.utils.data.Dataset):
             mask = jets_pt >= cutoff
             if "obj_score_pred" in self.model_output:
                 obj_score = self.model_output["obj_score_pred"][(self.model_output["event_clusters_idx"] == i)]
+                print("Jets pt", jets_pt, "obj score", obj_score)
                 assert len(obj_score) == len(jets_pt), "Error! len(obj_score)=%d, len(jets_pt)=%d" % (
                 len(obj_score), len(jets_pt))
                 if include_target:

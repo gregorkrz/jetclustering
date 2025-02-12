@@ -322,18 +322,18 @@ def evaluate(
                         coords = predictions["pred"][-1][:, :3]
                     else:
                         coords = predictions["pred"][-1][:, 1:4]
-                    if model_obj_score is None:
-                        clustering_labels = torch.tensor(
-                            get_clustering_labels(
-                                    coords.detach().cpu().numpy(),
-                                    event_idx.detach().cpu().numpy(),
-                                    min_cluster_size=args.min_cluster_size,
-                                    min_samples=args.min_samples,
-                                    epsilon=args.epsilon,
-                                    return_labels_event_idx=False)
-                                )
+                    #if model_obj_score is None:
+                    clustering_labels = torch.tensor(
+                        get_clustering_labels(
+                                coords.detach().cpu().numpy(),
+                                event_idx.detach().cpu().numpy(),
+                                min_cluster_size=args.min_cluster_size,
+                                min_samples=args.min_samples,
+                                epsilon=args.epsilon,
+                                return_labels_event_idx=False)
+                            )
                     if model_obj_score is not None:
-                        clustering_labels, clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
+                        _, clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
                                                                              batch.batch_idx.detach().cpu().numpy(),
                                                                              min_cluster_size=args.min_cluster_size,
                                                                              min_samples=args.min_samples,

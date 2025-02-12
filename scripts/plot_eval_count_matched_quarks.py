@@ -20,7 +20,8 @@ args = parser.parse_args()
 path = get_path(args.input, "results")
 
 models = sorted([x for x in os.listdir(path) if not os.path.isfile(os.path.join(path, x))])
-models = [x for x in models if "C1010" not in x]
+models = [x for x in models if "AKX" not in x]
+print("Models:", models)
 
 radius = {
     "LGATr_R10": 1.0,
@@ -43,11 +44,11 @@ if args.threshold_obj_score != -1:
 out_file_avg_number_matched_quarks = os.path.join(get_path(args.input, "results"), "avg_number_matched_quarks.pdf")
 sz = 5
 
-
 fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
-
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
+    ak_path = os.path.join(path, "AKX", "count_matched_quarks")
+
     if not os.path.exists(os.path.join(output_path, "result.pkl")):
         continue
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
@@ -67,8 +68,8 @@ fig.tight_layout()
 fig.savefig(out_file_PR)
 print("Saved to", out_file_PR)
 
-
 ########### Now save the above plot with objectness score applied
+
 if args.threshold_obj_score != -1:
     fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
     for i, model in tqdm(enumerate(models)):
@@ -103,10 +104,10 @@ if args.threshold_obj_score != -1:
     print("Saved to", out_file_PR_OS)
 
 
-
-###########
-
-fig, ax = plt.subplots(2, len(models), figsize=(sz * len(models), sz * 2))
+################
+# UNUSED PLOTS #
+################
+'''fig, ax = plt.subplots(2, len(models), figsize=(sz * len(models), sz * 2))
 for i, model in tqdm(enumerate(models)):
     output_path = os.path.join(path, model, "count_matched_quarks")
     if not os.path.exists(os.path.join(output_path, "result.pkl")):
@@ -122,17 +123,21 @@ for i, model in tqdm(enumerate(models)):
     ax[1, i].set_title(model)
 fig.tight_layout()
 fig.savefig(out_file_avg_number_matched_quarks)
-print("Saved to", out_file_avg_number_matched_quarks)
+print("Saved to", out_file_avg_number_matched_quarks)'''
 
 rinvs = [0.3, 0.5, 0.7]
 sz = 4
 fig, ax = plt.subplots(len(rinvs), 3, figsize=(3*sz, sz*len(rinvs)))
+fig_AK, ax_AK = plt.subplots(len(rinvs), 3, figsize=(3*sz, sz*len(rinvs)))
+
 
 to_plot = {} # r_inv -> m_med -> precision, recall, R
+to_plot_ak = {} # plotting for the AK baseline
 
-# Plot a plot for each mass at given rinv of the precision, recall, F1 score
+### Plotting the score vs GT R plots
+
 oranges = plt.get_cmap("Oranges")
-reds = plt.get_cmap("Reds")
+reds = plt.get_cmap("Reds") # Plot a plot for each mass at given rinv of the precision, recall, F1 score
 purples = plt.get_cmap("Purples")
 
 mDark = 20
@@ -140,7 +145,9 @@ mDark = 20
 for i, rinv in enumerate(rinvs):
     if rinv not in to_plot:
         to_plot[rinv] = {}
+        to_plot_ak[rinv] = {}
     for j, model in enumerate(models):
+        print("Model", model)
         if model not in radius:
             continue
         r = radius[model]
@@ -167,18 +174,46 @@ for i, rinv in enumerate(rinvs):
         scatter_plot(ax[0, i], r["R"], r["precision"], label="m={} GeV".format(round(mMed)), color=oranges(mmed))
         scatter_plot(ax[1, i], r["R"], r["recall"], label="m={} GeV".format(round(mMed)), color=reds(mmed))
         scatter_plot(ax[2, i], r["R"], r["f1score"], label="m={} GeV".format(round(mMed)), color=purples(mmed))
-    ax[0, i].set_title(f"Precision r_inv = {rinv}")
-    ax[1, i].set_title(f"Recall r_inv = {rinv}")
-    ax[2, i].set_title(f"F1 score r_inv = {rinv}")
-    ax[2, i].legend()
-    ax[1, i].legend()
-    ax[0, i].legend()
-    ax[0, i].grid()
-    ax[1, i].grid()
-    ax[2, i].grid()
-    ax[0, i].set_xlabel("GT R")
-    ax[1, i].set_xlabel("GT R")
-    ax[2, i].set_xlabel("GT R")
-fig.tight_layout()
-fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots.pdf"))
+    if not os.path.exists(os.path.join(ak_path, "result_PR_AKX.pkl")):
+        continue
+    result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
+    #if radius not in to_plot[rinv]:
+    #    to_plot[rinv][radius] = {}
+    for k, mMed in enumerate(sorted(result_PR_AKX.keys())):
+        if mMed not in to_plot_ak[rinv]:
+            to_plot_ak[rinv][mMed] = {"precision": [], "recall": [], "f1score": [], "R": []}
+        rs = sorted(result_PR_AKX[mMed][mDark][rinv].keys())
+        precision = np.array([result_PR_AKX[mMed][mDark][rinv][k][0] for k in rs])
+        recall = np.array([result_PR_AKX[mMed][mDark][rinv][k][1] for k in rs])
+        f1score = 2 * precision * recall / (precision + recall)
+        to_plot_ak[rinv][mMed]["precision"] += list(precision)
+        to_plot_ak[rinv][mMed]["recall"] += list(recall)
+        to_plot_ak[rinv][mMed]["f1score"] += list(f1score)
+        to_plot_ak[rinv][mMed]["R"] += rs
 
+    for mMed in sorted(to_plot_ak[rinv].keys()):
+        # normalize mmed between 0 and 1 (originally between 700 and 3000)
+        mmed = (mMed - 500) / (3000 - 500)
+        r = to_plot_ak[rinv][mMed]
+        scatter_plot(ax_AK[0, i], r["R"], r["precision"], label="m={} GeV AK".format(round(mMed)), color=oranges(mmed), pattern=".-")
+        scatter_plot(ax_AK[1, i], r["R"], r["recall"], label="m={} GeV AK".format(round(mMed)), color=reds(mmed), pattern=".-")
+        scatter_plot(ax_AK[2, i], r["R"], r["f1score"], label="m={} GeV AK".format(round(mMed)), color=purples(mmed), pattern=".-")
+    for ax1 in [ax, ax_AK]:
+        ax1[0, i].set_title(f"Precision r_inv = {rinv}")
+        ax1[1, i].set_title(f"Recall r_inv = {rinv}")
+        ax1[2, i].set_title(f"F1 score r_inv = {rinv}")
+        ax1[2, i].legend()
+        ax1[1, i].legend()
+        ax1[0, i].legend()
+        ax1[0, i].grid()
+        ax1[1, i].grid()
+        ax1[2, i].grid()
+        ax1[0, i].set_xlabel("GT R")
+        ax1[1, i].set_xlabel("GT R")
+        ax1[2, i].set_xlabel("GT R")
+fig.tight_layout()
+fig_AK.tight_layout()
+fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots.pdf"))
+fig_AK.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
+
+print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots.pdf"))

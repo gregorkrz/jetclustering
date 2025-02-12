@@ -34,6 +34,28 @@ def get_log_number(tag):
         return 0
     return max(list(numbers)) + 1
 
+def get_slurm_file_text_AKX(tag, log_number):
+    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/"
+    partition = "standard"
+    account = "t3"
+    d = "jobs/logs/{}".format(tag)
+    err = d + "_{}_CPUerr.txt".format(log_number)
+    log = d + "_{}_CPUlog.txt".format(log_number)
+    file = f"""#!/bin/bash
+#SBATCH --partition={partition}           # Specify the partition
+#SBATCH --account={account}                  # Specify the account
+#SBATCH --mem=10000                   # Request 10GB of memory
+#SBATCH --time=02:00:00               # Set the time limit to 1 hour
+#SBATCH --job-name=SVJan  # Name the job
+#SBATCH --error={err}         # Redirect stderr to a log file
+#SBATCH --output={log}         # Redirect stderr to a log file
+source env.sh
+export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
+export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
+nvidia-smi
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AKX --jets-object fastjet_jets
+    """
+    return file
 
 def get_slurm_file_text_AK(tag, log_number):
     bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/"
@@ -100,6 +122,22 @@ if not args.no_submit:
     os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
 
 print("---- Submitted AK8 run -----")'''
+
+# Submit also AKX
+if not os.path.exists("jobs/slurm_files"):
+    os.makedirs("jobs/slurm_files")
+if not os.path.exists("jobs/logs"):
+    os.makedirs("jobs/logs")
+log_number = get_log_number(args.tag)
+slurm_file_text = get_slurm_file_text_AKX(args.tag, log_number)
+# write the file to jobs/slurm_files
+with open("jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number), "w") as f:
+    f.write(slurm_file_text)
+    print("Wrote file to jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
+if not args.no_submit:
+    os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
+
+print("---- Submitted AKX run -----")
 
 import pickle
 
