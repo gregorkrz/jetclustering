@@ -3,7 +3,8 @@ from lgatr.interface import embed_vector, extract_scalar, embed_spurions, extrac
 import torch
 import torch.nn as nn
 from xformers.ops.fmha import BlockDiagonalMask
-from torch_scatter import scatter_sum, scatter_max
+from torch_scatter import scatter_sum, scatter_max, scatter_mean
+
 
 class LGATrModel(torch.nn.Module):
     def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords, obj_score=False):
@@ -89,7 +90,7 @@ class LGATrModel(torch.nn.Module):
                 if extract_from_virtual_nodes:
                     values = torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1)
                 else:
-                    values = scatter_max(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
+                    values = scatter_mean(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
                 beta = self.beta(values)
                 #beta = self.beta(values)
                 return beta

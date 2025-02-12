@@ -5,9 +5,16 @@ import pickle
 from src.plotting.eval_matrix import matrix_plot, scatter_plot
 from src.utils.paths import get_path
 import matplotlib.pyplot as plt
+import numpy as np
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval")
+parser.add_argument("--input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std/batch_eval/objectness_score")
+parser.add_argument("--threshold-obj-score", "-os-threshold", type=float, default=-1)
+
+thresholds = np.linspace(0.1, 1, 20)
+# also add 100 points between 0 and 0.1 at the beginning
+thresholds = np.concatenate([np.linspace(0, 0.1, 100), thresholds])
 
 args = parser.parse_args()
 path = get_path(args.input, "results")
@@ -30,10 +37,13 @@ radius = {
 }
 
 
-
 out_file_PR = os.path.join(get_path(args.input, "results"), "precision_recall.pdf")
+if args.threshold_obj_score != -1:
+    out_file_PR_OS = os.path.join(get_path(args.input, "results"), f"precision_recall_with_obj_score.pdf")
 out_file_avg_number_matched_quarks = os.path.join(get_path(args.input, "results"), "avg_number_matched_quarks.pdf")
 sz = 5
+
+
 fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
 
 for i, model in tqdm(enumerate(models)):
@@ -56,6 +66,45 @@ for i, model in tqdm(enumerate(models)):
 fig.tight_layout()
 fig.savefig(out_file_PR)
 print("Saved to", out_file_PR)
+
+
+########### Now save the above plot with objectness score applied
+if args.threshold_obj_score != -1:
+    fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
+    for i, model in tqdm(enumerate(models)):
+        output_path = os.path.join(path, model, "count_matched_quarks")
+        if not os.path.exists(os.path.join(output_path, "result.pkl")):
+            continue
+        result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
+        #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
+        result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
+        result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
+        result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+        result_PR_thresholds = pickle.load(open(os.path.join(output_path, "result_PR_thresholds.pkl"), "rb"))
+        #thresholds = sorted(list(result_PR_thresholds[900][20][0.3].keys()))
+        #thresholds = np.array(thresholds)
+        # now linearly interpolate the thresholds and set the j according to args.threshold_obj_score
+        j = np.argmin(np.abs(thresholds - args.threshold_obj_score))
+        print("Thresholds", thresholds)
+        print("Chose j=", j, "for threshold", args.threshold_obj_score, "(effectively it's", thresholds[j], ")")
+        def wrap(r):
+            # compute [precision, recall] array from [n_relevant_retrieved, all_retrieved, all_relevant]
+            if r[1] == 0 or r[2] == 0:
+                return [0, 0]
+            return [r[0] / r[1], r[0] / r[2]]
+        matrix_plot(result_PR_thresholds, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: wrap(r[j])[0], ax=ax[0, i])
+        matrix_plot(result_PR_thresholds, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: wrap(r[j])[1], ax=ax[1, i])
+        matrix_plot(result_PR_thresholds, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * wrap(r[j])[0] * wrap(r[j])[1] / (wrap(r[j])[0] + wrap(r[j])[1]), ax=ax[2, i])
+        ax[0, i].set_title(model)
+        ax[1, i].set_title(model)
+        ax[2, i].set_title(model)
+    fig.tight_layout()
+    fig.savefig(out_file_PR_OS)
+    print("Saved to", out_file_PR_OS)
+
+
+
+###########
 
 fig, ax = plt.subplots(2, len(models), figsize=(sz * len(models), sz * 2))
 for i, model in tqdm(enumerate(models)):

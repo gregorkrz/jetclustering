@@ -25,8 +25,14 @@ from src.layers.object_cond import calc_eta_phi
 from torch_scatter import scatter_sum
 from src.dataset.functions_graph import create_graph, create_jets_outputs, create_jets_outputs_new
 from src.dataset.functions_data import Event, EventCollection, EventJets
-
+import fastjet
 from src.utils.utils import CPU_Unpickler
+
+def get_pseudojets_fastjet(pfcands):
+    pseudojets = []
+    for i in range(len(pfcands)):
+        pseudojets.append(fastjet.PseudoJet(pfcands.pxyz[i, 0].item(), pfcands.pxyz[i, 1].item(), pfcands.pxyz[i, 2].item(), pfcands.E[i].item()))
+    return pseudojets
 
 def _finalize_inputs(table, data_config):
     # transformation
@@ -342,7 +348,7 @@ def get_batch_bounds(batch_idx):
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -353,9 +359,10 @@ class EventDataset(torch.utils.data.Dataset):
                 )
         dataset = EventDataset(result, metadata, model_clusters_file=model_clusters_file,
                                model_output_file=model_output_file,
-                               include_model_jets_unfiltered=include_model_jets_unfiltered)
+                               include_model_jets_unfiltered=include_model_jets_unfiltered,
+                               fastjet_R=fastjet_R)
         return dataset
-    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False):
+    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None):
         # events: serialized events dict
         # metadata: dict with metadata
         self.events = events
@@ -381,6 +388,9 @@ class EventDataset(torch.utils.data.Dataset):
         else:
             self.model_output = None
             self.model_clusters = None
+        if fastjet_R is not None:
+            self.fastjet_jetdef = {r: fastjet.JetDefinition(fastjet.antikt_algorithm, r) for r in fastjet_R}
+            ## fastjet_R is an array of radiuses for which to compute that
 
     def __len__(self):
         return self.n_events
@@ -411,6 +421,8 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].bc_labels_pfcands = bc_labels_pfcands
             if self.include_model_jets_unfiltered:
                 result["model_jets_unfiltered"], _, _ = self.get_model_jets(i, pfcands=result["pfcands"], filter=False)
+        if hasattr(self, "fastjet_jetdef") and self.fastjet_jetdef is not None:
+            result["fastjet_jets"] = {key: EventDataset.get_fastjet_jets(result, self.fastjet_jetdef[key]) for key in self.fastjet_jetdef}
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
         return Event(**result)
@@ -466,6 +478,33 @@ class EventDataset(torch.utils.data.Dataset):
         cutoff = 100
         mask = jets_pt >= cutoff
         return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])
+
+    @staticmethod
+    def get_jets_fastjets_raw(pfcands, jetdef):
+        pt = []
+        eta = []
+        phis = []
+        mass = []
+        array = get_pseudojets_fastjet(pfcands)
+        cluster = fastjet.ClusterSequence(array, jetdef)
+        inc_jets = cluster.inclusive_jets()
+        for elem in inc_jets:
+            if elem.pt() < 100:
+                continue
+            # print("pt:", elem.pt(), "eta:", elem.rap(), "phi:", elem.phi())ž
+            pt.append(elem.pt())
+            eta.append(elem.rap())
+            phi = elem.phi()
+            if phi > np.pi:
+                phi -= 2 * np.pi
+            phis.append(phi)
+            mass.append(elem.m())
+        return pt, eta, phis, mass
+
+    @staticmethod
+    def get_fastjet_jets(event, jetdef):
+        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(event, jetdef)
+        return EventJets(pt, eta, phi, m)
 
     def get_model_jets(self, i, pfcands, filter=True, dq=None, include_target=False):
         event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), self.model_output["event_idx_bounds"][i+1].int().item()

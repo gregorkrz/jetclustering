@@ -81,8 +81,9 @@ if not args.plot_only:
     bc_scores_matched = {}
     bc_scores_unmatched = {}
     precision_and_recall = {} # Array of [n_relevant_retrieved, all_retrieved, all_relevant], or in our language, [n_matched_dark_quarks, n_jets, n_dark_quarks]
+    precision_and_recall_fastjets = {}
     pr_obj_score_thresholds = {} # same as precision_and_recall, except it gives a dictionary instead of the array, and the keys are the thresholds for objectness score
-    mass_resolution = {} # contains {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []} # mt = transverse mass, m = invariant mass
+    mass_resolution = {} # Contains {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []} # mt = transverse mass, m = invariant mass
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
@@ -90,6 +91,7 @@ if not args.plot_only:
         model_output_file = None
         if subdataset not in precision_and_recall:
             precision_and_recall[subdataset] = [0, 0, 0]
+            precision_and_recall_fastjets[subdataset] = {}
             pr_obj_score_thresholds[subdataset] = {}
             for i in range(len(thresholds)):
                 pr_obj_score_thresholds[subdataset][i] = [0, 0, 0]
@@ -100,9 +102,12 @@ if not args.plot_only:
             model_output_file = dataset_path_to_eval_file[current_path][0]
         #dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file,
         #                   include_model_jets_unfiltered=True)
+        fastjet_R = None
+        if args.jets_object == "fastjet_jets":
+            fastjet_R = np.array([0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0, 2.5])
         dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
                                     model_output_file=model_output_file,
-                                    include_model_jets_unfiltered=True)
+                                    include_model_jets_unfiltered=True, fastjet_R=fastjet_R)
         n = 0
         for x in tqdm(range(len(dataset))):
             data = dataset[x]
@@ -110,80 +115,104 @@ if not args.plot_only:
             n += 1
             if args.dataset_cap != -1 and n > args.dataset_cap:
                 break
-            jets = [jets_object.eta, jets_object.phi]
-            dq = [data.matrix_element_gen_particles.eta, data.matrix_element_gen_particles.phi]
-            # calculate deltaR between each jet and each quark
-            distance_matrix = np.zeros((len(jets_object), len(data.matrix_element_gen_particles)))
-            for i in range(len(jets_object)):
-                for j in range(len(data.matrix_element_gen_particles)):
-                    deta = jets[0][i] - dq[0][j]
-                    dphi = jets[1][i] - dq[1][j]
-                    distance_matrix[i, j] = np.sqrt(deta**2 + dphi**2)
-            # row-wise argmin
-            distance_matrix = distance_matrix.T
-            #min_distance = np.min(distance_matrix, axis=1)
-            n_jets = len(jets_object)
-            precision_and_recall[subdataset][1] += n_jets
-            precision_and_recall[subdataset][2] += len(data.matrix_element_gen_particles)
-            if "obj_score" in jets_object.__dict__:
-                print("Also evaluating using objectness score")
-                for i in range(len(thresholds)):
-                    filt = torch.sigmoid(jets_object.obj_score) >= thresholds[i]
-                    pr_obj_score_thresholds[subdataset][i][1] += torch.sum(filt).item()
-                    pr_obj_score_thresholds[subdataset][i][2] += len(data.matrix_element_gen_particles)
-            mass_resolution[subdataset]['m_true'].append(calculate_m(data.matrix_element_gen_particles))
-            mass_resolution[subdataset]['m_pred'].append(calculate_m(jets_object))
-            mass_resolution[subdataset]['mt_true'].append(calculate_m(data.matrix_element_gen_particles, mt=True))
-            mass_resolution[subdataset]['mt_pred'].append(calculate_m(jets_object, mt=True))
-            mass_resolution[subdataset]['n_jets'].append(n_jets)
-            if len(jets_object):
-                quark_to_jet = np.min(distance_matrix, axis=1)
-                quark_to_jet[quark_to_jet > R] = -1
-                n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
-                n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
-                precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
+            if not args.jets_object == "fastjet_jets":
+                jets = [jets_object.eta, jets_object.phi]
+                dq = [data.matrix_element_gen_particles.eta, data.matrix_element_gen_particles.phi]
+                # calculate deltaR between each jet and each quark
+                distance_matrix = np.zeros((len(jets_object), len(data.matrix_element_gen_particles)))
+                for i in range(len(jets_object)):
+                    for j in range(len(data.matrix_element_gen_particles)):
+                        deta = jets[0][i] - dq[0][j]
+                        dphi = jets[1][i] - dq[1][j]
+                        distance_matrix[i, j] = np.sqrt(deta**2 + dphi**2)
+                # row-wise argmin
+                distance_matrix = distance_matrix.T
+                #min_distance = np.min(distance_matrix, axis=1)
+                n_jets = len(jets_object)
+                precision_and_recall[subdataset][1] += n_jets
+                precision_and_recall[subdataset][2] += len(data.matrix_element_gen_particles)
                 if "obj_score" in jets_object.__dict__:
+                    print("Also evaluating using objectness score")
                     for i in range(len(thresholds)):
                         filt = torch.sigmoid(jets_object.obj_score) >= thresholds[i]
-                        dist_matrix_filt = distance_matrix[:, filt.numpy()]
-                        if filt.sum() == 0:
-                            continue
-                        quark_to_jet_filt = np.min(dist_matrix_filt, axis=1)
-                        quark_to_jet_filt[quark_to_jet_filt > R] = -1
-                        pr_obj_score_thresholds[subdataset][i][0] += np.sum(quark_to_jet_filt != -1)
-                filt = quark_to_jet == -1
-                #if args.jets_object == "model_jets":
-                    #matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
-                    #unmatched_jet_idx = sorted(list(set(list(range(n_jets))) - set(matched_jet_idx)))
-                    #scores = get_bc_scores_for_jets(data)
-                    #for i in matched_jet_idx:
-                    #    bc_scores_matched[subdataset] = bc_scores_matched.get(subdataset, []) + [torch.mean(scores[i]).item()]
-                    #for i in unmatched_jet_idx:
-                    #    bc_scores_unmatched[subdataset] = bc_scores_unmatched.get(subdataset, []) + [torch.mean(scores[i]).item()]
-            else:
-                n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [0]
-                n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets]
-                filt = torch.ones(len(data.matrix_element_gen_particles)).bool()
-                quark_to_jet = torch.ones(len(data.matrix_element_gen_particles)).long() * -1
-            if subdataset not in unmatched_quarks:
-                unmatched_quarks[subdataset] = {"pt": [], "eta": [], "phi": [], "pt_all": [], "frac_evt_E_matched": [], "frac_evt_E_unmatched": []}
-            unmatched_quarks[subdataset]["pt"] += data.matrix_element_gen_particles.pt[filt].tolist()
-            unmatched_quarks[subdataset]["pt_all"] += data.matrix_element_gen_particles.pt.tolist()
-            unmatched_quarks[subdataset]["eta"] += data.matrix_element_gen_particles.eta[filt].tolist()
-            unmatched_quarks[subdataset]["phi"] += data.matrix_element_gen_particles.phi[filt].tolist()
-            visible_E_event = torch.sum(data.pfcands.E) #+ torch.sum(data.special_pfcands.E)
-            matched_quarks = np.where(quark_to_jet != -1)[0]
-            for i in range(len(data.matrix_element_gen_particles)):
-                dq_coords = [dq[0][i], dq[1][i]]
-                cone_filter = torch.sqrt((data.pfcands.eta - dq_coords[0])**2 + (data.pfcands.phi - dq_coords[1])**2) < R
-                #cone_filter_special = torch.sqrt(
-                #    (data.special_pfcands.eta - dq_coords[0]) ** 2 + (data.special_pfcands.phi - dq_coords[1]) ** 2) < R
-                E_in_cone = data.pfcands.E[cone_filter].sum()# + data.special_pfcands.E[cone_filter_special].sum()
-                if i in matched_quarks:
-                    unmatched_quarks[subdataset]["frac_evt_E_matched"].append(E_in_cone / visible_E_event)
+                        pr_obj_score_thresholds[subdataset][i][1] += torch.sum(filt).item()
+                        pr_obj_score_thresholds[subdataset][i][2] += len(data.matrix_element_gen_particles)
+                mass_resolution[subdataset]['m_true'].append(calculate_m(data.matrix_element_gen_particles))
+                mass_resolution[subdataset]['m_pred'].append(calculate_m(jets_object))
+                mass_resolution[subdataset]['mt_true'].append(calculate_m(data.matrix_element_gen_particles, mt=True))
+                mass_resolution[subdataset]['mt_pred'].append(calculate_m(jets_object, mt=True))
+                mass_resolution[subdataset]['n_jets'].append(n_jets)
+                if len(jets_object):
+                    quark_to_jet = np.min(distance_matrix, axis=1)
+                    quark_to_jet[quark_to_jet > R] = -1
+                    n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
+                    n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
+                    precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
+                    if "obj_score" in jets_object.__dict__:
+                        for i in range(len(thresholds)):
+                            filt = torch.sigmoid(jets_object.obj_score) >= thresholds[i]
+                            dist_matrix_filt = distance_matrix[:, filt.numpy()]
+                            if filt.sum() == 0:
+                                continue
+                            quark_to_jet_filt = np.min(dist_matrix_filt, axis=1)
+                            quark_to_jet_filt[quark_to_jet_filt > R] = -1
+                            pr_obj_score_thresholds[subdataset][i][0] += np.sum(quark_to_jet_filt != -1)
+                    filt = quark_to_jet == -1
+                    #if args.jets_object == "model_jets":
+                        #matched_jet_idx = sorted(np.argmin(distance_matrix, axis=1)[quark_to_jet != -1])
+                        #unmatched_jet_idx = sorted(list(set(list(range(n_jets))) - set(matched_jet_idx)))
+                        #scores = get_bc_scores_for_jets(data)
+                        #for i in matched_jet_idx:
+                        #    bc_scores_matched[subdataset] = bc_scores_matched.get(subdataset, []) + [torch.mean(scores[i]).item()]
+                        #for i in unmatched_jet_idx:
+                        #    bc_scores_unmatched[subdataset] = bc_scores_unmatched.get(subdataset, []) + [torch.mean(scores[i]).item()]
                 else:
-                    unmatched_quarks[subdataset]["frac_evt_E_unmatched"].append(E_in_cone / visible_E_event)
-            #print("Number of matched quarks:", np.sum(quark_to_jet != -1))
+                    n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [0]
+                    n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets]
+                    filt = torch.ones(len(data.matrix_element_gen_particles)).bool()
+                    quark_to_jet = torch.ones(len(data.matrix_element_gen_particles)).long() * -1
+                if subdataset not in unmatched_quarks:
+                    unmatched_quarks[subdataset] = {"pt": [], "eta": [], "phi": [], "pt_all": [], "frac_evt_E_matched": [], "frac_evt_E_unmatched": []}
+                unmatched_quarks[subdataset]["pt"] += data.matrix_element_gen_particles.pt[filt].tolist()
+                unmatched_quarks[subdataset]["pt_all"] += data.matrix_element_gen_particles.pt.tolist()
+                unmatched_quarks[subdataset]["eta"] += data.matrix_element_gen_particles.eta[filt].tolist()
+                unmatched_quarks[subdataset]["phi"] += data.matrix_element_gen_particles.phi[filt].tolist()
+                visible_E_event = torch.sum(data.pfcands.E) #+ torch.sum(data.special_pfcands.E)
+                matched_quarks = np.where(quark_to_jet != -1)[0]
+                for i in range(len(data.matrix_element_gen_particles)):
+                    dq_coords = [dq[0][i], dq[1][i]]
+                    cone_filter = torch.sqrt((data.pfcands.eta - dq_coords[0])**2 + (data.pfcands.phi - dq_coords[1])**2) < R
+                    #cone_filter_special = torch.sqrt(
+                    #    (data.special_pfcands.eta - dq_coords[0]) ** 2 + (data.special_pfcands.phi - dq_coords[1]) ** 2) < R
+                    E_in_cone = data.pfcands.E[cone_filter].sum()# + data.special_pfcands.E[cone_filter_special].sum()
+                    if i in matched_quarks:
+                        unmatched_quarks[subdataset]["frac_evt_E_matched"].append(E_in_cone / visible_E_event)
+                    else:
+                        unmatched_quarks[subdataset]["frac_evt_E_unmatched"].append(E_in_cone / visible_E_event)
+                #print("Number of matched quarks:", np.sum(quark_to_jet != -1))
+            else:
+                for key in jets_object:
+                    jets = [jets_object[key].eta, jets_object[key].phi]
+                    dq = [data.matrix_element_gen_particles.eta, data.matrix_element_gen_particles.phi]
+                    # calculate deltaR between each jet and each quark
+                    distance_matrix = np.zeros((len(jets_object[key]), len(data.matrix_element_gen_particles)))
+                    for i in range(len(jets_object[key])):
+                        for j in range(len(data.matrix_element_gen_particles)):
+                            deta = jets[0][i] - dq[0][j]
+                            dphi = jets[1][i] - dq[1][j]
+                            distance_matrix[i, j] = np.sqrt(deta ** 2 + dphi ** 2)
+                    # row-wise argmin
+                    distance_matrix = distance_matrix.T
+                    # min_distance = np.min(distance_matrix, axis=1)
+                    n_jets = len(jets_object[key])
+                    if key not in precision_and_recall_fastjets[subdataset]:
+                        precision_and_recall_fastjets[subdataset][key] = [0, 0, 0]
+                    precision_and_recall_fastjets[subdataset][key][1] += n_jets
+                    precision_and_recall_fastjets[subdataset][key][2] += len(data.matrix_element_gen_particles)
+                    if len(jets_object):
+                        quark_to_jet = np.min(distance_matrix, axis=1)
+                        quark_to_jet[quark_to_jet > R] = -1
+                        precision_and_recall_fastjets[subdataset][key][0] += np.sum(quark_to_jet != -1)
     avg_n_matched_quarks = {}
     avg_n_fake_jets = {}
     for key in n_matched_quarks:

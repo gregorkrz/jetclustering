@@ -493,7 +493,7 @@ def get_model(args, dev):
 
 def get_model_obj_score(args, dev):
     network_options = {}  # TODO: implement network options
-    network_module = import_module(args.obj_score_model, name="_network_module")
+    network_module = import_module(args.obj_score_module, name="_network_module")
     model = network_module.get_model(obj_score=True, args=args, **network_options)
     if args.load_objectness_score_weights:
         assert args.train_objectness_score

@@ -55,7 +55,8 @@ def get_run_step_ckpt(run, step):
         if run_1 is None: raise Exception("Run doesn't exist: " + run_name_1)
         steps = get_run_initial_steps(run)
         if step > steps:
-            return get_run_step_direct(run_1.config["run_path"], step - steps)
+            print("Step", step, "is in run", run.name)
+            return get_run_step_direct(run_1.config["run_path"], step - steps), run_1
         else:
             return get_run_step_ckpt(run_1, step)
 

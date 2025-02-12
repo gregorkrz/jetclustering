@@ -110,6 +110,7 @@ for i, run in enumerate(runs):
         os.makedirs("jobs/logs")
     log_number = get_log_number(args.tag)
     slurm_file_text = get_slurm_file_text(args.tag, run, log_number)
+    rel_path_save = f"{args.input}/batch_eval/{args.tag}/{run}"
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)
