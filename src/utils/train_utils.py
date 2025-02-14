@@ -60,7 +60,7 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=False
+        shuffle=True
     )
     '''val_loaders = {}
     for filename in val_files:
@@ -85,7 +85,7 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=False
+        shuffle=True
     )
     return train_loader, val_loader, val_data
 

@@ -11,7 +11,7 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 
 # rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/results /ceph/hpc/home/krzmancg/jetclustering/
 
-### Vega -> T3
+### Vega -> T3 results
 # rsync -avz -e "ssh" /ceph/hpc/home/krzmancg/jetclustering/results t3:/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering
 
 
@@ -24,6 +24,6 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 # rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/preprocessed_data/scouting_PFNano_signals2 /ceph/hpc/home/krzmancg/jetclustering/
 
 # T3 -> Vega code
-rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/code /ceph/hpc/home/krzmancg/jetclustering/ --exclude "wandb" --exclude ".env" --exclude "env.sh" --exclude "__pycache__" --exclude ".git"
+rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/code /ceph/hpc/home/krzmancg/jetclustering/ --exclude "wandb" --exclude ".env" --exclude "env.sh" --exclude "__pycache__" --exclude ".git" --exclude "*.log" --exclude "*.txt"
 
 

@@ -129,6 +129,7 @@ rinvs = [0.3, 0.5, 0.7]
 sz = 4
 fig, ax = plt.subplots(len(rinvs), 3, figsize=(3*sz, sz*len(rinvs)))
 fig_AK, ax_AK = plt.subplots(len(rinvs), 3, figsize=(3*sz, sz*len(rinvs)))
+fig_AK_ratio, ax_AK_ratio = plt.subplots(len(rinvs), 3, figsize=(3*sz, sz*len(rinvs)))
 
 
 to_plot = {} # r_inv -> m_med -> precision, recall, R
@@ -171,6 +172,7 @@ for i, rinv in enumerate(rinvs):
         # normalize mmed between 0 and 1 (originally between 700 and 3000)
         mmed = (mMed - 500) / (3000 - 500)
         r = to_plot[rinv][mMed]
+        print("Model R", r["R"])
         scatter_plot(ax[0, i], r["R"], r["precision"], label="m={} GeV".format(round(mMed)), color=oranges(mmed))
         scatter_plot(ax[1, i], r["R"], r["recall"], label="m={} GeV".format(round(mMed)), color=reds(mmed))
         scatter_plot(ax[2, i], r["R"], r["f1score"], label="m={} GeV".format(round(mMed)), color=purples(mmed))
@@ -192,13 +194,29 @@ for i, rinv in enumerate(rinvs):
         to_plot_ak[rinv][mMed]["R"] += rs
 
     for mMed in sorted(to_plot_ak[rinv].keys()):
-        # normalize mmed between 0 and 1 (originally between 700 and 3000)
+        # Normalize mmed between 0 and 1 (originally between 700 and 3000)
         mmed = (mMed - 500) / (3000 - 500)
+        print("AK R", r["R"])
         r = to_plot_ak[rinv][mMed]
-        scatter_plot(ax_AK[0, i], r["R"], r["precision"], label="m={} GeV AK".format(round(mMed)), color=oranges(mmed), pattern=".-")
-        scatter_plot(ax_AK[1, i], r["R"], r["recall"], label="m={} GeV AK".format(round(mMed)), color=reds(mmed), pattern=".-")
-        scatter_plot(ax_AK[2, i], r["R"], r["f1score"], label="m={} GeV AK".format(round(mMed)), color=purples(mmed), pattern=".-")
-    for ax1 in [ax, ax_AK]:
+        r_model = to_plot[rinv][mMed]
+        scatter_plot(ax_AK[0, i], r["R"], r["precision"], label="m={} GeV AK".format(round(mMed)), color=oranges(mmed), pattern=".--")
+        scatter_plot(ax_AK[1, i], r["R"], r["recall"], label="m={} GeV AK".format(round(mMed)), color=reds(mmed), pattern=".--")
+        scatter_plot(ax_AK[2, i], r["R"], r["f1score"], label="m={} GeV AK".format(round(mMed)), color=purples(mmed), pattern=".--")
+        # r["R"] has more points than r_model["R"] - pick those from r["R"] that are in r_model["R"]
+        r["R"] = np.array(r["R"])
+        r["precision"] = np.array(r["precision"])
+        r["recall"] = np.array(r["recall"])
+        r["f1score"] = np.array(r["f1score"])
+        filt = np.isin(r["R"], r_model["R"])
+        r["R"] = r["R"][filt]
+        r["precision"] = r["precision"][filt]
+        r["recall"] = r["recall"][filt]
+        r["f1score"] = r["f1score"][filt]
+        scatter_plot(ax_AK_ratio[0, i], r["R"], r["precision"]/np.array(r_model["precision"]), label="m={} GeV AK".format(round(mMed)), color=oranges(mmed), pattern=".--")
+        scatter_plot(ax_AK_ratio[1, i], r["R"], r["recall"]/np.array(r_model["recall"]), label="m={} GeV AK".format(round(mMed)), color=reds(mmed), pattern=".--")
+        scatter_plot(ax_AK_ratio[2, i], r["R"], r["f1score"]/np.array(r_model["f1score"]), label="m={} GeV AK".format(round(mMed)), color=purples(mmed), pattern=".--")
+
+    for ax1 in [ax, ax_AK, ax_AK_ratio]:
         ax1[0, i].set_title(f"Precision r_inv = {rinv}")
         ax1[1, i].set_title(f"Recall r_inv = {rinv}")
         ax1[2, i].set_title(f"F1 score r_inv = {rinv}")
@@ -211,9 +229,15 @@ for i, rinv in enumerate(rinvs):
         ax1[0, i].set_xlabel("GT R")
         ax1[1, i].set_xlabel("GT R")
         ax1[2, i].set_xlabel("GT R")
+    ax_AK_ratio[0, i].set_ylabel("Precision (model=1)")
+    ax_AK_ratio[1, i].set_ylabel("Recall (model=1)")
+    ax_AK_ratio[2, i].set_ylabel("F1 score (model=1)")
 fig.tight_layout()
 fig_AK.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots.pdf"))
 fig_AK.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
+fig_AK_ratio.tight_layout()
+fig_AK_ratio.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))
 
-print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots.pdf"))
+print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
+print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))
