@@ -1,4 +1,6 @@
 # Eval a given a training run name at the given steps, taking into account the chaning of the training runs
+import sys
+import pickle
 import wandb
 import argparse
 import os
@@ -11,9 +13,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--tag", "-tag", type=str, required=False, default="") # 'Vega' or 'T3'
 parser.add_argument("--input", "-input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std")
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
+parser.add_argument("--submit-AKX", "-AKX", action="store_true")
+parser.add_argument("--submit-AK8", "-AK8", action="store_true")
+
 
 args = parser.parse_args()
-
 api = wandb.Api()
 
 def get_eval_run_names(tag):
@@ -23,7 +27,6 @@ def get_eval_run_names(tag):
         filters={"tags": {"$in": [tag.strip()]}}
     )
     return [run.name for run in runs if run.state == "finished"], [run.config for run in runs if run.state == "finished"]
-
 
 def get_log_number(tag):
     numbers = set()
@@ -107,39 +110,38 @@ srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analys
 runs, run_config = get_eval_run_names(args.tag)
 print("RUNS:", runs)
 
-'''# Submit also ak and ak8
-if not os.path.exists("jobs/slurm_files"):
-    os.makedirs("jobs/slurm_files")
-if not os.path.exists("jobs/logs"):
-    os.makedirs("jobs/logs")
-log_number = get_log_number(args.tag)
-slurm_file_text = get_slurm_file_text_AK(args.tag, log_number)
-# write the file to jobs/slurm_files
-with open("jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number), "w") as f:
-    f.write(slurm_file_text)
-    print("Wrote file to jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
-if not args.no_submit:
-    os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
-
-print("---- Submitted AK8 run -----")'''
-
-# Submit also AKX
-if not os.path.exists("jobs/slurm_files"):
-    os.makedirs("jobs/slurm_files")
-if not os.path.exists("jobs/logs"):
-    os.makedirs("jobs/logs")
-log_number = get_log_number(args.tag)
-slurm_file_text = get_slurm_file_text_AKX(args.tag, log_number)
-# write the file to jobs/slurm_files
-with open("jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number), "w") as f:
-    f.write(slurm_file_text)
-    print("Wrote file to jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
-if not args.no_submit:
-    os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
-
-print("---- Submitted AKX run -----")
-
-import pickle
+if args.submit_AK8:
+   # Submit also ak and ak8
+    if not os.path.exists("jobs/slurm_files"):
+        os.makedirs("jobs/slurm_files")
+    if not os.path.exists("jobs/logs"):
+        os.makedirs("jobs/logs")
+    log_number = get_log_number(args.tag)
+    slurm_file_text = get_slurm_file_text_AK(args.tag, log_number)
+    # write the file to jobs/slurm_files
+    with open("jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number), "w") as f:
+        f.write(slurm_file_text)
+        print("Wrote file to jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
+    if not args.no_submit:
+        os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
+    print("---- Submitted AK8 run -----")
+    sys.exit(0)
+if args.submit_AKX:
+    # Submit also AKX
+    if not os.path.exists("jobs/slurm_files"):
+        os.makedirs("jobs/slurm_files")
+    if not os.path.exists("jobs/logs"):
+        os.makedirs("jobs/logs")
+    log_number = get_log_number(args.tag)
+    slurm_file_text = get_slurm_file_text_AKX(args.tag, log_number)
+    # write the file to jobs/slurm_files
+    with open("jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number), "w") as f:
+        f.write(slurm_file_text)
+        print("Wrote file to jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
+    if not args.no_submit:
+        os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
+    print("---- Submitted AKX run -----")
+    sys.exit(0)
 
 for i, run in enumerate(runs):
     if not os.path.exists("jobs/slurm_files"):
@@ -152,9 +154,12 @@ for i, run in enumerate(runs):
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)
-    else:
+    #if evaluated(rel_path_save):
+    if os.path.exists(os.path.join(rel_path_save, "eval_done.txt")):
         print("Skipping", run)
         continue
+    else:
+        print("Evaluating", run)
     # save run config here
     with open(f"{rel_path_save}/run_config.pkl", "wb") as f:
         pickle.dump(run_config[i], f)

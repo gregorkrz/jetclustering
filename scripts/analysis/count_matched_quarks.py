@@ -303,7 +303,9 @@ if not args.plot_only:
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
     pickle.dump(result_PR_thresholds, open(os.path.join(output_path, "result_PR_thresholds.pkl"), "wb"))
     pickle.dump(result_m, open(os.path.join(output_path, "result_m.pkl"), "wb"))
-    # write the number of events to n_events.txt
+    with open(os.path.join(output_path, "eval_done.txt"), "w") as f:
+        f.write("True")
+    # Write the number of events to n_events.txt
     with open(os.path.join(output_path, "n_events.txt"), "w") as f:
         f.write(str(n))
 if args.plot_only:
