@@ -327,3 +327,10 @@ parser.add_argument(
     required=False
 )
 
+parser.add_argument(
+    "--global-features-obj-score",
+    "-global-features-os",
+    action="store_true",
+    help="Whether to use global features in the objectness score model",
+    default=False
+)

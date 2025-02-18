@@ -220,5 +220,3 @@ fig_scatter.tight_layout()
 fig_scatter.savefig(out_file_PR.replace(".pdf", "_by_step.pdf"))
 print("Saved to", out_file_PR.replace(".pdf", "_by_step.pdf"))
 
-
-

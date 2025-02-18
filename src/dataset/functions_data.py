@@ -558,7 +558,7 @@ def get_corrected_batch(event_batch, cluster_idx):
         input_vectors=event_batch.input_vectors[clusters],
         input_scalars=event_batch.input_scalars[clusters],
         pt=event_batch.pt[clusters],
-        batch_idx=renumber_clusters(new_batch_idx),
+        batch_idx=renumber_clusters(new_batch_idx)
     )
 
 def get_batch(event, batch_config, y, test=False):
@@ -911,7 +911,7 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None, fake_nodes_idx=None):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None, fake_nodes_idx=None, batch_idx_events=None):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx
@@ -920,6 +920,8 @@ class EventBatch:
         self.dropped_batches = dropped_batches
         if fake_nodes_idx is not None:
             self.fake_nodes_idx = fake_nodes_idx
+        if batch_idx_events is not None:
+            self.batch_idx_events = batch_idx_events # Used for 
     def to(self, device):
         self.input_vectors = self.input_vectors.to(device)
         self.input_scalars = self.input_scalars.to(device)

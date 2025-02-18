@@ -60,7 +60,11 @@ def get_run_step_ckpt(run, step):
         else:
             return get_run_step_ckpt(run_1, step)
 
-args_to_update = ["validation_steps", "start_lr", "lr_scheduler", "optimizer", "embed_as_vectors", "epsilon", "min_samples", "min_cluster_size", "spatial_part_only", "scalars_oc", "lorentz_norm", "beta_type", "coord_loss_weight", "repul_loss_weight", "attr_loss_weight", "gt_radius", "loss", "num_steps", "num_epochs", "batch_size", "hidden_s_channels", "hidden_mv_channels", "n_heads", "internal_dim", "num_blocks", "network_config", "data_config", "train_objectness_score"]
+args_to_update = ["validation_steps", "start_lr", "lr_scheduler", "optimizer", "embed_as_vectors", "epsilon",
+                  "min_samples", "min_cluster_size", "spatial_part_only", "scalars_oc", "lorentz_norm", "beta_type",
+                  "coord_loss_weight", "repul_loss_weight", "attr_loss_weight", "gt_radius", "loss", "num_steps",
+                  "num_epochs", "batch_size", "hidden_s_channels", "hidden_mv_channels", "n_heads", "internal_dim",
+                  "num_blocks", "network_config", "data_config"]
 
 def update_args(args, run):
     for arg in args_to_update:

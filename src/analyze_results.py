@@ -25,7 +25,9 @@ def plot_score_histograms(result, eval_path):
     score_histogram(y_true, y_pred, sz=5).savefig(os.path.join(eval_path, "binary_classifier_scores.pdf"))
     per_pt_score_histogram(y_true, y_pred, pt).savefig(os.path.join(eval_path, "binary_classifier_scores_per_pt.pdf"))
     plot_roc_curve(y_true, y_pred).savefig(os.path.join(eval_path, "roc_curve.pdf"))
+
 import numpy as np
+
 def plot_four_momentum_spectrum(result, eval_path):
     y_true = (result["GT_cluster"] >= 0)
     y_pred = result["pred"][:, :4]

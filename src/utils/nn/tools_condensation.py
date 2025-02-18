@@ -97,7 +97,10 @@ def train_epoch(
             clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
             filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
             batch_corr = get_corrected_batch(batch, clusters)
-            objectness_score = obj_score_model(batch_corr)[filter].flatten() # Obj. score is [0, 1]
+            if not args.global_features_obj_score:
+                objectness_score = obj_score_model(batch_corr)[filter].flatten() # Obj. score is [0, 1]
+            else:
+                objectness_score = obj_score_model(batch_corr, batch, clusters)[filter].flatten()
             target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter], clusters_pt[filter],
                                                     torch.tensor(event_idx_clusters)[filter], y.dq_eta, y.dq_phi,
                                                     y.dq_coords_batch_idx, gt_mode=args.objectness_score_gt_mode)
@@ -347,7 +350,10 @@ def evaluate(
                         # pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=False)
                         clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
                         filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
-                        objectness_score = model_obj_score(batch_corr)#[filter]
+                        if not args.global_features_obj_score:
+                            objectness_score = model_obj_score(batch_corr)
+                        else:
+                            objectness_score = model_obj_score(batch_corr, batch, clusters)
                         obj_score_predictions.append(objectness_score.detach().cpu())
                         target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter],
                                                                 clusters_pt[filter],

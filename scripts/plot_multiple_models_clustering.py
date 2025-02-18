@@ -56,7 +56,16 @@ models = {
     "R=2.0": "train/Eval_GT_R_lgatr_R20_2025_01_22_10_51_30"
 }
 
-output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison_FT_R_2", "results")
+
+## Objectness score odels
+
+models = {
+    "R=2.0,OS_GT=closest_only": "train/Eval_objectness_score_2025_02_14_11_10_14",
+    "R=2.0,GT=all_in_radius": "train/Eval_objectness_score_2025_02_12_15_34_33",
+    "R=0.8,GT=all_in_radius": "train/Eval_objectness_score_2025_02_10_14_59_49"
+}
+
+output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison_FT_R_objectness_score", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 

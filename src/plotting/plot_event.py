@@ -96,6 +96,7 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
     eta = event.pfcands.eta
     phi = event.pfcands.phi
     pt = event.pfcands.pt
+
     #eta_special = event.special_pfcands.eta
     #phi_special = event.special_pfcands.phi
     #pt_special = event.special_pfcands.pt
@@ -124,15 +125,22 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
     if jets:
         jet_eta = event.fatjets.eta
         jet_phi = event.fatjets.phi
+
         for i in range(len(jet_eta)):
             circle = plt.Circle((jet_eta[i], jet_phi[i]), 0.8, color="red", fill=False)
             ax.add_artist(circle)
         if hasattr(event, "model_jets") and event.model_jets is not None:
             model_jet_eta = event.model_jets.eta
             model_jet_phi = event.model_jets.phi
+            obj_score = None
+            if hasattr(event.model_jets, "obj_score"):
+                obj_score = event.model_jets.obj_score
             for i in range(len(model_jet_eta)):
-                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.7, color="blue", fill=False)
+                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.75, color="blue", fill=False)
                 ax.add_artist(circle)
+                # plot text with obj score
+                if obj_score is not None:
+                    ax.text(model_jet_eta[i]+0.2, model_jet_phi[i]-0.2, "o.s.=" + str(round(torch.sigmoid(obj_score[i]).item(), 2)), color="gray", fontsize=10, alpha=0.5)
     ax.set_xlabel(r"$\eta$")
     ax.set_ylabel(r"$\phi$")
     ax.set_aspect("equal")
