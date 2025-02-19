@@ -7,7 +7,7 @@ from torch_scatter import scatter_sum, scatter_max, scatter_mean
 
 
 class LGATrModel(torch.nn.Module):
-    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords, obj_score=False):
+    def __init__(self, n_scalars, hidden_mv_channels, hidden_s_channels, blocks, embed_as_vectors, n_scalars_out, return_scalar_coords, obj_score=False, global_featuers_copy=False):
         super().__init__()
         self.return_scalar_coords = return_scalar_coords
         self.n_scalars = n_scalars
@@ -18,6 +18,7 @@ class LGATrModel(torch.nn.Module):
         self.input_dim = 3
         self.n_scalars_out = n_scalars_out
         self.obj_score = obj_score
+        self.global_features_copy = global_featuers_copy
         self.gatr = GATr(
             in_mv_channels=3,
             out_mv_channels=1,
@@ -29,12 +30,26 @@ class LGATrModel(torch.nn.Module):
             attention=SelfAttentionConfig(),  # Use default parameters for attention
             mlp=MLPConfig(),  # Use default parameters for MLP
         )
+        if self.global_features_copy:
+            self.gatr_global_features = GATr(
+                in_mv_channels=3,
+                out_mv_channels=1,
+                hidden_mv_channels=hidden_mv_channels,
+                in_s_channels=n_scalars,
+                out_s_channels=n_scalars_out,
+                hidden_s_channels=hidden_s_channels,
+                num_blocks=blocks,
+                attention=SelfAttentionConfig(),  # Use default parameters for attention
+                mlp=MLPConfig(),  # Use default parameters for MLP
+            )
         #self.batch_norm = nn.BatchNorm1d(self.input_dim, momentum=0.1)
         #self.clustering = nn.Linear(3, self.output_dim - 1, bias=False)
         if n_scalars_out > 0:
             if obj_score:
+                factor = 1
+                if self.global_features_copy: factor = 2
                 self.beta = nn.Sequential(
-                    nn.Linear(n_scalars_out + 1, 10),
+                    nn.Linear((n_scalars_out + 1) * factor, 10),
                     nn.LeakyReLU(),
                     nn.Linear(10, 1),
                     #nn.Sigmoid()
@@ -44,8 +59,32 @@ class LGATrModel(torch.nn.Module):
         else:
             self.beta = None
 
-    def forward(self, data):
+    def forward(self, data, data_events=None, data_events_clusters=None):
         # data: instance of EventBatch
+        if self.global_features_copy:
+            assert data_events is not None and data_events_clusters is not None
+            assert self.obj_score
+            inputs_v = data_events.input_vectors
+            inputs_scalar = data_events.input_scalars
+            assert inputs_scalar.shape[1] == self.n_scalars, "Expected %d, got %d" % (
+            self.n_scalars, inputs_scalar.shape[1])
+            mask_global = self.build_attention_mask(data_events.batch_idx)
+            embedded_inputs_events = embed_vector(inputs_v.unsqueeze(0))
+            multivectors = embedded_inputs_events.unsqueeze(-2)
+            spurions = embed_spurions(beam_reference="xyplane", add_time_reference=True,
+                                      device=multivectors.device, dtype=multivectors.dtype)
+
+            num_points, x = inputs_v.shape
+            assert x == 4
+            spurions = spurions[None, None, ...].repeat(1, num_points, 1, 1)  # (batchsize, num_points, 2, 16)
+            multivectors = torch.cat((multivectors, spurions), dim=-2)
+            embedded_outputs, output_scalars = self.gatr_global_features(
+                multivectors, scalars=inputs_scalar, attention_mask=mask_global
+            )
+            original_scalar = extract_scalar(embedded_outputs)
+            scalar_embeddings_nodes = torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1)
+            scalar_embeddings_global = scatter_mean(scalar_embeddings_nodes, torch.tensor(data_events_clusters).to(scalar_embeddings_nodes.device)+1, dim=0)[1:]
+
         inputs_v = data.input_vectors # four-momenta
         inputs_scalar = data.input_scalars
         assert inputs_scalar.shape[1] == self.n_scalars
@@ -69,6 +108,7 @@ class LGATrModel(torch.nn.Module):
         embedded_outputs, output_scalars = self.gatr(
             multivectors, scalars=inputs_scalar, attention_mask=mask
         )
+
         #if self.embed_as_vectors:
         #    x_clusters = extract_translation(embedded_outputs)
         #else:
@@ -91,10 +131,13 @@ class LGATrModel(torch.nn.Module):
                     values = torch.cat([original_scalar[0, data.fake_nodes_idx, 0, :], output_scalars[0, data.fake_nodes_idx, :]], dim=1)
                 else:
                     values = scatter_mean(scalar_embeddings, data.batch_idx.to(scalar_embeddings.device).long(), dim=0)
+                if self.global_features_copy:
+                    values = torch.cat([values, scalar_embeddings_global], dim=1)
                 beta = self.beta(values)
                 #beta = self.beta(values)
                 return beta
-            beta = self.beta(torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1))
+            vals = torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1)
+            beta = self.beta(vals)
             if self.return_scalar_coords:
                 x = output_scalars[0, :, :3]
                 #print(x.shape)
@@ -129,7 +172,8 @@ def get_model(args, obj_score=False):
             embed_as_vectors=False,
             n_scalars_out=n_scalars_out,
             return_scalar_coords=args.scalars_oc,
-            obj_score=obj_score
+            obj_score=obj_score,
+            global_featuers_copy=args.global_features_obj_score
         )
 
     return LGATrModel(
