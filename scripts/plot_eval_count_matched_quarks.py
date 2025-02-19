@@ -74,61 +74,65 @@ def get_plots_for_params(mMed, mDark, rInv, result_PR_thresholds):
     return precisions, recalls, f1_scores
 
 sz = 5
-
+nplots = 9
 # Now make 3 plots, one for mMed=700,r_inv=0.7; one for mMed=700,r_inv=0.5; one for mMed=700,r_inv=0.3
-fig, ax = plt.subplots(3, 3, figsize=(3 * sz, 3 * sz))
-for i, rinv in enumerate([0.3, 0.5, 0.7]):
-    # 0 is precision, 1 is recall, 2 is f1 score
-    ax[0, i].set_title(f"r_inv={rinv}, m_med=700 GeV")
-    ax[1, i].set_title(f"r_inv={rinv}, m_med=700 GeV")
-    ax[2, i].set_title(f"r_inv={rinv}, m_med=700 GeV")
-    ax[0, i].set_ylabel("Precision")
-    ax[1, i].set_ylabel("Recall")
-    ax[2, i].set_ylabel("F1 score")
+###fig, ax = plt.subplots(3, 3, figsize=(3 * sz, 3 * sz))
 
-    ax[0, i].grid()
-    ax[1, i].grid()
-    ax[2, i].grid()
-    ylims = {} # key: j and i
-    default_ylims = [1, 0]
-    for j, model in enumerate(models):
-        result_PR_thresholds = os.path.join(path, model, "count_matched_quarks", "result_PR_thresholds.pkl")
-        if not os.path.exists(result_PR_thresholds):
-            continue
-        run_config = pickle.load(open(os.path.join(path, model, "run_config.pkl"), "rb"))
-        result_PR_thresholds = pickle.load(open(result_PR_thresholds, "rb"))
-        precisions, recalls, f1_scores = get_plots_for_params(700, 20, rinv, result_PR_thresholds)
-        if not run_config["gt_radius"] == 2:
-            continue
-        label = "R={} gl.f.={} {}".format(run_config["gt_radius"], run_config.get("global_features_obj_score", False), comments.get(run_config["run_name"], run_config["run_name"]))
-        scatter_plot(ax[0, i], thresholds, precisions, label=label)
-        scatter_plot(ax[1, i], thresholds, recalls, label=label)
-        scatter_plot(ax[2, i], thresholds, f1_scores, label=label)
-        #ylims[0] = [min(ylims[0][0], min(precisions)), max(ylims[0][1], max(precisions))]
-        #ylims[1] = [min(ylims[1][0], min(recalls)), max(ylims[1][1], max(recalls))]
-        #ylims[2] = [min(ylims[2][0], min(f1_scores)), max(ylims[2][1], max(f1_scores))]
-        filt = thresholds < 0.2
-        precisions = np.array(precisions)[filt]
-        recalls = np.array(recalls)[filt]
-        f1_scores = np.array(f1_scores)[filt]
-        if (i, 0) not in ylims:
-            ylims[(i, 0)] = default_ylims
-        upper_factor = 1.01
-        lower_factor = 0.99
-        ylims[(i, 0)] = [min(ylims[(i, 0)][0], min(precisions)*lower_factor), max(ylims[(i, 0)][1], max(precisions)*upper_factor)]
-        if (i, 1) not in ylims:
-            ylims[(i, 1)] = default_ylims
-        ylims[(i, 1)] = [min(ylims[(i, 1)][0], min(recalls)*lower_factor), max(ylims[(i, 1)][1], max(recalls)*upper_factor)]
-        if (i, 2) not in ylims:
-            ylims[(i, 2)] = default_ylims
-        ylims[(i, 2)] = [min(ylims[(i, 2)][0], min(f1_scores)*lower_factor), max(ylims[(i, 2)][1], max(f1_scores)*upper_factor)]
-    for j in range(3):
-        ax[j, i].set_ylim(ylims[(i, j)])
-        ax[j, i].legend()
-        ax[j, i].set_xlim([0, 0.2])
-        ax[j, i].set_xlim([0, 0.2])
-        ax[j, i].set_xlim([0, 0.2])
-    # now adjust the ylim so that the plots are more readable
+fig, ax = plt.subplots(3, nplots, figsize=(nplots*sz, 3*sz))
+for mi, mass in enumerate([700, 900, 1500]):
+    start_idx = mi*3
+    for i0, rinv in enumerate([0.3, 0.5, 0.7]):
+        i = start_idx + i0
+        # 0 is precision, 1 is recall, 2 is f1 score
+        ax[0, i].set_title(f"r_inv={rinv}, m_med={mass} GeV")
+        ax[1, i].set_title(f"r_inv={rinv}, m_med={mass} GeV")
+        ax[2, i].set_title(f"r_inv={rinv}, m_med={mass} GeV")
+        ax[0, i].set_ylabel("Precision")
+        ax[1, i].set_ylabel("Recall")
+        ax[2, i].set_ylabel("F1 score")
+        ax[0, i].grid()
+        ax[1, i].grid()
+        ax[2, i].grid()
+        ylims = {} # key: j and i
+        default_ylims = [1, 0]
+        for j, model in enumerate(models):
+            result_PR_thresholds = os.path.join(path, model, "count_matched_quarks", "result_PR_thresholds.pkl")
+            if not os.path.exists(result_PR_thresholds):
+                continue
+            run_config = pickle.load(open(os.path.join(path, model, "run_config.pkl"), "rb"))
+            result_PR_thresholds = pickle.load(open(result_PR_thresholds, "rb"))
+            precisions, recalls, f1_scores = get_plots_for_params(mass, 20, rinv, result_PR_thresholds)
+            if not run_config["gt_radius"] == 2:
+                continue
+            label = "R={} gl.f.={} {}".format(run_config["gt_radius"], run_config.get("global_features_obj_score", False), comments.get(run_config["run_name"], run_config["run_name"]))
+            scatter_plot(ax[0, i], thresholds, precisions, label=label)
+            scatter_plot(ax[1, i], thresholds, recalls, label=label)
+            scatter_plot(ax[2, i], thresholds, f1_scores, label=label)
+            #ylims[0] = [min(ylims[0][0], min(precisions)), max(ylims[0][1], max(precisions))]
+            #ylims[1] = [min(ylims[1][0], min(recalls)), max(ylims[1][1], max(recalls))]
+            #ylims[2] = [min(ylims[2][0], min(f1_scores)), max(ylims[2][1], max(f1_scores))]
+            filt = thresholds < 0.2
+            precisions = np.array(precisions)[filt]
+            recalls = np.array(recalls)[filt]
+            f1_scores = np.array(f1_scores)[filt]
+            if (i, 0) not in ylims:
+                ylims[(i, 0)] = default_ylims
+            upper_factor = 1.01
+            lower_factor = 0.99
+            ylims[(i, 0)] = [min(ylims[(i, 0)][0], min(precisions)*lower_factor), max(ylims[(i, 0)][1], max(precisions)*upper_factor)]
+            if (i, 1) not in ylims:
+                ylims[(i, 1)] = default_ylims
+            ylims[(i, 1)] = [min(ylims[(i, 1)][0], min(recalls)*lower_factor), max(ylims[(i, 1)][1], max(recalls)*upper_factor)]
+            if (i, 2) not in ylims:
+                ylims[(i, 2)] = default_ylims
+            ylims[(i, 2)] = [min(ylims[(i, 2)][0], min(f1_scores)*lower_factor), max(ylims[(i, 2)][1], max(f1_scores)*upper_factor)]
+        for j in range(3):
+            ax[j, i].set_ylim(ylims[(i, j)])
+            ax[j, i].legend()
+            ax[j, i].set_xlim([0, 0.2])
+            ax[j, i].set_xlim([0, 0.2])
+            ax[j, i].set_xlim([0, 0.2])
+        # now adjust the ylim so that the plots are more readable
 
 fig.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "precision_recall_thresholds.pdf"))
