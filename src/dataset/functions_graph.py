@@ -240,6 +240,11 @@ def create_jets_outputs_new(
     n_photons = int(output["n_photons"][0, 0])
     photons_data = output["photons"][:, :n_photons]
     matrix_element_gen_particles_data = output["matrix_element_gen_particles"]
+    if "final_gen_particles" in output:
+        # new config
+        #n_final_gen_particles = int(output["n_final_gen_particles"][0, 0])
+        final_gen_particles_data = output["final_gen_particles"]#[:, :n_final_gen_particles]
+        final_parton_level_particles_data = output["final_parton_level_particles"]#[:, :n_final_gen_particles]
 
     pfcands_jets_mapping = pfcands_jets_mapping[:, :num_mapping]
     #n_offline_pfcands = int(output["n_offline_pfcands"][0, 0])
@@ -262,7 +267,26 @@ def create_jets_outputs_new(
                                                      charge=np.sign(matrix_element_gen_particles_data[:, 4]),
                                                      pid=matrix_element_gen_particles_data[:, 4],
                                                      pf_cand_jet_idx=-1*np.ones_like(matrix_element_gen_particles_data[:, 0]))
-
+    if "final_gen_particles" in output:
+        final_gen_particles_data = final_gen_particles_data.T
+        final_parton_level_particles_data = final_parton_level_particles_data.T
+        n_fp = torch.argmin(torch.tensor(final_gen_particles_data[:, 0])).item()
+        n_pp = torch.argmin(torch.tensor(final_parton_level_particles_data[:, 0])).item()
+        final_gen_particles_data = EventPFCands(pt=final_gen_particles_data[:n_fp, 0],
+                                                eta=final_gen_particles_data[:n_fp, 1],
+                                                phi=final_gen_particles_data[:n_fp, 2],
+                                                mass=final_gen_particles_data[:n_fp, 3],
+                                                charge=np.sign(final_gen_particles_data[:n_fp, 4]),
+                                                pid=final_gen_particles_data[:n_fp, 4],
+                                                pf_cand_jet_idx=-1*np.ones_like(final_gen_particles_data[:n_fp, 0]))
+        final_parton_level_particles_data = EventPFCands(pt=final_parton_level_particles_data[:n_pp, 0],
+                                                        eta=final_parton_level_particles_data[:n_pp, 1],
+                                                        phi=final_parton_level_particles_data[:n_pp, 2],
+                                                        mass=final_parton_level_particles_data[:n_pp, 3],
+                                                        charge=np.sign(final_parton_level_particles_data[:n_pp, 4]),
+                                                        pid=final_parton_level_particles_data[:n_pp, 4],
+                                                        pf_cand_jet_idx=-1*np.ones_like(final_parton_level_particles_data[:n_pp, 0]),
+                                                        status=final_parton_level_particles_data[:n_pp, 5])
     #offline_pfcands_data = offline_pfcands_data.T
     electrons_data = electrons_data.T
     muons_data = muons_data.T
@@ -312,8 +336,13 @@ def create_jets_outputs_new(
         special_pfcands_data = None
     MET_data = EventMetadataAndMET(pt=output_MET[0], phi=output_MET[1], scouting_trig=output_MET[2], offline_trig=output_MET[3], veto_trig=output_MET[4])
     #offline_pfcands_data = EventPFCands(*[offline_pfcands_data[:, i] for i in range(6)] + offline_jets_mapping, offline=True)
+    kwargs = {}
+    if "final_gen_particles" in output:
+        kwargs["final_gen_particles"] = final_gen_particles_data
+        kwargs["final_parton_level_particles"] = final_parton_level_particles_data
     return Event(jets=jets_data, genjets=genjets_data, pfcands=pfcands_data, MET=MET_data, fatjets=fatjets_data,
-                 matrix_element_gen_particles=matrix_element_gen_particles_data, special_pfcands=special_pfcands_data)
+                 matrix_element_gen_particles=matrix_element_gen_particles_data, special_pfcands=special_pfcands_data,
+                 **kwargs)
     #return {
     #    "jets": jets_data,
     #    "genjets": genjets_data,

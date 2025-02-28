@@ -91,8 +91,11 @@ def get_model(args, obj_score=False):
         n_scalars_out = 0
     elif args.beta_type == "pt+bc":
         n_scalars_out = 8
+    n_scalars_in = 12
+    if args.no_pid:
+        n_scalars_in = 12-9
     return GATrModel(
-        n_scalars=12,
+        n_scalars=n_scalars_in,
         hidden_mv_channels=args.hidden_mv_channels,
         hidden_s_channels=args.hidden_s_channels,
         blocks=args.num_blocks,

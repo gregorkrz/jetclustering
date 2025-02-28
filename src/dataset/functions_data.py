@@ -605,7 +605,10 @@ def get_batch(event, batch_config, y, test=False):
         pids_onehot[:, i] = (event.pfcands.pid.abs() == pid).float()
     assert (pids_onehot.sum(dim=1) == 1).all()
     chg = event.pfcands.charge.unsqueeze(1)
-    batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
+    if batch_config.get("no_pid", False):
+        batch_scalars_pfcands = chg
+    else:
+        batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
     #if batch_config.get("use_p_xyz", False):
     #    # also add pt as a scalar
     batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, event.pfcands.pt.unsqueeze(1), event.pfcands.E.unsqueeze(1)], dim=1)
@@ -664,6 +667,7 @@ class EventPFCands(EventCollection):
         batch_number=None,
         offline=False,
         pf_cand_jet_idx=None, # Optional: provide either this or pfcands_idx & jet_idx
+        status=None # optional
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
@@ -683,6 +687,8 @@ class EventPFCands(EventCollection):
         self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
         self.charge = to_tensor(charge)
         self.pid = to_tensor(pid)
+        if status is not None:
+            self.status = to_tensor(status)
         if pf_cand_jet_idx is not None:
             self.pf_cand_jet_idx = to_tensor(pf_cand_jet_idx)
         else:
@@ -937,10 +943,11 @@ class Event:
     evt_collections = {"jets": EventJets, "genjets": EventJets, "pfcands": EventPFCands,
                        "offline_pfcands": EventPFCands, "MET": EventMetadataAndMET, "fatjets": EventJets,
                        "special_pfcands": EventPFCands, "matrix_element_gen_particles": EventPFCands,
-                       "model_jets": EventJets}
+                       "model_jets": EventJets, "final_gen_particles": EventPFCands,
+                       "final_parton_level_particles": EventPFCands}
     def __init__(self, jets=None, genjets=None, pfcands=None, offline_pfcands=None, MET=None, fatjets=None,
                  special_pfcands=None, matrix_element_gen_particles=None, model_jets=None, model_jets_unfiltered=None,
-                 n_events=1, fastjet_jets=None): # Add more collections here
+                 n_events=1, fastjet_jets=None, final_gen_particles=None, final_parton_level_particles=None):
         self.jets = jets
         self.genjets = genjets
         self.pfcands = pfcands
@@ -954,6 +961,8 @@ class Event:
         self.model_jets_unfiltered = model_jets_unfiltered
         self.init_attrs = []
         self.n_events = n_events
+        self.final_gen_particles = final_gen_particles
+        self.final_parton_level_particles = final_parton_level_particles
         if jets is not None:
             self.init_attrs.append("jets")
         if genjets is not None:
@@ -974,6 +983,10 @@ class Event:
             self.init_attrs.append("model_jets")
         if model_jets_unfiltered is not None:
             self.init_attrs.append("model_jets_unfiltered")
+        if final_gen_particles is not None:
+            self.init_attrs.append("final_gen_particles")
+        if final_parton_level_particles is not None:
+            self.init_attrs.append("final_parton_level_particles")
         #if fastjet_jets is not None:
         #    self.init_attrs.append("fastjet_jets")
     ''' @staticmethod

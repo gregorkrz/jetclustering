@@ -41,7 +41,11 @@ comments = {
     "Eval_params_study_2025_02_17_13_30_50": ", tr. on 07_700",
     "Eval_objectness_score_2025_02_12_15_34_33": ", tr. on 03_900, GT=all",
     "Eval_objectness_score_2025_02_18_08_48_13": ", tr. on 03_900, GT=closest",
-    "Eval_objectness_score_2025_02_14_11_10_14": ", tr. on 03_900, GT=closest"
+    "Eval_objectness_score_2025_02_14_11_10_14": ", tr. on 03_900, GT=closest",
+    "Eval_objectness_score_2025_02_21_14_51_07": ", tr. on 07_700",
+    "Eval_objectness_score_2025_02_10_14_59_49": ", tr. on 03_900, GT=all",
+    "Eval_objectness_score_2025_02_23_19_26_25": ", tr. on all, GT=closest",
+    "Eval_objectness_score_2025_02_23_21_04_33": ", tr. on 03_900, GT=closest"
 }
 
 out_file_PR = os.path.join(get_path(args.input, "results"), "precision_recall.pdf")
@@ -102,7 +106,7 @@ for mi, mass in enumerate([700, 900, 1500]):
             run_config = pickle.load(open(os.path.join(path, model, "run_config.pkl"), "rb"))
             result_PR_thresholds = pickle.load(open(result_PR_thresholds, "rb"))
             precisions, recalls, f1_scores = get_plots_for_params(mass, 20, rinv, result_PR_thresholds)
-            if not run_config["gt_radius"] == 2:
+            if not run_config["gt_radius"] == 0.8:
                 continue
             label = "R={} gl.f.={} {}".format(run_config["gt_radius"], run_config.get("global_features_obj_score", False), comments.get(run_config["run_name"], run_config["run_name"]))
             scatter_plot(ax[0, i], thresholds, precisions, label=label)

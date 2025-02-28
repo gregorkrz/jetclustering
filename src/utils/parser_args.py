@@ -88,6 +88,8 @@ parser.add_argument(
     default=128
 )
 
+
+parser.add_argument("--no-pid", "-np", action="store_true", help="If turned on, the PID is not going to be used as an input feature")
 parser.add_argument(
     "-heads",
     "--n-heads",
@@ -277,6 +279,8 @@ parser.add_argument(
 parser.add_argument("--start-lr", type=float, default=5e-3, help="start learning rate")
 parser.add_argument("--validation-steps", type=float, default=1000, help="Run eval on validation set every x steps")
 
+
+
 parser.add_argument(
     "--backend",
     type=str,
@@ -296,6 +300,10 @@ parser.add_argument(
     default=False,
     help="use mixed precision training (fp16)",
 )
+
+
+# Objectness score submodel settings
+
 parser.add_argument(
     "-obj-score",
     "--train-objectness-score",

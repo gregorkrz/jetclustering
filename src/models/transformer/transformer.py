@@ -115,9 +115,12 @@ def get_model(args, obj_score=False):
         n_scalars_out = 0
     elif args.beta_type == "pt+bc":
         n_scalars_out = 1
+    n_scalars_in = 12
+    if args.no_pid:
+        n_scalars_in = 12-9
     if obj_score:
         return TransformerModel(
-            n_scalars=12,
+            n_scalars=n_scalars_in,
             n_scalars_out=10,
             n_blocks=5,
             n_heads=args.n_heads,
@@ -126,7 +129,7 @@ def get_model(args, obj_score=False):
             global_features_copy=args.global_features_obj_score
         )
     return TransformerModel(
-        n_scalars=12,
+        n_scalars=n_scalars_in,
         n_scalars_out=n_scalars_out,
         n_blocks=args.num_blocks,
         n_heads=args.n_heads,

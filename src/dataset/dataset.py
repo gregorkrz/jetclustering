@@ -690,7 +690,7 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
                 extra_test_selection=extra_selection,
             )
 
-        # derive all variables added to self.__dict__
+        # Derive all variables added to self.__dict__
         self._init_args = set(self.__dict__.keys()) - _init_args
 
     @property
@@ -710,4 +710,3 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
                 kwargs = {k: copy.deepcopy(self.__dict__[k]) for k in self._init_args}
                 self._iters[worker_id] = _SimpleIter(**kwargs)
                 return self._iters[worker_id]
-
