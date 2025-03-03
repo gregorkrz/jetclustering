@@ -623,11 +623,11 @@ def get_batch(event, batch_config, y, test=False):
     if batch_config.get("obj_score", False):
         filt_dq = ~torch.isin(dq_coords_batch_idx, torch.tensor(batch_filter))
     dropped_batches = batch_idx[filt].unique()
-    if (~filt).sum() > 0:
-        print("Found events with no signal!!! Dropping it in training", (~filt).sum() / len(filt), batch_filter)
-        print("Renumbered", renumber_clusters(batch_idx[filt]).unique())
-        print("Original", batch_idx[filt].unique())
-        print("ALL", batch_idx.unique())
+    #if (~filt).sum() > 0:
+    #    #print("Found events with no signal!!! Dropping it in training", (~filt).sum() / len(filt), batch_filter)
+    #    #print("Renumbered", renumber_clusters(batch_idx[filt]).unique())
+    #    #print("Original", batch_idx[filt].unique())
+    #    #print("ALL", batch_idx.unique())
     if batch_config.get("quark_dist_loss", False):
         y_filt = y
     elif batch_config.get("obj_score", False):
@@ -637,7 +637,7 @@ def get_batch(event, batch_config, y, test=False):
                                   dq_coords_batch_idx=renumber_clusters(dq_coords_batch_idx[filt_dq].int()))
     else:
         y_filt = y[filt]
-        print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
+        #print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
     return EventBatch(
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],
