@@ -456,7 +456,7 @@ class EventCollection:
 
     def serialize(self):
         # get all the self.init_attrs and concat them together. Also return batch_number
-        data = torch.stack([getattr(self, attr) for attr in type(self).init_attrs]).T
+        data = torch.stack([getattr(self, attr) for attr in self.init_attrs]).T
         assert data.shape[0] == self.batch_number.max().item()
         return data, self.batch_number
 
@@ -653,7 +653,6 @@ def to_tensor(item):
     return torch.tensor(item)
 
 class EventPFCands(EventCollection):
-    init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
     def __init__(
         self,
         pt,
@@ -669,6 +668,7 @@ class EventPFCands(EventCollection):
         pf_cand_jet_idx=None, # Optional: provide either this or pfcands_idx & jet_idx
         status=None # optional
     ):
+        self.init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
         self.pt = to_tensor(pt)
@@ -689,6 +689,7 @@ class EventPFCands(EventCollection):
         self.pid = to_tensor(pid)
         if status is not None:
             self.status = to_tensor(status)
+            self.init_attrs.append("status")
         if pf_cand_jet_idx is not None:
             self.pf_cand_jet_idx = to_tensor(pf_cand_jet_idx)
         else:
@@ -706,9 +707,9 @@ class EventPFCands(EventCollection):
         return len(self.pt)
 
 class EventMetadataAndMET(EventCollection):
-    init_attrs = ["pt", "phi", "scouting_trig", "offline_trig", "veto_trig"]
     # Extra info belonging to the event: MET, trigger info etc.
     def __init__(self, pt, phi, scouting_trig, offline_trig, veto_trig, batch_number=None):
+        self.init_attrs = ["pt", "phi", "scouting_trig", "offline_trig", "veto_trig"]
         self.pt = to_tensor(pt)
         self.phi = to_tensor(phi)
         self.scouting_trig = to_tensor(scouting_trig)
@@ -720,7 +721,6 @@ class EventMetadataAndMET(EventCollection):
         return len(self.pt)
 
 class EventJets(EventCollection):
-    init_attrs = ["pt", "eta", "phi", "mass"]
     def __init__(
         self,
         pt,
@@ -732,6 +732,7 @@ class EventJets(EventCollection):
         target_obj_score=None,
         batch_number=None
     ):
+        self.init_attrs = ["pt", "eta", "phi", "mass"]
         self.pt = to_tensor(pt)
         self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))

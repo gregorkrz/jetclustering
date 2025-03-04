@@ -10,6 +10,17 @@ from src.utils.paths import get_path
 import argparse
 import numpy as np
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", type=str)
+parser.add_argument("--output", type=str)
+parser.add_argument("--overwrite", action="store_true")
+parser.add_argument("--dataset-cap", type=int, default=-1)
+parser.add_argument("--v2", action="store_true") # V2 means that the dataset also stores parton-level and genParticles
+
+args = parser.parse_args()
+path = get_path(args.input, "data")
+
 def remove_from_list(lst):
     out = []
     for item in lst:
@@ -18,7 +29,7 @@ def remove_from_list(lst):
         out.append(item)
     return out
 
-def preprocess_dataset(path, output_path, config_file=get_path('config_files/config_jets.yaml', 'code')):
+def preprocess_dataset(path, output_path, config_file, dataset_cap):
     datasets = os.listdir(path)
     datasets = [os.path.join(path, x) for x in datasets]
     datasets = datasets
@@ -33,7 +44,7 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
             self.data_fraction = 1
             self.file_fraction = 1
             self.fetch_by_files = False
-            self.fetch_step = 0.05
+            self.fetch_step = 1
             self.steps_per_epoch = None
             self.in_memory = False
             self.local_rank = None
@@ -64,11 +75,14 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
     from time import time
     t0 = time()
     data = []
-
+    count = 0
     while True:
         try:
             i = next(iterator)
             data.append(i)
+            count += 1
+            if dataset_cap > 0 and count >= dataset_cap:
+                break
         except StopIteration:
             break
     t1 = time()
@@ -100,18 +114,13 @@ def preprocess_dataset(path, output_path, config_file=get_path('config_files/con
     print("Done")
     '''
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--input", type=str)
-parser.add_argument("--output", type=str)
-parser.add_argument("--overwrite", action="store_true")
-
-
-args = parser.parse_args()
-path = get_path(args.input, "data")
 output = get_path(args.output, "preprocessed_data")
 for dir in os.listdir(path):
     if args.overwrite or not os.path.exists(os.path.join(output, dir)):
-        preprocess_dataset(os.path.join(path, dir), output)
+        config = get_path('config_files/config_jets.yaml', 'code')
+        if args.v2:
+            config = get_path('config_files/config_jets_1.yaml', 'code')
+        preprocess_dataset(os.path.join(path, dir), output, config_file=config, dataset_cap=args.dataset_cap)
     else:
         print("Skipping", dir + ", already exists")
         # flush
