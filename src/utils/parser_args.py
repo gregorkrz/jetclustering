@@ -229,6 +229,19 @@ parser.add_argument(
     type=int,
     default=18
 )
+
+parser.add_argument(
+    "--parton-level",
+    help="Run on parton-level particles",
+    action="store_true"
+)
+
+parser.add_argument(
+    "--gen-level",
+    help="Run on gen-level final particles",
+    action="store_true"
+)
+
 parser.add_argument(
     "--epsilon",
     help="parameter of the HDBSCAN clustering",

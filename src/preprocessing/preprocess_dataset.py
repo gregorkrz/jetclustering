@@ -32,7 +32,6 @@ def remove_from_list(lst):
 def preprocess_dataset(path, output_path, config_file, dataset_cap):
     datasets = os.listdir(path)
     datasets = [os.path.join(path, x) for x in datasets]
-    datasets = datasets
     class Args:
         def __init__(self):
             self.data_train = datasets
@@ -56,7 +55,6 @@ def preprocess_dataset(path, output_path, config_file, dataset_cap):
             self.laplace = False
             self.diffs = False
             self.class_edges = False
-
     args = Args()
     train_range = (0, args.train_val_split)
     train_file_dict, train_files = to_filelist(args, 'train')
@@ -113,7 +111,6 @@ def preprocess_dataset(path, output_path, config_file, dataset_cap):
     print("Took", t3-t2, "s")
     print("Done")
     '''
-
 output = get_path(args.output, "preprocessed_data")
 for dir in os.listdir(path):
     if args.overwrite or not os.path.exists(os.path.join(output, dir)):

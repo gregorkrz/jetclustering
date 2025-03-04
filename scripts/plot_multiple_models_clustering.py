@@ -15,12 +15,20 @@ from pathlib import Path
 def get_properties(name):
     # get mediator mass, dark quark mass, r_inv from the filename
     parts = name.strip().strip("/").split("/")[-1].split("_")
-    mMed = int(parts[1].split("-")[1])
-    mDark = int(parts[2].split("-")[1])
-    rinv = float(parts[3].split("-")[1])
+    try:
+        mMed = int(parts[1].split("-")[1])
+        mDark = int(parts[2].split("-")[1])
+        rinv = float(parts[3].split("-")[1])
+    except:
+        # another convention
+        mMed = int(parts[2].split("-")[1])
+        mDark = int(parts[3].split("-")[1])
+        rinv = float(parts[4].split("-")[1])
     return mMed, mDark, rinv
 
+
 #%%
+
 clist = ['#1f78b4', '#b3df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbe6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
 colors = {
     -1: "gray",
@@ -65,7 +73,15 @@ models = {
     "R=0.8,GT=all_in_radius": "train/Eval_objectness_score_2025_02_10_14_59_49"
 }
 
-output_path = get_path("scouting_PFNano_signals2/SVJ_hadronic_std/clustering_model_comparison_FT_R_objectness_score", "results")
+# Parton-level, gen-level and scouting PFCands models
+models = {
+    "parton-level": "train/Eval_no_pid_eval_2025_03_04_15_55_38",
+    "gen-level": "train/Eval_no_pid_eval_2025_03_04_15_54_50",
+    "scouting": "train/Eval_no_pid_eval_2025_03_04_16_06_57"
+}
+
+
+output_path = get_path("26Feb_reduced", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
@@ -106,9 +122,9 @@ for ds in range(20):
             if model_coords.shape[1] == 5:
                 model_coords = model_coords[:, 1:]
             model_coords = calc_eta_phi(model_coords, 0)
-            plot_event(dataset[e], colors=c, ax=ax[e, 2*mn])
-            plot_event(dataset[e], colors=c, ax=ax[e, 2*mn+1], custom_coords=model_coords)
-            plot_event(dataset[e], colors=c, ax=ax1[e, mn])
+            plot_event(dataset[e], colors=c, ax=ax[e, 2*mn], pfcands=dataset.pfcands_key)
+            plot_event(dataset[e], colors=c, ax=ax[e, 2*mn+1], custom_coords=model_coords, pfcands=dataset.pfcands_key)
+            plot_event(dataset[e], colors=c, ax=ax1[e, mn], pfcands=dataset.pfcands_key)
             uj = dataset[e].model_jets_unfiltered
             # print the pt of the jet in the middle of each cluster with font size 12
             for i in range(len(uj.pt)):

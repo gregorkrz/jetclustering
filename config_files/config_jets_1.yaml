@@ -1,4 +1,4 @@
-treename: mmtree/Events;16
+treename: null
 selection:
    ### use `&`, `|`, `~` for logical operations on numpy arrays
    ### can use functions from `math`, `np` (numpy), and `awkward` in the expression

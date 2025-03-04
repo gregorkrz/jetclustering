@@ -81,7 +81,7 @@ def plot_event_comparison(event, ax=None, special_pfcands_size=1, special_pfcand
         return fig
 
 
-def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
+def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True, pfcands="pfcands"):
     # plots event onto the specified ax.
     # :colors: color of the pfcands
     # :colors_special: color of the special pfcands
@@ -90,12 +90,14 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True):
     make_fig = ax is None
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+
     eta_dq = event.matrix_element_gen_particles.eta
     phi_dq = event.matrix_element_gen_particles.phi
     pt_dq = event.matrix_element_gen_particles.pt
-    eta = event.pfcands.eta
-    phi = event.pfcands.phi
-    pt = event.pfcands.pt
+
+    eta = getattr(event, pfcands).eta
+    phi = getattr(event, pfcands).phi
+    pt = getattr(event, pfcands).pt
 
     #eta_special = event.special_pfcands.eta
     #phi_special = event.special_pfcands.phi

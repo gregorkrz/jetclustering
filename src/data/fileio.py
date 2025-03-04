@@ -25,12 +25,14 @@ def _read_root(filepath, branches, load_range=None, treename=None):
     with uproot.open(filepath) as f:
         if treename is None:
             treenames = set([k.split(';')[0] for k, v in f.items() if getattr(v, 'classname', '') == 'TTree'])
-            if len(treenames) == 1:
-                treename = treenames.pop()
-            else:
-                raise RuntimeError(
-                    'Need to specify `treename` as more than one trees are found in file %s: %s' %
-                    (filepath, str(branches)))
+            #if len(treenames) == 1:
+            #    treename = treenames.pop()
+            #else:
+            #    raise RuntimeError(
+            #        'Need to specify `treename` as more than one trees are found in file %s: %s' %
+            #        (filepath, str(branches)))
+            # set treename to the first of the treenames
+            treename = treenames.pop()
         tree = f[treename]
         if load_range is not None:
             start = math.trunc(load_range[0] * tree.num_entries)

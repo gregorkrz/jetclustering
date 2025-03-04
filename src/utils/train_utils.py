@@ -467,7 +467,12 @@ def get_gt_func(args):
         #special_labels = get_labels(events, events.special_pfcands, special=True)
         #print("Special pfcands labels", special_labels)
         #return torch.cat([get_labels(events, events.pfcands), special_labels])
-        return get_labels(events, events.pfcands, get_coordinates=args.loss=="quark_distance",
+        pfcands = events.pfcands
+        if args.parton_level:
+            pfcands = events.final_parton_level_particles
+        if args.gen_level:
+            pfcands = events.final_gen_particles
+        return get_labels(events, pfcands, get_coordinates=args.loss=="quark_distance",
                           get_dq_coords=args.train_objectness_score)
     return gt
 

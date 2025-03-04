@@ -148,6 +148,9 @@ if "lgatr" in args.network_config.lower():
     batch_config = {"use_four_momenta": True}
 
 batch_config["quark_dist_loss"] = args.loss == "quark_distance"
+
+batch_config["parton_level"] = args.parton_level
+batch_config["gen_level"] = args.gen_level
 batch_config["obj_score"] = args.train_objectness_score
 if args.no_pid:
     print("Not using PID in the features")

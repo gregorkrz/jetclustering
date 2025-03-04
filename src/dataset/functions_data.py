@@ -463,7 +463,7 @@ class EventCollection:
     def __getitem__(self, i):
         data = {}
         s, e = self.batch_number[i], self.batch_number[i + 1]
-        for attr in self.init_attrs:
+        for attr in type(self).init_attrs:
             data[attr] = getattr(self, attr)[s:e]
         return type(self)(**data)
 
@@ -471,6 +471,8 @@ class EventCollection:
     def deserialize(data_matrix, batch_number, cls):
         data = {}
         for i, key in enumerate(cls.init_attrs):
+            if i >= data_matrix.shape[1]:
+                break # For some PFCands, 'status' is not populated
             data[key] = data_matrix[:, i]
         return cls(**data, batch_number=batch_number)
 
@@ -484,7 +486,8 @@ def concat_event_collection(list_event_collection):
     #            list_of_attrs.append(k)
     result = {}
     for attr in list_of_attrs:
-        result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
+        if hasattr(c, attr):
+            result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
     batch_number = add_batch_number(list_event_collection, attr=list_of_attrs[0])
     return type(c)(**result, batch_number=batch_number)
 
@@ -564,10 +567,15 @@ def get_corrected_batch(event_batch, cluster_idx):
 def get_batch(event, batch_config, y, test=False):
     # Returns the EventBatch class, with correct scalars etc.
     # If test=True, it will put all events in the batch, i.e. no filtering of the events without signal.
-    batch_idx_pfcands = torch.zeros(len(event.pfcands)).long()
+    pfcands = event.pfcands
+    if batch_config.get("parton_level", False):
+        pfcands = event.final_parton_level_particles
+    if batch_config.get("gen_level", False):
+        pfcands = event.final_gen_particles
+    batch_idx_pfcands = torch.zeros(len(pfcands)).long()
     #batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
-    for i in range(len(event.pfcands.batch_number) - 1):
-        batch_idx_pfcands[event.pfcands.batch_number[i]:event.pfcands.batch_number[i+1]] = i
+    for i in range(len(pfcands.batch_number) - 1):
+        batch_idx_pfcands[pfcands.batch_number[i]:pfcands.batch_number[i+1]] = i
     batch_filter = []
     if batch_config.get("quark_dist_loss", False):
         lbl = y.labels
@@ -585,33 +593,33 @@ def get_batch(event, batch_config, y, test=False):
     #    batch_idx_special_pfcands[event.special_pfcands.batch_number[i]:event.special_pfcands.batch_number[i+1]] = i
     #batch_idx = torch.cat([batch_idx_pfcands, batch_idx_special_pfcands])
     batch_idx = batch_idx_pfcands
-    batch_idx = batch_idx.to(event.pfcands.pt.device)
+    batch_idx = batch_idx.to(pfcands.pt.device)
     if batch_config.get("use_p_xyz", False):
         #batch_vectors = torch.cat([event.pfcands.pxyz, event.special_pfcands.pxyz], dim=0)
-        batch_vectors = event.pfcands.pxyz
+        batch_vectors = pfcands.pxyz
     elif batch_config.get("use_four_momenta", False):
-        batch_vectors = torch.cat([event.pfcands.E.unsqueeze(-1), event.pfcands.pxyz], dim=1)
-        assert batch_vectors.shape[0] == event.pfcands.E.shape[0]
+        batch_vectors = torch.cat([pfcands.E.unsqueeze(-1), pfcands.pxyz], dim=1)
+        assert batch_vectors.shape[0] == pfcands.E.shape[0]
     else:
         raise NotImplementedError
-    pids = batch_config.get("pids", [11, 13, 22, 130, 211, 0, 1, 2, 3]) # 0, 1, 2, 3 are the special PFcands
-    # onehot encode pids of event.pfcands.pid
-    pids_onehot = torch.zeros(len(event.pfcands), len(pids))
-    for i in event.pfcands.pid:
-        if abs(i).item() not in pids:
-            print(i, "not in", pids)
-            raise Exception
-    for i, pid in enumerate(pids):
-        pids_onehot[:, i] = (event.pfcands.pid.abs() == pid).float()
-    assert (pids_onehot.sum(dim=1) == 1).all()
-    chg = event.pfcands.charge.unsqueeze(1)
+    chg = pfcands.charge.unsqueeze(1)
     if batch_config.get("no_pid", False):
         batch_scalars_pfcands = chg
     else:
+        pids = batch_config.get("pids", [11, 13, 22, 130, 211, 0, 1, 2, 3])  # 0, 1, 2, 3 are the special PFcands
+        # onehot encode pids of event.pfcands.pid
+        pids_onehot = torch.zeros(len(pfcands), len(pids))
+        for i in pfcands.pid:
+            if abs(i).item() not in pids:
+                print(i, "not in", pids)
+                raise Exception
+        for i, pid in enumerate(pids):
+            pids_onehot[:, i] = (pfcands.pid.abs() == pid).float()
+        assert (pids_onehot.sum(dim=1) == 1).all()
         batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
     #if batch_config.get("use_p_xyz", False):
     #    # also add pt as a scalar
-    batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, event.pfcands.pt.unsqueeze(1), event.pfcands.E.unsqueeze(1)], dim=1)
+    batch_scalars_pfcands = torch.cat([batch_scalars_pfcands, pfcands.pt.unsqueeze(1), pfcands.E.unsqueeze(1)], dim=1)
     #pids_onehot_special_pfcands = torch.zeros(len(event.special_pfcands), len(pids))
     #for i, pid in enumerate(pids):
     #    pids_onehot_special_pfcands[:, i] = (event.special_pfcands.pid.abs() == pid).float()
@@ -642,7 +650,7 @@ def get_batch(event, batch_config, y, test=False):
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],
         batch_idx=renumber_clusters(batch_idx[filt]),
-        pt=event.pfcands.pt[filt],
+        pt=pfcands.pt[filt],
         filter=filt,
         dropped_batches=dropped_batches
     ), y_filt
@@ -653,6 +661,7 @@ def to_tensor(item):
     return torch.tensor(item)
 
 class EventPFCands(EventCollection):
+    init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx", "status"]
     def __init__(
         self,
         pt,
@@ -668,7 +677,6 @@ class EventPFCands(EventCollection):
         pf_cand_jet_idx=None, # Optional: provide either this or pfcands_idx & jet_idx
         status=None # optional
     ):
-        self.init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx"]
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
         self.pt = to_tensor(pt)
@@ -689,7 +697,7 @@ class EventPFCands(EventCollection):
         self.pid = to_tensor(pid)
         if status is not None:
             self.status = to_tensor(status)
-            self.init_attrs.append("status")
+        #self.init_attrs.append("status")
         if pf_cand_jet_idx is not None:
             self.pf_cand_jet_idx = to_tensor(pf_cand_jet_idx)
         else:
@@ -708,8 +716,9 @@ class EventPFCands(EventCollection):
 
 class EventMetadataAndMET(EventCollection):
     # Extra info belonging to the event: MET, trigger info etc.
+    init_attrs = ["pt", "phi", "scouting_trig", "offline_trig", "veto_trig"]
     def __init__(self, pt, phi, scouting_trig, offline_trig, veto_trig, batch_number=None):
-        self.init_attrs = ["pt", "phi", "scouting_trig", "offline_trig", "veto_trig"]
+
         self.pt = to_tensor(pt)
         self.phi = to_tensor(phi)
         self.scouting_trig = to_tensor(scouting_trig)
@@ -721,6 +730,7 @@ class EventMetadataAndMET(EventCollection):
         return len(self.pt)
 
 class EventJets(EventCollection):
+    init_attrs = ["pt", "eta", "phi", "mass"]
     def __init__(
         self,
         pt,
@@ -732,7 +742,6 @@ class EventJets(EventCollection):
         target_obj_score=None,
         batch_number=None
     ):
-        self.init_attrs = ["pt", "eta", "phi", "mass"]
         self.pt = to_tensor(pt)
         self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))

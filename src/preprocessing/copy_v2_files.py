@@ -6,6 +6,7 @@ import os
 parser = argparse.ArgumentParser(description='Copy the files in appropriate folders - no matter how many parts are in the files')
 parser.add_argument("--input", type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500")
 parser.add_argument("--output", type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_folders")
+parser.add_argument("--overwrite", action="store_true") # if true, it will overwrite the files, otherwise, it will skip files that have been already copied
 
 args = parser.parse_args()
 
@@ -24,8 +25,9 @@ for file in os.listdir(args.input):
         os.makedirs(os.path.join(args.output, filename))
     # copy it
     print(f"Copying {file} to {os.path.join(args.output, filename)}")
-    os.system(f"cp {os.path.join(args.input, file)} {os.path.join(args.output, filename)}")
-    # rename it
-    os.rename(os.path.join(args.output, filename, file), os.path.join(args.output, filename, "part_"+file.split("_part_")[1]))
+    if args.overwrite or not os.path.exists( os.path.join(args.output, filename, "part_"+file.split("_part_")[1])):
+        os.system(f"cp {os.path.join(args.input, file)} {os.path.join(args.output, filename)}")
+        # rename it
+        os.rename(os.path.join(args.output, filename, file), os.path.join(args.output, filename, "part_"+file.split("_part_")[1]))
 
 print("Done")

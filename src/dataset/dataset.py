@@ -362,6 +362,30 @@ class EventDataset(torch.utils.data.Dataset):
                                include_model_jets_unfiltered=include_model_jets_unfiltered,
                                fastjet_R=fastjet_R)
         return dataset
+    def get_pfcands_key(self):
+        pfcands_key = "pfcands"
+        if self.model_output is None:
+            return pfcands_key # ignore
+        for i in [0, 1, 2]: # try the first three if it fits
+            start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
+            end = {key: self.metadata[key + "_batch_idx"][i + 1] for key in self.attrs}
+            result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
+            result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key])
+                      for key in self.attrs}
+
+            event_filter_s, event_filter_e = self.model_output["event_idx_bounds"][i].int().item(), \
+            self.model_output["event_idx_bounds"][i + 1].int().item()
+            diff = event_filter_e - event_filter_s
+            if diff != len(result["pfcands"]):
+                if diff == len(result["final_parton_level_particles"]):
+                    pfcands_key = "final_parton_level_particles"
+                    break
+                if diff == len(result["final_gen_particles"]):
+                    pfcands_key = "final_gen_particles"
+                    break
+        print("Found pfcands_key=%s" % pfcands_key)
+        return pfcands_key
+
     def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None):
         # events: serialized events dict
         # metadata: dict with metadata
@@ -371,6 +395,9 @@ class EventDataset(torch.utils.data.Dataset):
         self.metadata = metadata
         self.include_model_jets_unfiltered = include_model_jets_unfiltered
         self.i = 0
+        #self.pfcands_key = "pfcands"
+
+        # set to final_parton_level_particles or final_gen_particles in case needed
         #for key in self.attrs:
         #    self.evt_idx_to_batch_idx[key] = {}
         if model_output_file is not None:
@@ -392,6 +419,7 @@ class EventDataset(torch.utils.data.Dataset):
             self.fastjet_jetdef = {r: fastjet.JetDefinition(fastjet.antikt_algorithm, r) for r in fastjet_R}
             ## fastjet_R is an array of radiuses for which to compute that
 
+        self.pfcands_key = self.get_pfcands_key()
     def __len__(self):
         return self.n_events
    # def __next__(self):
@@ -416,11 +444,11 @@ class EventDataset(torch.utils.data.Dataset):
         result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
                   key in self.attrs}
         if self.model_output is not None:
-            result["model_jets"], bc_scores_pfcands, bc_labels_pfcands = self.get_model_jets(i, pfcands=result["pfcands"], include_target=1, dq=result["matrix_element_gen_particles"])
-            result["pfcands"].bc_scores_pfcands = bc_scores_pfcands
-            result["pfcands"].bc_labels_pfcands = bc_labels_pfcands
+            result["model_jets"], bc_scores_pfcands, bc_labels_pfcands = self.get_model_jets(i, pfcands=result[self.pfcands_key], include_target=1, dq=result["matrix_element_gen_particles"])
+            result[self.pfcands_key].bc_scores_pfcands = bc_scores_pfcands
+            result[self.pfcands_key].bc_labels_pfcands = bc_labels_pfcands
             if self.include_model_jets_unfiltered:
-                result["model_jets_unfiltered"], _, _ = self.get_model_jets(i, pfcands=result["pfcands"], filter=False)
+                result["model_jets_unfiltered"], _, _ = self.get_model_jets(i, pfcands=result[self.pfcands_key], filter=False)
         if hasattr(self, "fastjet_jetdef") and self.fastjet_jetdef is not None:
             result["fastjet_jets"] = {key: EventDataset.get_fastjet_jets(result, self.fastjet_jetdef[key]) for key in self.fastjet_jetdef}
         if "genjets" in result:
@@ -514,7 +542,6 @@ class EventDataset(torch.utils.data.Dataset):
         obj_score = None
         assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={} len(pfcands_pt)={} event_filter_e={} event_filter_s={}".format(filter, len(pfcands_pt), event_filter_e, event_filter_s)
         #jets_pt = scatter_sum(to_tensor(pfcands_pt), self.model_clusters[event_filter] + 1, dim=0)[1:]
-        print(self.model_clusters[event_filter_s:event_filter_e])
         jets_pxyz = scatter_sum(to_tensor(pfcands_pxyz), self.model_clusters[event_filter_s:event_filter_e] + 1, dim=0)[1:]
         jets_pt = torch.norm(jets_pxyz[:, :2], p=2, dim=-1)
         jets_eta, jets_phi = calc_eta_phi(jets_pxyz, False)
@@ -523,7 +550,7 @@ class EventDataset(torch.utils.data.Dataset):
         jets_mass = torch.sqrt(jets_E**2 - jets_pxyz.norm(dim=-1)**2)
         cluster_labels = self.model_clusters[event_filter_s:event_filter_e]
         bc_scores = self.model_output["pred"][event_filter_s:event_filter_e, -1]
-        if not torch.is_tensor(self.model_output["obj_score_pred"]):
+        if "obj_score_pred" in self.model_output and not torch.is_tensor(self.model_output["obj_score_pred"]):
             self.model_output["obj_score_pred"] = torch.cat(self.model_output["obj_score_pred"])
             print("Concatenated obj_score_pred")
         target_obj_score = None

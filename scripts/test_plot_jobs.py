@@ -10,7 +10,7 @@ from src.utils.paths import get_path
 from src.utils.wandb_utils import get_run_initial_steps, get_run_step_direct, get_run_step_ckpt, get_steps_from_file, get_run_by_name
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--tag", "-tag", type=str, required=False, default="") # 'Vega' or 'T3'
+parser.add_argument("--tag", "-tag", type=str, required=False, default="")
 parser.add_argument("--input", "-input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std")
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
 parser.add_argument("--submit-AKX", "-AKX", action="store_true")

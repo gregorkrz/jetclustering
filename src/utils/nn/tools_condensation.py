@@ -273,6 +273,11 @@ def evaluate(
                 count += event_batch.n_events # number of samples
                 y = gt_func(event_batch)
                 batch, y = get_batch(event_batch, batch_config, y, test=predict)
+                pfcands = event_batch.pfcands
+                if args.parton_level:
+                    pfcands = event_batch.final_parton_level_particles
+                elif args.gen_level:
+                    pfcands = event_batch.final_gen_particles
                 y = y.to(dev)
                 batch = batch.to(dev)
                 y_pred = model(batch)
@@ -314,13 +319,13 @@ def evaluate(
                     else:
                         predictions["GT_cluster"].append(y.labels.detach().cpu())
                     predictions["pred"].append(y_pred.detach().cpu())
-                    predictions["eta"].append(event_batch.pfcands.eta.detach().cpu())
-                    predictions["phi"].append(event_batch.pfcands.phi.detach().cpu())
-                    predictions["pt"].append(event_batch.pfcands.pt.detach().cpu())
+                    predictions["eta"].append(pfcands.eta.detach().cpu())
+                    predictions["phi"].append(pfcands.phi.detach().cpu())
+                    predictions["pt"].append(pfcands.pt.detach().cpu())
                     predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
                     predictions["radius_cluster_GenJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets).detach().cpu())
                     predictions["radius_cluster_FatJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets).detach().cpu())
-                    predictions["mass"].append(event_batch.pfcands.mass.detach().cpu())
+                    predictions["mass"].append(pfcands.mass.detach().cpu())
                     if predictions["pred"][-1].shape[1] == 4:
                         coords = predictions["pred"][-1][:, :3]
                     else:
@@ -344,7 +349,7 @@ def evaluate(
                                                                              return_labels_event_idx=True)
                         assert len(event_idx_clusters) == clusters.max() + 1
                         batch_corr = get_corrected_batch(batch, clusters)
-                        input_pxyz = event_batch.pfcands.pxyz[batch.filter.cpu()]
+                        input_pxyz = pfcands.pxyz[batch.filter.cpu()]
                         clusters_pxyz = scatter_sum(input_pxyz, torch.tensor(clusters) + 1, dim=0)[1:]
                         clusters_eta, clusters_phi = calc_eta_phi(clusters_pxyz, return_stacked=False)
                         # pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=False)

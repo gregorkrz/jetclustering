@@ -33,6 +33,8 @@ def plot_coordinates(
         # hover_data=hover_data,
         template="plotly_dark",
         color_continuous_scale=px.colors.sequential.Rainbow,
+        # make it opaque a bit
+        opacity=0.5,
     )
     fig.update_traces(marker=dict(line=dict(width=0)))
     if filename is None or outdir is None:
