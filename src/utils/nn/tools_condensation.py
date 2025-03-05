@@ -410,7 +410,7 @@ def evaluate(
         #predictions = {key: torch.cat(predictions[key], dim=0) for key in predictions}
         predictions_1 = {}
         for key in predictions:
-            print("key", key, predictions[key])
+            #print("key", key, predictions[key])
             predictions_1[key] = torch.cat(predictions[key], dim=0)
         predictions = predictions_1
         #predictions["event_idx"] = torch.cat(predictions["event_idx"], dim=0)

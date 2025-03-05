@@ -84,7 +84,14 @@ def get_clustering_labels(coords, batch_idx, min_cluster_size=10, min_samples=20
             c = custom_metric(c, pt)
         clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples,
                                     cluster_selection_epsilon=epsilon, **kwargs)
-        cluster_labels = clusterer.fit_predict(c)
+        try:
+            cluster_labels = clusterer.fit_predict(c)
+        except Exception as e:
+            print("Error in clustering", e)
+            print("Coords", c.shape)
+            print("Batch idx", batch_idx.shape)
+            print("Setting the labels to -1")
+            cluster_labels = np.full(len(c), -1)
         labels_no_reindex.append(cluster_labels)
         if return_labels_event_idx:
             num_clusters = np.max(cluster_labels) + 1
