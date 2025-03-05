@@ -345,6 +345,12 @@ def get_batch_bounds(batch_idx):
             prev = b
     result[-1] = len(b_list)
     return result
+def filter_pfcands(pfcands):
+    # filter the GenParticles so that dark matter particles are not present
+    # dark matter particles are defined as those with abs(pdgId) > 10000 or pdgId between 50-60
+    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60))
+    pfcands.mask(mask)
+    return pfcands
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
@@ -443,6 +449,10 @@ class EventDataset(torch.utils.data.Dataset):
         result = {key: self.events[key][start[key]:end[key]] for key in self.attrs}
         result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
                   key in self.attrs}
+        if "final_parton_level_particles" in result:
+            result["final_parton_level_particles"] = filter_pfcands(result["final_parton_level_particles"])
+        if "final_gen_particles" in result:
+            result["final_gen_particles"] = filter_pfcands(result["final_gen_particles"])
         if self.model_output is not None:
             result["model_jets"], bc_scores_pfcands, bc_labels_pfcands = self.get_model_jets(i, pfcands=result[self.pfcands_key], include_target=1, dq=result["matrix_element_gen_particles"])
             result[self.pfcands_key].bc_scores_pfcands = bc_scores_pfcands

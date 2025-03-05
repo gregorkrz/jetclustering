@@ -102,7 +102,7 @@ for ds in range(20):
         print("    -------- model:", model)
         dataset_path = models[model]
         filename = get_path(os.path.join(dataset_path, f"eval_{str(ds)}.pkl"), "results")
-        clusters_file = get_path(os.path.join(dataset_path, f"clustering_{str(ds)}.pkl"), "results")
+        clusters_file = get_path(os.path.join(dataset_path, f"clustering_hdbscan_4_10_{str(ds)}.pkl"), "results")
         #clusters_file=None
         if not os.path.exists(filename):
             continue
@@ -136,7 +136,7 @@ for ds in range(20):
             ax[e, 2*mn + 1].set_title(model + " (virt. coord.)")
         fig.tight_layout()
         fig1.tight_layout()
-        fname = os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
+        fname = os.path.join(output_path, f"10_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
         fig.savefig(fname)
-        fig1.savefig(os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
+        fig1.savefig(os.path.join(output_path, f"10_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
         print("Saving to", fname)

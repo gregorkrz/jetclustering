@@ -470,10 +470,13 @@ class EventCollection:
     @staticmethod
     def deserialize(data_matrix, batch_number, cls):
         data = {}
+        filt = None
         for i, key in enumerate(cls.init_attrs):
             if i >= data_matrix.shape[1]:
                 break # For some PFCands, 'status' is not populated
             data[key] = data_matrix[:, i]
+            #if key == "pid" and pid_filter:
+            #    filt = ~np.bool(np.abs(data[key]) >= 10000 + (np.abs(data[key]) >= 50 * np.abs(data[key]) <= 60))
         return cls(**data, batch_number=batch_number)
 
 
@@ -675,7 +678,8 @@ class EventPFCands(EventCollection):
         batch_number=None,
         offline=False,
         pf_cand_jet_idx=None, # Optional: provide either this or pfcands_idx & jet_idx
-        status=None # optional
+        status=None,  # optional
+        pid_filter=True # if true, remove invisible GenParticles (abs(pid) > 10000 or (pid >= 50 and pid <= 60)
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
