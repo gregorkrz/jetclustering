@@ -37,8 +37,10 @@ python -m scripts.generate_test_jobs -run LGATr_training_NoPID_10_16_64_2.0_2025
 python -m scripts.generate_test_jobs -run LGATr_training_NoPID_10_16_64_0.8_700_07_2025_02_28_13_01_59 -step 40000 -template t3 -tag no_pid_eval_1 --custom-test-files "Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000 Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000  Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-1200_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"
 python -m scripts.generate_test_jobs -run LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59 -step 40000 -template t3 -tag no_pid_eval_1 --custom-test-files "Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000 Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000  Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-1200_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"
 
-
 """
+
+
+
 
 api = wandb.Api()
 import time

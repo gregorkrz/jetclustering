@@ -80,6 +80,13 @@ models = {
     "scouting": "train/Eval_no_pid_eval_2025_03_04_16_06_57"
 }
 
+# Parton-level, gen-level and scouting PFCands models
+models = {
+    "parton-level": "train/Eval_no_pid_eval_1_2025_03_05_14_41_16",
+    "gen-level": "train/Eval_no_pid_eval_1_2025_03_05_14_40_30",
+    "scouting": "train/Eval_no_pid_eval_1_2025_03_05_14_41_38"
+}
+
 
 output_path = get_path("26Feb_reduced", "results")
 
@@ -102,7 +109,7 @@ for ds in range(20):
         print("    -------- model:", model)
         dataset_path = models[model]
         filename = get_path(os.path.join(dataset_path, f"eval_{str(ds)}.pkl"), "results")
-        clusters_file = get_path(os.path.join(dataset_path, f"clustering_hdbscan_4_10_{str(ds)}.pkl"), "results")
+        clusters_file = get_path(os.path.join(dataset_path, f"clustering_hdbscan_4_05_{str(ds)}.pkl"), "results")
         #clusters_file=None
         if not os.path.exists(filename):
             continue
@@ -136,7 +143,7 @@ for ds in range(20):
             ax[e, 2*mn + 1].set_title(model + " (virt. coord.)")
         fig.tight_layout()
         fig1.tight_layout()
-        fname = os.path.join(output_path, f"10_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
+        fname = os.path.join(output_path, f"noDM_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
         fig.savefig(fname)
-        fig1.savefig(os.path.join(output_path, f"10_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
+        fig1.savefig(os.path.join(output_path, f"noDM_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
         print("Saving to", fname)

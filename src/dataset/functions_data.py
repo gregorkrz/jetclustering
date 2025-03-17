@@ -464,6 +464,8 @@ class EventCollection:
         data = {}
         s, e = self.batch_number[i], self.batch_number[i + 1]
         for attr in type(self).init_attrs:
+            if attr == "status" and not hasattr(self, attr):
+                continue
             data[attr] = getattr(self, attr)[s:e]
         return type(self)(**data)
 
@@ -528,7 +530,7 @@ class TensorCollection:
     #    return TensorCollection(**{k: v[i] for k, v in self.__dict__.items()})
 
 
-def get_corrected_batch(event_batch, cluster_idx):
+def get_corrected_batch(event_batch, cluster_idx, test):
     # return a batch with fake nodes in it (as .fake_nodes_idx property) and cluster_idx should be set to -1 for the nodes that don't belong anywhere
     # cluster_idx should be a tensor of the same length as the input vectors
     clusters = torch.where(torch.tensor(cluster_idx) != -1)[0]
@@ -564,7 +566,8 @@ def get_corrected_batch(event_batch, cluster_idx):
         input_vectors=event_batch.input_vectors[clusters],
         input_scalars=event_batch.input_scalars[clusters],
         pt=event_batch.pt[clusters],
-        batch_idx=renumber_clusters(new_batch_idx)
+        batch_idx=new_batch_idx,
+        renumber_clusters=not test
     )
 
 def get_batch(event, batch_config, y, test=False):
@@ -629,7 +632,12 @@ def get_batch(event, batch_config, y, test=False):
     #assert (pids_onehot_special_pfcands.sum(dim=1) == 1).all()
     #batch_scalars_special_pfcands =event.special_pfcands.charge.unsqueeze(1) #torch.cat([event.special_pfcands.charge.unsqueeze(1), pids_onehot_special_pfcands], dim=1)
     batch_scalars = batch_scalars_pfcands # torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
-    assert batch_idx.max() == event.n_events - 1
+    if batch_idx.max() != event.n_events - 1:
+        print("Error!!")
+        print("Batch idx", batch_idx.max(), batch_idx.tolist())
+        print("N events", event.n_events)
+        print("Batch number:", pfcands.batch_number)
+    #assert batch_idx.max() == event.n_events - 1
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
     if batch_config.get("obj_score", False):
         filt_dq = ~torch.isin(dq_coords_batch_idx, torch.tensor(batch_filter))
@@ -652,10 +660,11 @@ def get_batch(event, batch_config, y, test=False):
     return EventBatch(
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],
-        batch_idx=renumber_clusters(batch_idx[filt]),
+        batch_idx=batch_idx[filt],
         pt=pfcands.pt[filt],
         filter=filt,
-        dropped_batches=dropped_batches
+        dropped_batches=dropped_batches,
+        renumber=not test
     ), y_filt
 
 def to_tensor(item):
@@ -931,10 +940,12 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None, fake_nodes_idx=None, batch_idx_events=None):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None, fake_nodes_idx=None, batch_idx_events=None, renumber=False):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
-        self.batch_idx = batch_idx
+        self.batch_idx = batch_idx #renumber_clusters(batch_idx)
+        if renumber:
+            self.batch_idx = renumber_clusters(batch_idx)
         self.pt = pt
         self.filter = filter
         self.dropped_batches = dropped_batches

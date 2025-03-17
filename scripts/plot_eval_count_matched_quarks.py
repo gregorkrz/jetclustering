@@ -82,7 +82,7 @@ nplots = 9
 # Now make 3 plots, one for mMed=700,r_inv=0.7; one for mMed=700,r_inv=0.5; one for mMed=700,r_inv=0.3
 ###fig, ax = plt.subplots(3, 3, figsize=(3 * sz, 3 * sz))
 
-fig, ax = plt.subplots(3, nplots, figsize=(nplots*sz, 3*sz))
+'''fig, ax = plt.subplots(3, nplots, figsize=(nplots*sz, 3*sz))
 for mi, mass in enumerate([700, 900, 1500]):
     start_idx = mi*3
     for i0, rinv in enumerate([0.3, 0.5, 0.7]):
@@ -105,6 +105,10 @@ for mi, mass in enumerate([700, 900, 1500]):
                 continue
             run_config = pickle.load(open(os.path.join(path, model, "run_config.pkl"), "rb"))
             result_PR_thresholds = pickle.load(open(result_PR_thresholds, "rb"))
+            if mass not in result_PR_thresholds:
+                continue
+            if rinv not in result_PR_thresholds[mass]:
+                continue
             precisions, recalls, f1_scores = get_plots_for_params(mass, 20, rinv, result_PR_thresholds)
             if not run_config["gt_radius"] == 0.8:
                 continue
@@ -141,12 +145,51 @@ for mi, mass in enumerate([700, 900, 1500]):
 fig.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "precision_recall_thresholds.pdf"))
 
-print("Saved to", os.path.join(get_path(args.input, "results"), "precision_recall_thresholds.pdf"))
+print("Saved to", os.path.join(get_path(args.input, "results"), "precision_recall_thresholds.pdf"))'''
+
+
+import wandb
+api = wandb.Api()
+
+def get_run_by_name(name):
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"display_name": {"$eq": name.strip()}}
+    )
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"display_name": {"$eq": name.strip()}}
+    )
+
+    if runs.length != 1:
+        return None
+    return runs[0]
+
+
+def get_run_config(run_name):
+    config = get_run_by_name(run_name).config
+    if config["parton_level"]:
+        prefix = "parton level"
+    elif config["gen_level"]:
+        prefix = "gen level"
+    else:
+        prefix = "scouting PFCands"
+    gt_r = config["gt_radius"]
+    training_datasets = {
+        "LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59": "all",
+        "LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59": "900_03",
+        "LGATr_training_NoPID_10_16_64_2.0_2025_02_28_12_48_58": "900_03",
+        "LGATr_training_NoPID_10_16_64_0.8_700_07_2025_02_28_13_01_59": "700_07"
+    }
+    train_name = config["load_from_run"]
+    training_dataset = training_datasets.get(train_name, train_name)
+    return f"GT_R={gt_r}, train on {training_dataset}, {prefix}"
+
 
 sz = 5
 
 fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
-for i, model in tqdm(enumerate(models)):
+for i, model in tqdm(enumerate(sorted(models))):
     output_path = os.path.join(path, model, "count_matched_quarks")
     ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 
@@ -162,9 +205,10 @@ for i, model in tqdm(enumerate(models)):
     matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
     matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
     matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
-    ax[0, i].set_title(model)
-    ax[1, i].set_title(model)
-    ax[2, i].set_title(model)
+    ax[0, i].set_title(get_run_config(model))
+    ax[1, i].set_title(get_run_config(model))
+    ax[2, i].set_title(get_run_config(model))
+    print(model, get_run_config(model))
 fig.tight_layout()
 fig.savefig(out_file_PR)
 print("Saved to", out_file_PR)
@@ -200,6 +244,7 @@ if args.threshold_obj_score != -1:
         ax[0, i].set_title(model)
         ax[1, i].set_title(model)
         ax[2, i].set_title(model)
+
     fig.tight_layout()
     fig.savefig(out_file_PR_OS)
     print("Saved to", out_file_PR_OS)

@@ -15,6 +15,13 @@ def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None
         data = np.zeros((len(mediator_masses), len(r_invs)))
         for j, mMed in enumerate(mediator_masses):
             for k, rinv in enumerate(r_invs):
+                if mMed not in result:
+                    continue
+                if mDark not in result[mMed]:
+                    continue
+                if rinv not in result[mMed][mDark]:
+                    continue
+
                 r = result[mMed][mDark][rinv]
                 if metric_comp_func is not None:
                     r = metric_comp_func(r)

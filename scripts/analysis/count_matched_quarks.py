@@ -98,6 +98,9 @@ if not args.plot_only:
         if subdataset not in mass_resolution:
             mass_resolution[subdataset] = {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': [], 'n_jets': []}
         if args.eval_dir:
+            if current_path not in dataset_path_to_eval_file:
+                print("Skipping", current_path)
+                continue
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
         #dataset = get_iter(current_path, model_clusters_file=model_clusters_file, model_output_file=model_output_file,
@@ -111,6 +114,14 @@ if not args.plot_only:
         n = 0
         for x in tqdm(range(len(dataset))):
             data = dataset[x]
+            if data is None:
+                print("Skipping", x)
+                continue
+            #try:
+            #    data = dataset[x]
+            #except:
+            #    print("Exception")
+            #    break # skip this event
             jets_object = data.__dict__[args.jets_object]
             n += 1
             if args.dataset_cap != -1 and n > args.dataset_cap:
@@ -220,10 +231,16 @@ if not args.plot_only:
         avg_n_fake_jets[key] = np.mean(n_fake_jets[key])
     def get_properties(name):
         # get mediator mass, dark quark mass, r_inv from the filename
-        parts = name.split("_")
-        mMed = int(parts[1].split("-")[1])
-        mDark = int(parts[2].split("-")[1])
-        rinv = float(parts[3].split("-")[1])
+        parts = name.strip().strip("/").split("/")[-1].split("_")
+        try:
+            mMed = int(parts[1].split("-")[1])
+            mDark = int(parts[2].split("-")[1])
+            rinv = float(parts[3].split("-")[1])
+        except:
+            # another convention
+            mMed = int(parts[2].split("-")[1])
+            mDark = int(parts[3].split("-")[1])
+            rinv = float(parts[4].split("-")[1])
         return mMed, mDark, rinv
     result = {}
     result_unmatched = {}
@@ -262,7 +279,6 @@ if not args.plot_only:
             #    "unmatched": bc_scores_unmatched[key]
             #}
             result_PR_thresholds[mMed][mDark][rinv] = pr_obj_score_thresholds[key]
-
             if  precision_and_recall[key][1] == 0 or precision_and_recall[key][2] == 0:
                 result_PR[mMed][mDark][rinv] = [0, 0]
                 print(mMed, mDark, rinv)

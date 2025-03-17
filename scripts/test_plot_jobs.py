@@ -16,7 +16,6 @@ parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit t
 parser.add_argument("--submit-AKX", "-AKX", action="store_true")
 parser.add_argument("--submit-AK8", "-AK8", action="store_true")
 
-
 args = parser.parse_args()
 api = wandb.Api()
 
@@ -103,7 +102,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --clustering-suffix hdbscan_4_05
     """
     return file
 

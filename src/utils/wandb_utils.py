@@ -68,6 +68,9 @@ args_to_update = ["validation_steps", "start_lr", "lr_scheduler", "optimizer", "
 
 def update_args(args, run):
     for arg in args_to_update:
+        if arg in ["min_samples", "min_cluster_size", "epsilon"]:
+            print("Skipping setting clustering args")
+            continue
         if arg not in run.config:
             print("Skipping setting", arg)
             continue
