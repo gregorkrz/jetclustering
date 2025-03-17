@@ -331,7 +331,7 @@ class EventDatasetCollection(torch.utils.data.Dataset):
 def get_batch_bounds(batch_idx):
     # batch_idx: tensor of format [0,0,0,0,1,1,1...]
     # returns tensor of format [0, 4, ...]
-    print("Batch idx", batch_idx.shape, batch_idx.tolist())
+    #print("Batch idx", batch_idx.shape, batch_idx.tolist())
     batches = sorted(batch_idx.unique().tolist())
     skipped = []
     for i in range(batch_idx.max().int().item()):
@@ -339,7 +339,7 @@ def get_batch_bounds(batch_idx):
             skipped.append(i)
     # reverse sort skipped
     skipped = sorted(skipped, reverse=True)
-    result = torch.zeros(batch_idx.max().int().item() + 1 + len(skipped))
+    result = torch.zeros(batch_idx.max().int().item() + 2 + len(skipped))
     #for i, b in enumerate(batches):
     #    assert i == b
     #    result[i] = torch.where(batch_idx==b)[0].min()
@@ -357,7 +357,7 @@ def get_batch_bounds(batch_idx):
             result[s] = 0
         else:
             result[s] = result[s+1]
-    print("result", result.shape, result)
+    #print("result", result.shape, result)
     return result
 def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present
@@ -467,10 +467,11 @@ class EventDataset(torch.utils.data.Dataset):
         result = {key: EventCollection.deserialize(result[key], batch_number=None, cls=Event.evt_collections[key]) for
                   key in self.attrs}
         if "final_parton_level_particles" in result:
-            print("BEFORE:", len(result["final_parton_level_particles"]))
+            #print("i=", i)
+            #print("BEFORE:", len(result["final_parton_level_particles"]))
             result["final_parton_level_particles"] = filter_pfcands(result["final_parton_level_particles"])
-            print("AFTER:", len(result["final_parton_level_particles"]))
-            print("------")
+            #print("AFTER:", len(result["final_parton_level_particles"]))
+            #print("------")
         if "final_gen_particles" in result:
             result["final_gen_particles"] = filter_pfcands(result["final_gen_particles"])
         if self.model_output is not None:
@@ -573,7 +574,7 @@ class EventDataset(torch.utils.data.Dataset):
         pfcands_pxyz = pfcands.pxyz
         pfcands_E = pfcands.E
         obj_score = None
-        print("Len pfcands_pt", len(pfcands_pt), "event_filter_e", event_filter_e, "event_filter_s", event_filter_s)
+        #print("Len pfcands_pt", len(pfcands_pt), "event_filter_e", event_filter_e, "event_filter_s", event_filter_s)
         if len(pfcands_pt) == 0:
             return EventJets(torch.tensor([]), torch.tensor([]), torch.tensor([]) ,torch.tensor([])), None, None
         assert len(pfcands_pt) == event_filter_e - event_filter_s, "Error! filter={} len(pfcands_pt)={} event_filter_e={} event_filter_s={}".format(filter, len(pfcands_pt), event_filter_e, event_filter_s)
@@ -595,7 +596,7 @@ class EventDataset(torch.utils.data.Dataset):
             mask = jets_pt >= cutoff
             if "obj_score_pred" in self.model_output:
                 obj_score = self.model_output["obj_score_pred"][(self.model_output["event_clusters_idx"] == i)]
-                print("Jets pt", jets_pt, "obj score", obj_score)
+                #print("Jets pt", jets_pt, "obj score", obj_score)
                 assert len(obj_score) == len(jets_pt), "Error! len(obj_score)=%d, len(jets_pt)=%d" % (
                 len(obj_score), len(jets_pt))
                 if include_target:
