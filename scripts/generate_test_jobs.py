@@ -100,7 +100,7 @@ def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}               # Specify the account
 #SBATCH --mem=25000                   # Request 10GB of memory
-#SBATCH --time=02:00:00               # Set the time limit to 1 hour
+#SBATCH --time=24:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJeval  # Name the job
 #SBATCH --error={err}       # Redirect stderr to a log file
 #SBATCH --output={log}      # Redirect stderr to a log file
@@ -131,3 +131,4 @@ with open("jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number), "w") as f
 
 if not args.no_submit:
     os.system("sbatch jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number))
+

@@ -96,7 +96,7 @@ def train_epoch(
             #pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=False)
             clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
             filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
-            batch_corr = get_corrected_batch(batch, clusters, test)
+            batch_corr = get_corrected_batch(batch, clusters, test=False)
             if not args.global_features_obj_score:
                 objectness_score = obj_score_model(batch_corr)[filter].flatten() # Obj. score is [0, 1]
             else:
