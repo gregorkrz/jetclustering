@@ -27,6 +27,10 @@ parser.add_argument("--eval-dir", type=str, default="")
 parser.add_argument("--clustering-suffix", type=str, default="") # default: 1020, also want to try 1010 or others...?
 
 
+parser.add_argument("--parton-level", "-pl", action="store_true") # To be used together with 'fastjet_jets'
+parser.add_argument("--gen-level", "-gl", action="store_true")
+
+
 args = parser.parse_args()
 path = get_path(args.input, "preprocessed_data")
 
@@ -107,10 +111,11 @@ if not args.plot_only:
         #                   include_model_jets_unfiltered=True)
         fastjet_R = None
         if args.jets_object == "fastjet_jets":
-            fastjet_R = np.array([0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0, 2.5])
+            fastjet_R = np.array([0.8, 2.0])
         dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
                                     model_output_file=model_output_file,
-                                    include_model_jets_unfiltered=True, fastjet_R=fastjet_R)
+                                    include_model_jets_unfiltered=True, fastjet_R=fastjet_R,
+                                    parton_level=args.parton_level, gen_level=args.gen_level)
         n = 0
         for x in tqdm(range(len(dataset))):
             data = dataset[x]

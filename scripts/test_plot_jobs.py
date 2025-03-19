@@ -15,6 +15,8 @@ parser.add_argument("--input", "-input", type=str, required=False, default="scou
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
 parser.add_argument("--submit-AKX", "-AKX", action="store_true")
 parser.add_argument("--submit-AK8", "-AK8", action="store_true")
+parser.add_argument("--parton-level", "-pl", action="store_true") # To be used together with 'fastjet_jets' and --submit-AKX
+parser.add_argument("--gen-level", "-gl", action="store_true")
 
 args = parser.parse_args()
 api = wandb.Api()
@@ -43,11 +45,13 @@ def get_slurm_file_text_AKX(tag, log_number):
     d = "jobs/logs/{}".format(tag)
     err = d + "_{}_CPUerr.txt".format(log_number)
     log = d + "_{}_CPUlog.txt".format(log_number)
+    suffix_pl = "--parton-level" if args.parton_level else ""
+    suffix_gl = "--gen-level" if args.gen_level else ""
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
 #SBATCH --mem=10000                   # Request 10GB of memory
-#SBATCH --time=02:00:00               # Set the time limit to 1 hour
+#SBATCH --time=06:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJan  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
@@ -55,7 +59,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AKX --jets-object fastjet_jets
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AKX --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap 20000
     """
     return file
 
@@ -74,12 +78,15 @@ def get_slurm_file_text_AK(tag, log_number):
 #SBATCH --job-name=SVJan  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
+
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AK8 
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AK8_GenJets --jets-object genjets
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AK8  --dataset-cap 20000  
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AK8_GenJets --jets-object genjets --dataset-cap 20000
     """
     return file
 
@@ -98,11 +105,13 @@ def get_slurm_file_text(tag, eval_job_name, log_number):
 #SBATCH --job-name=SVJan  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --clustering-suffix hdbscan_4_05
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap 20000
     """
     return file
 
@@ -125,6 +134,8 @@ if args.submit_AK8:
         os.system("sbatch jobs/slurm_files/evalCPU_{}_{}.slurm".format(args.tag, log_number))
     print("---- Submitted AK8 run -----")
     sys.exit(0)
+
+
 if args.submit_AKX:
     # Submit also AKX
     if not os.path.exists("jobs/slurm_files"):
