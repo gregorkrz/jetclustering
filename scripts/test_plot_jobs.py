@@ -47,10 +47,12 @@ def get_slurm_file_text_AKX(tag, log_number):
     log = d + "_{}_CPUlog.txt".format(log_number)
     suffix_pl = "--parton-level" if args.parton_level else ""
     suffix_gl = "--gen-level" if args.gen_level else ""
+    pl_folder = "_PL" if args.parton_level else ""
+    gl_folder = "_GL" if args.gen_level else ""
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
-#SBATCH --mem=10000                   # Request 10GB of memory
+#SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=06:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJan  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
@@ -59,7 +61,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AKX --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap 20000
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap 20000
     """
     return file
 
@@ -73,7 +75,7 @@ def get_slurm_file_text_AK(tag, log_number):
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
-#SBATCH --mem=10000                   # Request 10GB of memory
+#SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=02:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJan  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
@@ -100,7 +102,7 @@ def get_slurm_file_text(tag, eval_job_name, log_number):
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
-#SBATCH --mem=10000                   # Request 10GB of memory
+#SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=02:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=SVJan  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
@@ -117,6 +119,7 @@ srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analys
 
 runs, run_config = get_eval_run_names(args.tag)
 print("RUNS:", runs)
+
 
 if args.submit_AK8:
    # Submit also ak and ak8
@@ -154,6 +157,9 @@ if args.submit_AKX:
     sys.exit(0)
 
 for i, run in enumerate(runs):
+    if get_run_by_name(run).state != "finished":
+        print("Run not finished (failed or still in progress) - skipping", run)
+        continue
     if not os.path.exists("jobs/slurm_files"):
         os.makedirs("jobs/slurm_files")
     if not os.path.exists("jobs/logs"):

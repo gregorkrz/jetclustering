@@ -7,7 +7,6 @@ from src.utils.paths import get_path
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std/batch_eval/objectness_score")
 parser.add_argument("--threshold-obj-score", "-os-threshold", type=float, default=-1)

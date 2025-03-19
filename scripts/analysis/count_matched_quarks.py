@@ -35,7 +35,7 @@ args = parser.parse_args()
 path = get_path(args.input, "preprocessed_data")
 
 if args.eval_dir:
-    eval_dir = get_path(args.eval_dir, "results")
+    eval_dir = get_path(args.eval_dir, "results", fallback=True)
     dataset_path_to_eval_file = {}
     for file in os.listdir(eval_dir):
         if file.startswith("eval_") and file.endswith(".pkl"):
