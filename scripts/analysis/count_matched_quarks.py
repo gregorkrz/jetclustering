@@ -373,7 +373,7 @@ def plot_for_params(a, b, c):
 
 plot_for_params(900, 20, 0.3)
 plot_for_params(700, 20, 0.7)
-plot_for_params(3000, 20, 0.3)
+#plot_for_params(3000, 20, 0.3)
 plot_for_params(900, 20, 0.7)
 plot_for_params(1000, 20, 0.3)
 ax[0].grid()

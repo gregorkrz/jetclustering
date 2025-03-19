@@ -331,7 +331,7 @@ class EventDatasetCollection(torch.utils.data.Dataset):
 def get_batch_bounds(batch_idx):
     # batch_idx: tensor of format [0,0,0,0,1,1,1...]
     # returns tensor of format [0, 4, ...]
-    #print("Batch idx", batch_idx.shape, batch_idx.tolist())
+    print("Batch idx", batch_idx.shape, batch_idx[(batch_idx>3130) & (batch_idx < 3140)])
     batches = sorted(batch_idx.unique().tolist())
     skipped = []
     for i in range(batch_idx.max().int().item()):
@@ -357,7 +357,7 @@ def get_batch_bounds(batch_idx):
             result[s] = 0
         else:
             result[s] = result[s+1]
-    #print("result", result.shape, result)
+    print("result", result.shape, result[3130:3140].tolist())
     return result
 def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present

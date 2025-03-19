@@ -54,7 +54,7 @@ def get_slurm_file_text_AKX(tag, log_number):
 #SBATCH --account={account}                  # Specify the account
 #SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=06:00:00               # Set the time limit to 1 hour
-#SBATCH --job-name=SVJan  # Name the job
+#SBATCH --job-name=SVJan_AKX{pl_folder}{gl_folder}  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
 source env.sh
@@ -101,10 +101,10 @@ def get_slurm_file_text(tag, eval_job_name, log_number):
     log = d + "_{}_CPUlog.txt".format(log_number)
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
-#SBATCH --account={account}                  # Specify the account
+#SBATCH --account={account}               # Specify the account
 #SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=02:00:00               # Set the time limit to 1 hour
-#SBATCH --job-name=SVJan  # Name the job
+#SBATCH --job-name=SVJ_CPU_{eval_job_name}  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
 #SBATCH --mail-type=END,FAIL
