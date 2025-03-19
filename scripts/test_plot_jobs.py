@@ -61,7 +61,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap 20000
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap 1500
     """
     return file
 
@@ -87,8 +87,8 @@ export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AK8  --dataset-cap 20000  
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/AK8_GenJets --jets-object genjets --dataset-cap 20000
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8  --dataset-cap 1500  
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8_GenJets --jets-object genjets --dataset-cap 1500
     """
     return file
 
@@ -113,7 +113,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap 20000
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap 1500
     """
     return file
 
