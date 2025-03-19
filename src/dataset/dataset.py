@@ -359,12 +359,16 @@ def get_batch_bounds(batch_idx):
             result[s] = result[s+1]
     print("result", result.shape, result[3130:3140].tolist())
     return result
+
+
 def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present
     # dark matter particles are defined as those with abs(pdgId) > 10000 or pdgId between 50-60
-    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60))
+    # TODO: filter out high eta (?)
+    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.5)
     pfcands.mask(mask)
     return pfcands
+
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod

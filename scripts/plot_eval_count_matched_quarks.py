@@ -167,12 +167,16 @@ def get_run_by_name(name):
 
 def get_run_config(run_name):
     config = get_run_by_name(run_name).config
+    result = {}
     if config["parton_level"]:
         prefix = "parton level"
+        result["level"] = "PL"
     elif config["gen_level"]:
         prefix = "gen level"
+        result["level"] = "GL"
     else:
         prefix = "scouting PFCands"
+        result["level"] = "scouting"
     gt_r = config["gt_radius"]
     training_datasets = {
         "LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59": "all",
@@ -182,7 +186,9 @@ def get_run_config(run_name):
     }
     train_name = config["load_from_run"]
     training_dataset = training_datasets.get(train_name, train_name)
-    return f"GT_R={gt_r}, train on {training_dataset}, {prefix}"
+    result["GT_R"] = gt_r
+    result["training_dataset"] = training_dataset
+    return f"GT_R={gt_r}, train on {training_dataset}, {prefix}", result
 
 
 sz = 5
@@ -196,7 +202,7 @@ for i, model in tqdm(enumerate(sorted(models))):
         continue
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
-    result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
+    #result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
     result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
     #matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"), ax=ax[0, i])
@@ -204,13 +210,80 @@ for i, model in tqdm(enumerate(sorted(models))):
     matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
     matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
     matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
-    ax[0, i].set_title(get_run_config(model))
-    ax[1, i].set_title(get_run_config(model))
-    ax[2, i].set_title(get_run_config(model))
-    print(model, get_run_config(model))
+    run_config_title, run_config = get_run_config(model)
+    ax[0, i].set_title(run_config_title)
+    ax[1, i].set_title(run_config_title)
+    ax[2, i].set_title(run_config_title)
+    print(model, run_config_title)
 fig.tight_layout()
 fig.savefig(out_file_PR)
 print("Saved to", out_file_PR)
+
+## Now do the GT R vs metrics plots
+
+oranges = plt.get_cmap("Oranges")
+reds = plt.get_cmap("Reds")
+purples = plt.get_cmap("Purples")
+
+mDark = 20
+to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
+plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3]]
+sz_small = 3
+for j, model in enumerate(models):
+    _, rc = get_run_config(model)
+    td = rc["training_dataset"]
+    level = rc["level"]
+    print(level)
+    if td not in to_plot:
+        to_plot[td] = {}
+    for i, h in enumerate(plotting_hypotheses):
+        mMed_h, rInv_h = h
+        if rInv_h not in to_plot[td]:
+            to_plot[td][rInv_h] = {}
+        print("Model", model)
+        r = rc["GT_R"]
+        output_path = os.path.join(path, model, "count_matched_quarks")
+        if not os.path.exists(os.path.join(output_path, "result_PR.pkl")):
+            continue
+        result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+        if mMed_h not in to_plot[td][rInv_h]:
+            to_plot[td][rInv_h][mMed_h] = {} # level
+        if level not in to_plot[td][rInv_h][mMed_h]:
+            to_plot[td][rInv_h][mMed_h][level] = {"precision": [], "recall": [], "f1score": [], "R": []}
+        precision = result_PR[mMed_h][mDark][rInv_h][0]
+        recall = result_PR[mMed_h][mDark][rInv_h][1]
+        f1score = 2 * precision * recall / (precision + recall)
+        to_plot[td][rInv_h][mMed_h][level]["precision"].append(precision)
+        to_plot[td][rInv_h][mMed_h][level]["recall"].append(recall)
+        to_plot[td][rInv_h][mMed_h][level]["f1score"].append(f1score)
+        to_plot[td][rInv_h][mMed_h][level]["R"].append(r)
+
+fig, ax = plt.subplots(len(to_plot), len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot)))
+
+for i, td in enumerate(to_plot):
+    # for each training dataset
+    for j, h in enumerate(plotting_hypotheses):
+        ax[i, j].set_title(f"r_inv={h[1]}, m={h[0]}, tr. on {td}")
+        ax[i, j].set_ylabel("F1 score")
+        ax[i, j].set_xlabel("GT R")
+        ax[i, j].grid()
+        for level in to_plot[td][h[1]][h[0]]:
+            print("level", level)
+            print("Plotting", td, h[1], h[0], level)
+            ax[i, j].plot(to_plot[td][h[1]][h[0]][level]["R"], to_plot[td][h[1]][h[0]][level]["f1score"], ".-", label=level)
+        ax[i, j].legend()
+fig.tight_layout()
+fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
+print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
+
+1/0
+
+#print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
+#print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))
+
+
+
+
 
 ########### Now save the above plot with objectness score applied
 
@@ -340,9 +413,9 @@ for i, rinv in enumerate(rinvs):
     for mMed in sorted(to_plot_ak[rinv].keys()):
         # Normalize mmed between 0 and 1 (originally between 700 and 3000)
         mmed = (mMed - 500) / (3000 - 500)
-        print("AK R", r["R"])
         r = to_plot_ak[rinv][mMed]
         r_model = to_plot[rinv][mMed]
+        print("AK R", r["R"])
         scatter_plot(ax_AK[0, i], r["R"], r["precision"], label="m={} GeV AK".format(round(mMed)), color=oranges(mmed), pattern=".--")
         scatter_plot(ax_AK[1, i], r["R"], r["recall"], label="m={} GeV AK".format(round(mMed)), color=reds(mmed), pattern=".--")
         scatter_plot(ax_AK[2, i], r["R"], r["f1score"], label="m={} GeV AK".format(round(mMed)), color=purples(mmed), pattern=".--")

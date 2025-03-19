@@ -87,17 +87,29 @@ models = {
     "scouting": "train/Eval_no_pid_eval_1_2025_03_05_14_41_38"
 }
 
+models = {
+    "parton-level": "train/Eval_no_pid_eval_full_1_2025_03_18_16_56_02",
+    "scouting": "train/Eval_no_pid_eval_full_1_2025_03_17_21_19_22",
+    "gen-level": "train/Eval_no_pid_eval_full_1_2025_03_18_16_45_41"
+}
+# trained on all data!
+models = {
+    "parton-level": "train/Eval_no_pid_eval_full_1_2025_03_17_23_44_49",
+    "scouting PFCands": "train/Eval_no_pid_eval_full_1_2025_03_18_15_31_41",
+    "gen-level": "train/Eval_no_pid_eval_full_1_2025_03_18_15_31_58"
+}
 
-output_path = get_path("26Feb_reduced", "results")
+
+output_path = get_path("26Feb_reduced_R20_19_march_2025_R08_train_on_All", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
 sz = 3
-n_events_per_file = 25
+n_events_per_file = 10
 # len(models) columns, n_events_per_file rows
 from src.layers.object_cond import calc_eta_phi
 
-for ds in range(20):
+for ds in range(5):
     print("-------- DS:", ds)
     fig, ax = plt.subplots(n_events_per_file, len(models) * 2,
                            figsize=(len(models) * sz * 2, n_events_per_file * sz))
