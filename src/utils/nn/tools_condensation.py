@@ -312,7 +312,10 @@ def evaluate(
                         }
                     )
                 if predict or True:
+                    #print("Last event idx =", last_event_idx)
+                    #print("Batch idx =", batch.batch_idx.tolist())
                     event_idx = batch.batch_idx + last_event_idx
+                    #print("Event idx:", event_idx)
                     predictions["event_idx"].append(event_idx)
                     if not model_obj_score:
                         predictions["GT_cluster"].append(y.detach().cpu())
@@ -394,7 +397,10 @@ def evaluate(
                     predictions["model_cluster"].append(
                         torch.tensor(clustering_labels)
                     )
-                    last_event_idx = event_idx.max().item() + 1
+                    last_event_idx = count
+                    if event_idx.max().item() + 1 != last_event_idx:
+                        print(f"event_idx.max() = {event_idx.max().item()}, last_event_idx = {last_event_idx} - the eval would have failed here before the update")
+                    #print("Setting new last_event_idx to", last_event_idx)
     if local_rank == 0 and not predict:
         wandb.log({"val_loss": total_loss / n_batches}, step=step)
         wandb.log({"val_" + key: value / n_batches for key, value in total_loss_dict.items()}, step=step)
