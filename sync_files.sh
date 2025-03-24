@@ -14,7 +14,7 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 ### Vega -> T3 results
 # rsync -avz -e "ssh" /ceph/hpc/home/krzmancg/jetclustering/results t3:/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering
 
-# Local to SE
+# Local to SE results
 rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/results/train /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/results
 
 ### Local -> Vega (when T3 is down)

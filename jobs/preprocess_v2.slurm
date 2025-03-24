@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --partition=standard           # Specify the partition
+#SBATCH --partition=long           # Specify the partition
 #SBATCH --account=t3                  # Specify the account
 #SBATCH --mem=60000                   # Request 60GB of memory
-#SBATCH --time=48:00:00               # Set the time limit to 1 hour
+#SBATCH --time=24:00:00               # Set the time limit to 1 hour
 #SBATCH --job-name=preprocess_svj_dataset  # Name the job
 #SBATCH --output=jobs/preprocess_v2_output.log       # Redirect stdout to a log file
 #SBATCH --error=jobs/preprocess_v2_error.log         # Redirect stderr to a log file

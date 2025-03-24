@@ -456,7 +456,13 @@ class EventCollection:
 
     def serialize(self):
         # get all the self.init_attrs and concat them together. Also return batch_number
-        data = torch.stack([getattr(self, attr) for attr in self.init_attrs]).T
+        res = []
+        for attr in self.init_attrs:
+            if attr == "status" and not hasattr(self, attr):
+                continue
+            res.append(getattr(self, attr))
+        data = torch.stack(res).T
+        #data = torch.stack([getattr(self, attr) for attr in self.init_attrs]).T
         assert data.shape[0] == self.batch_number.max().item()
         return data, self.batch_number
 
