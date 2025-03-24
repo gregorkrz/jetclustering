@@ -21,6 +21,8 @@ parser.add_argument("--gen-level", "-gl", action="store_true")
 args = parser.parse_args()
 api = wandb.Api()
 
+DSCAP = 20000
+
 def get_eval_run_names(tag):
     # from the api, get all the runs with the tag that are finished
     runs = api.runs(
@@ -61,7 +63,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap 1500
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap {DSCAP}
     """
     return file
 
@@ -88,7 +90,7 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 
 nvidia-smi
 srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8  --dataset-cap 1500  
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8_GenJets --jets-object genjets --dataset-cap 1500
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8_GenJets --jets-object genjets --dataset-cap {DSCAP}
     """
     return file
 
@@ -113,7 +115,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap 1500
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP}
     """
     return file
 
@@ -157,22 +159,22 @@ if args.submit_AKX:
     sys.exit(0)
 
 for i, run in enumerate(runs):
-    if get_run_by_name(run).state != "finished":
-        print("Run not finished (failed or still in progress) - skipping", run)
-        continue
+    #if get_run_by_name(run).state != "finished":
+    #    print("Run not finished (failed or still in progress) - skipping", run)
+    #    continue
     if not os.path.exists("jobs/slurm_files"):
         os.makedirs("jobs/slurm_files")
     if not os.path.exists("jobs/logs"):
         os.makedirs("jobs/logs")
     log_number = get_log_number(args.tag)
     slurm_file_text = get_slurm_file_text(args.tag, run, log_number)
-    rel_path_save = f"{args.input}/batch_eval/{args.tag}/{run}"
+    rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}/{run}"
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)
     #if evaluated(rel_path_save):
-    if os.path.exists(os.path.join(rel_path_save, "eval_done.txt")):
-        print("Skipping", run)
+    if os.path.exists(os.path.join(rel_path_save, "count_matched_quarks", "eval_done.txt")):
+        print("Skipping", run, "because this file exists:", os.path.join(rel_path_save, "count_matched_quarks", "eval_done.txt"))
         continue
     else:
         print("Evaluating", run)

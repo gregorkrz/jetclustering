@@ -94,6 +94,9 @@ def test_load(args):
     test_loaders = {}
     for filename in test_files:
         test_data = EventDataset.from_directory(filename, mmap=True)
+        if args.test_dataset_max_size is not None:
+              print("Limiting test dataset size to", args.test_dataset_max_size)
+              test_data = torch.utils.data.Subset(test_data, list(range(args.test_dataset_max_size)))
         test_loaders[filename] = DataLoader(
             test_data,
             batch_size=args.batch_size,
@@ -103,6 +106,7 @@ def test_load(args):
             num_workers=args.num_workers,
             persistent_workers=args.num_workers > 0,
         )
+
     return test_loaders
 
 def get_optimizer_and_scheduler(args, model, device, load_model_weights="load_model_weights"):

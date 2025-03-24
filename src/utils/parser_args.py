@@ -48,6 +48,8 @@ parser.add_argument(
 
 parser.add_argument("--train-dataset-size", type=int, default=None, help="number of events to use from the training dataset")
 parser.add_argument("--val-dataset-size", type=int, default=None, help="number of events to use from the validation dataset")
+parser.add_argument("--test-dataset-max-size", type=int, default=None, help="number of events to use from the testing dataset (per signal hypothesis)")
+
 parser.add_argument(
     "-test",
     "--data-test",

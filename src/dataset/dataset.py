@@ -364,11 +364,10 @@ def get_batch_bounds(batch_idx):
 def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present
     # dark matter particles are defined as those with abs(pdgId) > 10000 or pdgId between 50-60
-    # TODO: filter out high eta (?)
+    # TODO: filter out high eta - temporarily this is done here, but it should be done in the ntuplizer in order to avoid big files
     mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.5)
     pfcands.mask(mask)
     return pfcands
-
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
@@ -627,9 +626,9 @@ class EventDataset(torch.utils.data.Dataset):
         if target_obj_score is not None:
             target_obj_score = target_obj_score[mask]
             assert len(jets_pt[mask]) == len(target_obj_score), "Error! len(jets_pt[mask])=%d, len(obj_score)=%d" % (len(jets_pt[mask]), len(obj_score))
-
         return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask], obj_score=obj_score, target_obj_score=target_obj_score), bc_scores, cluster_labels
     def get_iter(self):
+        self.i = 0
         while self.i < self.n_events:
             yield self.get_idx(self.i)
             self.i += 1

@@ -92,15 +92,31 @@ models = {
     "scouting": "train/Eval_no_pid_eval_full_1_2025_03_17_21_19_22",
     "gen-level": "train/Eval_no_pid_eval_full_1_2025_03_18_16_45_41"
 }
-# trained on all data!
-models = {
+
+# Trained on all data!
+
+models1 = {
     "parton-level": "train/Eval_no_pid_eval_full_1_2025_03_17_23_44_49",
     "scouting PFCands": "train/Eval_no_pid_eval_full_1_2025_03_18_15_31_41",
     "gen-level": "train/Eval_no_pid_eval_full_1_2025_03_18_15_31_58"
 }
 
 
-output_path = get_path("26Feb_reduced_R20_19_march_2025_R08_train_on_All", "results")
+# Trained on 900_03, but evaluated with eta and pt filters for the particles
+models = {
+    "parton-level": "train/Eval_eval_19March2025_2025_03_19_22_08_15",
+    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_22_08_22",
+    "gen-level": "train/Eval_eval_19March2025_2025_03_19_22_08_18"
+}
+
+# R = 2.0 models
+#models = {
+#    "parton-level": "train/Eval_eval_19March2025_2025_03_19_22_55_48",
+#    "gen-level": "train/Eval_eval_19March2025_2025_03_19_23_20_01",
+#    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_43_07"
+#}
+
+output_path = get_path("26Feb_reduced_90003a", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
@@ -116,14 +132,14 @@ for ds in range(5):
     # also one only with real coordinates
     fig1, ax1 = plt.subplots(n_events_per_file, len(models),
                             figsize=(len(models) * sz, n_events_per_file * sz))
-
     for mn, model in enumerate(sorted(models.keys())):
         print("    -------- model:", model)
         dataset_path = models[model]
-        filename = get_path(os.path.join(dataset_path, f"eval_{str(ds)}.pkl"), "results")
-        clusters_file = get_path(os.path.join(dataset_path, f"clustering_hdbscan_4_05_{str(ds)}.pkl"), "results")
+        filename = get_path(os.path.join(dataset_path, f"eval_{str(ds)}.pkl"), "results", fallback=1)
+        clusters_file = get_path(os.path.join(dataset_path, f"clustering_hdbscan_4_05_{str(ds)}.pkl"), "results", fallback=1)
         #clusters_file=None
         if not os.path.exists(filename):
+            print("File does not exist:", filename)
             continue
         result = CPU_Unpickler(open(filename, "rb")).load()
         print(result["filename"])

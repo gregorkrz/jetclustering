@@ -57,7 +57,8 @@ if args.load_from_run:
     run = get_run_by_name(args.load_from_run)
     args = update_args(args, run)
 timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
-args.run_name = f"{args.run_name}_{timestamp}"
+random_number = str(np.random.randint(0, 1000)) # to avoid overwriting in case two jobs are started at the same time
+args.run_name = f"{args.run_name}_{timestamp}_{random_number}"
 if args.load_model_weights:
     args.load_model_weights = get_path(args.load_model_weights, "results", fallback=True)
 if args.load_objectness_score_weights:

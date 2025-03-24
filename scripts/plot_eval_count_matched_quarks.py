@@ -78,6 +78,7 @@ def get_plots_for_params(mMed, mDark, rInv, result_PR_thresholds):
 
 sz = 5
 nplots = 9
+
 # Now make 3 plots, one for mMed=700,r_inv=0.7; one for mMed=700,r_inv=0.5; one for mMed=700,r_inv=0.3
 ###fig, ax = plt.subplots(3, 3, figsize=(3 * sz, 3 * sz))
 
@@ -159,14 +160,17 @@ def get_run_by_name(name):
         path="fcc_ml/svj_clustering",
         filters={"display_name": {"$eq": name.strip()}}
     )
-
     if runs.length != 1:
         return None
     return runs[0]
 
 
 def get_run_config(run_name):
-    config = get_run_by_name(run_name).config
+    r = get_run_by_name(run_name)
+    if r is None:
+        print("Getting info from run", run_name, "failed")
+        return None, None
+    config = r.config
     result = {}
     if config["parton_level"]:
         prefix = "parton level"
@@ -182,10 +186,21 @@ def get_run_config(run_name):
         "LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59": "all",
         "LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59": "900_03",
         "LGATr_training_NoPID_10_16_64_2.0_2025_02_28_12_48_58": "900_03",
-        "LGATr_training_NoPID_10_16_64_0.8_700_07_2025_02_28_13_01_59": "700_07"
+        "LGATr_training_NoPID_10_16_64_0.8_700_07_2025_02_28_13_01_59": "700_07",
+        "LGATr_training_NoPIDGL_10_16_64_0.8_2025_03_17_20_05_04": "900_03_GenLevel",
+        "LGATr_training_NoPIDGL_10_16_64_2.0_2025_03_17_20_05_04": "900_03_GenLevel",
+        "Transformer_training_NoPID_10_16_64_2.0_2025_03_03_17_00_38": "900_03_T",
+        "Transformer_training_NoPID_10_16_64_0.8_2025_03_03_15_55_50": "900_03_T"
     }
     train_name = config["load_from_run"]
+    print(train_name)
     training_dataset = training_datasets.get(train_name, train_name)
+    if "noplfilter" in run_name.lower():
+        training_dataset += "_noPLFilter"
+    elif "noplptfilter" in run_name.lower():
+        training_dataset += "_noPLPtFilter"
+    elif "nopletafilter" in run_name.lower():
+        training_dataset += "_noPLEtaFilter"
     result["GT_R"] = gt_r
     result["training_dataset"] = training_dataset
     return f"GT_R={gt_r}, train on {training_dataset}, {prefix}", result
@@ -197,7 +212,6 @@ fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
 for i, model in tqdm(enumerate(sorted(models))):
     output_path = os.path.join(path, model, "count_matched_quarks")
     ak_path = os.path.join(path, "AKX", "count_matched_quarks")
-
     if not os.path.exists(os.path.join(output_path, "result.pkl")):
         continue
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
@@ -211,6 +225,9 @@ for i, model in tqdm(enumerate(sorted(models))):
     matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
     matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
     run_config_title, run_config = get_run_config(model)
+    if run_config is None:
+        print("Skipping", model)
+        continue
     ax[0, i].set_title(run_config_title)
     ax[1, i].set_title(run_config_title)
     ax[2, i].set_title(run_config_title)
@@ -231,6 +248,9 @@ plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3]]
 sz_small = 3
 for j, model in enumerate(models):
     _, rc = get_run_config(model)
+    if rc is None:
+        print("Skipping", model)
+        continue
     td = rc["training_dataset"]
     level = rc["level"]
     print(level)
@@ -258,7 +278,37 @@ for j, model in enumerate(models):
         to_plot[td][rInv_h][mMed_h][level]["f1score"].append(f1score)
         to_plot[td][rInv_h][mMed_h][level]["R"].append(r)
 
-fig, ax = plt.subplots(len(to_plot), len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot)))
+to_plot_ak = {} # level ("scouting"/"GL"/"PL") -> rInv -> mMed -> {"f1score": [], "R": []}
+for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
+    if os.path.exists(os.path.join(path, model, "count_matched_quarks", "result_PR_AKX.pkl")):
+        result_PR_AKX = pickle.load(open(os.path.join(path, model, "count_matched_quarks", "result_PR_AKX.pkl"), "rb"))
+    else:
+        print("Skipping", model)
+        continue
+    level = "scouting"
+    if "PL" in model:
+        level = "PL"
+    elif "GL" in model:
+        level = "GL"
+    if level not in to_plot_ak:
+        to_plot_ak[level] = {}
+    for i, h in enumerate(plotting_hypotheses):
+        mMed_h, rInv_h = h
+        if rInv_h not in to_plot_ak[level]:
+            to_plot_ak[level][rInv_h] = {}
+        print("Model", model)
+        rs = sorted(result_PR_AKX[mMed_h][20][rInv_h].keys())
+        if mMed_h not in to_plot_ak[level][rInv_h]:
+            to_plot_ak[level][rInv_h][mMed_h] = {"precision": [], "recall": [], "f1score": [], "R": []}
+        precision = np.array([result_PR_AKX[mMed_h][mDark][rInv_h][i][0] for i in rs])
+        recall = np.array([result_PR_AKX[mMed_h][mDark][rInv_h][i][1] for i in rs])
+        f1score = 2 * precision * recall / (precision + recall)
+        to_plot_ak[level][rInv_h][mMed_h]["precision"] = precision
+        to_plot_ak[level][rInv_h][mMed_h]["recall"] = recall
+        to_plot_ak[level][rInv_h][mMed_h]["f1score"] = f1score
+        to_plot_ak[level][rInv_h][mMed_h]["R"] = rs
+
+fig, ax = plt.subplots(len(to_plot) + 1, len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot))) # also add AKX as last plot
 
 for i, td in enumerate(to_plot):
     # for each training dataset
@@ -267,11 +317,20 @@ for i, td in enumerate(to_plot):
         ax[i, j].set_ylabel("F1 score")
         ax[i, j].set_xlabel("GT R")
         ax[i, j].grid()
-        for level in to_plot[td][h[1]][h[0]]:
+        for level in sorted(list(to_plot[td][h[1]][h[0]].keys())):
             print("level", level)
             print("Plotting", td, h[1], h[0], level)
             ax[i, j].plot(to_plot[td][h[1]][h[0]][level]["R"], to_plot[td][h[1]][h[0]][level]["f1score"], ".-", label=level)
         ax[i, j].legend()
+for j, h in enumerate(plotting_hypotheses): # for to_plot_AK
+    ax[-1, j].set_title(f"r_inv={h[1]}, m={h[0]}, AK baseline")
+    ax[-1, j].set_ylabel("F1 score")
+    ax[-1, j].set_xlabel("GT R")
+    ax[-1, j].grid()
+    for i, ak_level in enumerate(sorted(list(to_plot_ak.keys()))):
+        mMed_h, rInv_h = h
+        ax[-1, j].plot(to_plot_ak[ak_level][rInv_h][mMed_h]["R"], to_plot_ak[ak_level][rInv_h][mMed_h]["f1score"], ".-", label=ak_level)
+    ax[-1, j].legend()
 fig.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
 print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
@@ -280,10 +339,6 @@ print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_p
 
 #print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
 #print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))
-
-
-
-
 
 ########### Now save the above plot with objectness score applied
 

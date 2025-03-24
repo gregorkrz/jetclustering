@@ -1,13 +1,13 @@
 # The files from the ntuplizer are produced in parts, so we need to copy them to the appropriate folders in order to have one dataset per signal hypothesis.
-
-
 import argparse
 import os
+
+
 parser = argparse.ArgumentParser(description='Copy the files in appropriate folders - no matter how many parts are in the files')
 parser.add_argument("--input", type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500")
 parser.add_argument("--output", type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_folders")
 parser.add_argument("--overwrite", action="store_true") # if true, it will overwrite the files, otherwise, it will skip files that have been already copied
-
+# --input /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter --output /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_Folders
 args = parser.parse_args()
 
 if not os.path.exists(args.output):
