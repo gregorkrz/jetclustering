@@ -27,6 +27,7 @@ from src.dataset.functions_graph import create_graph, create_jets_outputs, creat
 from src.dataset.functions_data import Event, EventCollection, EventJets
 import fastjet
 from src.utils.utils import CPU_Unpickler
+from src.dataset.functions_data import EventPFCands, concat_event_collection
 
 def get_pseudojets_fastjet(pfcands):
     pseudojets = []
@@ -300,10 +301,10 @@ class _SimpleIter(object):
         return create_jets_outputs_new(X), False
 
 class EventDatasetCollection(torch.utils.data.Dataset):
-    def __init__(self, dir_list):
+    def __init__(self, dir_list, args):
         self.event_collections_dict = OrderedDict()
         for dir in dir_list:
-            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True)
+            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=args.augment_soft_particles)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
         self.event_thresholds = [x.n_events for x in self.event_collections_dict.values()]
         self.event_thresholds = np.cumsum([0] + self.event_thresholds)
@@ -365,13 +366,13 @@ def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present
     # dark matter particles are defined as those with abs(pdgId) > 10000 or pdgId between 50-60
     # TODO: filter out high eta - temporarily this is done here, but it should be done in the ntuplizer in order to avoid big files
-    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.5)
+    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.1)#& (pfcands.pt > 0.5)
     pfcands.mask(mask)
     return pfcands
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -383,7 +384,7 @@ class EventDataset(torch.utils.data.Dataset):
         dataset = EventDataset(result, metadata, model_clusters_file=model_clusters_file,
                                model_output_file=model_output_file,
                                include_model_jets_unfiltered=include_model_jets_unfiltered,
-                               fastjet_R=fastjet_R, parton_level=parton_level, gen_level=gen_level)
+                               fastjet_R=fastjet_R, parton_level=parton_level, gen_level=gen_level, aug_soft=aug_soft)
         return dataset
     def get_pfcands_key(self):
         pfcands_key = "pfcands"
@@ -416,7 +417,7 @@ class EventDataset(torch.utils.data.Dataset):
         print("Found pfcands_key=%s" % pfcands_key)
         return pfcands_key
 
-    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False):
+    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False):
         # events: serialized events dict
         # metadata: dict with metadata
         self.events = events
@@ -427,9 +428,8 @@ class EventDataset(torch.utils.data.Dataset):
         self.model_i = 0
         self.parton_level = parton_level
         self.gen_level = gen_level
-
+        self.augment_soft_particles = aug_soft
         #self.pfcands_key = "pfcands"
-
         # set to final_parton_level_particles or final_gen_particles in case needed
         #for key in self.attrs:
         #    self.evt_idx_to_batch_idx[key] = {}
@@ -470,6 +470,23 @@ class EventDataset(torch.utils.data.Dataset):
             self.model_output = None
             self.model_clusters = None
 
+    @staticmethod
+    def pfcands_add_soft_particles(pfcands, n_soft, random_generator):
+        # augment the dataset with soft particles
+        eta_bounds = [-2.4, 2.4]
+        phi_bounds = [-3.14, 3.14]
+        pt_bounds = [0.02, 0.5]
+        # choose random eta and phi
+        # use the random generator for eta, phi
+        eta = random_generator.uniform(eta_bounds[0], eta_bounds[1], n_soft).astype(np.double)
+        phi = random_generator.uniform(phi_bounds[0], phi_bounds[1], n_soft).astype(np.double)
+        pt = random_generator.uniform(pt_bounds[0], pt_bounds[1], n_soft).astype(np.double)
+        charge = np.zeros(n_soft).astype(np.double)
+        pid = np.zeros(n_soft).astype(np.double)
+        mass = np.zeros(n_soft).astype(np.double)
+        soft_pfcands = EventPFCands(pt, eta, phi, mass, charge, pid, pf_cand_jet_idx=-1*torch.ones(n_soft))
+        return concat_event_collection([pfcands, soft_pfcands], nobatch=1)
+
     def get_idx(self, i):
         start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
         end = {key: self.metadata[key + "_batch_idx"][i + 1] for key in self.attrs}
@@ -484,6 +501,12 @@ class EventDataset(torch.utils.data.Dataset):
             #print("------")
         if "final_gen_particles" in result:
             result["final_gen_particles"] = filter_pfcands(result["final_gen_particles"])
+        ## augment pfcands here
+        if self.augment_soft_particles:
+            random_generator = np.random.RandomState(seed=i)
+            n_soft = int(random_generator.uniform(10, 1000))
+
+            result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator)
         if self.model_output is not None:
             #if "final_parton_level_particles" in result and len(result["final_parton_level_particles"]) == 0:
             #    print("!!")
@@ -504,7 +527,8 @@ class EventDataset(torch.utils.data.Dataset):
 
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
-        return Event(**result)
+        evt = Event(**result)
+        return evt
 
     @staticmethod
     def get_target_obj_score(clusters_eta, clusters_phi, clusters_pt, event_idx_clusters, dq_eta, dq_phi, dq_event_idx):

@@ -85,12 +85,15 @@ class LGATrModel(torch.nn.Module):
             scalar_embeddings_nodes = torch.cat([original_scalar[0, :, 0, :], output_scalars[0, :, :]], dim=1)
             scalar_embeddings_global = scatter_mean(scalar_embeddings_nodes, torch.tensor(data_events_clusters).to(scalar_embeddings_nodes.device)+1, dim=0)[1:]
 
-        inputs_v = data.input_vectors # four-momenta
-        inputs_scalar = data.input_scalars
+        inputs_v = data.input_vectors.float() # four-momenta
+        inputs_scalar = data.input_scalars.float()
+        print("inputs_scalar dtype", inputs_scalar.dtype)
+        print("inputs_v dtype" , inputs_v.dtype)
         assert inputs_scalar.shape[1] == self.n_scalars
         num_points, x = inputs_v.shape
         assert x == 4
         #velocities = embed_vector(inputs_v)
+
         inputs_v = inputs_v.unsqueeze(0)
         embedded_inputs = embed_vector(inputs_v)
         # if it contains nans, raise an error

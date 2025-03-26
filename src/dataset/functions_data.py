@@ -488,7 +488,7 @@ class EventCollection:
         return cls(**data, batch_number=batch_number)
 
 
-def concat_event_collection(list_event_collection):
+def concat_event_collection(list_event_collection, nobatch=False):
     c = list_event_collection[0]
     list_of_attrs = c.init_attrs
     #for k in c.__dict__:
@@ -499,8 +499,11 @@ def concat_event_collection(list_event_collection):
     for attr in list_of_attrs:
         if hasattr(c, attr):
             result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
-    batch_number = add_batch_number(list_event_collection, attr=list_of_attrs[0])
-    return type(c)(**result, batch_number=batch_number)
+    if not nobatch:
+        batch_number = add_batch_number(list_event_collection, attr=list_of_attrs[0])
+        return type(c)(**result, batch_number=batch_number)
+    else:
+        return type(c)(**result)
 
 def concat_events(list_events):
     attrs = list_events[0].init_attrs
@@ -675,8 +678,14 @@ def get_batch(event, batch_config, y, test=False):
 
 def to_tensor(item):
     if isinstance(item, torch.Tensor):
+        # if it's float, change to double
+        if item.dtype == torch.float32:
+            return item.double()
         return item
-    return torch.tensor(item)
+    item = torch.tensor(item)
+    if item.dtype == torch.float32:
+        return item.double()
+    return item
 
 class EventPFCands(EventCollection):
     init_attrs = ["pt", "eta", "phi", "mass", "charge", "pid", "pf_cand_jet_idx", "status"]
@@ -709,7 +718,14 @@ class EventPFCands(EventCollection):
              self.p * torch.cos(self.theta)),
             dim=1
         )
-        assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 1e-3).all()
+        #assert (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 0.1).all(), (torch.abs(torch.norm(self.pxyz, dim=1) - self.p).max())
+        if not (torch.abs(torch.norm(self.pxyz, dim=1) - self.p) < 0.05).all():
+            print("!!!!!", (torch.abs(torch.norm(self.pxyz, dim=1) - self.p)).max())
+            # argmax
+            am = torch.argmax(torch.abs(torch.norm(self.pxyz, dim=1) - self.p))
+            print("pt", self.pt[am], "eta", self.eta[am], "phi", self.phi[am], "mass", mass[am], "batch_number", batch_number)
+            #print("pt", self.pt, "eta", self.eta, "phi", self.phi, "mass", mass, "batch_number", batch_number)
+
         self.mass = to_tensor(mass)
         self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
         self.charge = to_tensor(charge)

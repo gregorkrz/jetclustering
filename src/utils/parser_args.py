@@ -357,3 +357,11 @@ parser.add_argument(
     help="Whether to use global features in the objectness score model",
     default=False
 )
+
+parser.add_argument(
+    "--augment-soft-particles",
+    "-aug-soft",
+    help="add soft particles to the event - will add 10, 100, 1000, 10000 soft particles to the events (alternating in this order) and will split an energy of 0.5 GeV evenly among them",
+    action="store_true",
+    default=False
+)

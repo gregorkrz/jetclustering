@@ -35,7 +35,7 @@ runs = ["LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59", "LGATr_training
 
 # Parton-level training - loss seems very high, maybe something is wrong with the ds?
 
-runs = ["LGATr_training_NoPIDPL_10_16_64_2.0_2025_03_21_14_51_15_195"]
+#runs = ["LGATr_training_NoPIDPL_10_16_64_2.0_2025_03_21_14_51_15_195"]
 
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
@@ -72,14 +72,15 @@ test_files_smaller =["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13
 "PFNano_s-channel_mMed-800_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"]
 
 
-test_files = ["Feb26_2025_E1000_N500_full/" + x for x in test_files]
+test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
 
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
+aug_suffix = "-aug-soft"
 
 print("------")
 for run in runs:
     #for level in ["-pl", "-gl", ""]:
-    for level in ["-pl"]:
-        print("python -m scripts.generate_test_jobs -run {} -step 40000 -template t3 -tag eval_19March2025 {} --custom-test-files \"{}\"  ".format(run, level, " ".join(test_files)))
+    for level in [""]:
+        print("python -m scripts.generate_test_jobs -run {} -step 40000 -template t3 -tag eval_19March2025 {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
 

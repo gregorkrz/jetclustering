@@ -16,6 +16,8 @@ parser.add_argument("--global-features-obj-score", "-glob-f", action="store_true
 parser.add_argument("--parton-level", "-pl", action="store_true") # use parton level
 parser.add_argument("--gen-level", "-gl", action="store_true") # use gen level
 parser.add_argument("--custom-test-files", type=str, default="")
+parser.add_argument("--aug-soft-particles", "-aug-soft", action="store_true")
+
 
 # -os train/scatter_mean_Obj_Score_LGATr_8_16_64_2025_02_07_16_31_26/OS_step_47000_epoch_70.ckpt
 args = parser.parse_args()
@@ -89,6 +91,9 @@ def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
     obj_score_suffix = ""
     glob_features_obj_score_suffix = ""
     eval_suffix = ""
+    aug_suffix = ""
+    if args.aug_soft_particles:
+        aug_suffix = " --augment-soft-particles "
     if args.parton_level:
         eval_suffix = " --parton-level "
     elif args.gen_level:
@@ -112,7 +117,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.5 --min-samples 2 --min-cluster-size 4 --test-dataset-max-size 20000
+srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.5 --min-samples 2 --min-cluster-size 4 --test-dataset-max-size 20000  {aug_suffix}
     """
     return file
 

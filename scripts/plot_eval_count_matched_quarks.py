@@ -195,10 +195,12 @@ def get_run_config(run_name):
     train_name = config["load_from_run"]
     print(train_name)
     training_dataset = training_datasets.get(train_name, train_name)
-    if "noplfilter" in run_name.lower():
+    if "plptfilt01" in run_name.lower():
+        training_dataset += "_PLPtFiltMinPt01" # min pt 0.1
+    elif "noplfilter" in run_name.lower():
         training_dataset += "_noPLFilter"
     elif "noplptfilter" in run_name.lower():
-        training_dataset += "_noPLPtFilter"
+        training_dataset += "_noPLPtFilter" # actually there was a 0.5 pt cut in the ntuplizer, removed by plptfilt01
     elif "nopletafilter" in run_name.lower():
         training_dataset += "_noPLEtaFilter"
     result["GT_R"] = gt_r
