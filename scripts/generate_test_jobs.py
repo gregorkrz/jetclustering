@@ -117,7 +117,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.5 --min-samples 2 --min-cluster-size 4 --test-dataset-max-size 20000  {aug_suffix}
+srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.5 --min-samples 2 --min-cluster-size 4 --test-dataset-max-size 100  {aug_suffix}
     """
     return file
 

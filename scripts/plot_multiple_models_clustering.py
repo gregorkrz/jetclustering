@@ -109,6 +109,50 @@ models = {
     "gen-level": "train/Eval_eval_19March2025_2025_03_19_22_08_18"
 }
 
+import wandb
+api = wandb.Api()
+
+def get_eval_run_names(tag):
+    # from the api, get all the runs with the tag that are finished
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"tags": {"$in": [tag.strip()]}}
+    )
+    return [run.name for run in runs if run.state == "finished"], [run.config for run in runs if run.state == "finished"]
+
+def get_run_by_name(name):
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"display_name": {"$eq": name.strip()}}
+    )
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"display_name": {"$eq": name.strip()}}
+    )
+    if runs.length != 1:
+        return None
+    return runs[0]
+
+def get_models_from_tag(tag):
+    models = {}
+    for run in get_eval_run_names(tag)[0]:
+        print("Run:", run)
+        run = get_run_by_name(run)
+        if run.config["parton_level"]:
+            name = "parton-level"
+        elif run.config[("gen_level")]:
+            name = "gen-level"
+        else:
+            name = "scouting PFCands"
+            if run.config["augment_soft_particles"]:
+                name += " (aug. soft part.)"
+            if run.config["gt_radius"]:
+                name += " GT_R=" + str(run.config["gt_radius"])
+        models[name] = "train/" + run.name
+    return models
+
+models = get_models_from_tag("eval_19March2025_small_aug")
+print(models)
 # R = 2.0 models
 #models = {
 #    "parton-level": "train/Eval_eval_19March2025_2025_03_19_22_55_48",
@@ -116,7 +160,7 @@ models = {
 #    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_43_07"
 #}
 
-output_path = get_path("26Feb_reduced_90003a", "results")
+output_path = get_path("eval_19March2025_small_aug", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
@@ -149,7 +193,7 @@ for ds in range(5):
         else:
             clusters = result["model_cluster"].numpy()
             clusters_file = None
-        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True)
+        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True, aug_soft="soft part" in model)
         for e in range(n_events_per_file):
             print("            ----- event:", e)
             c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]

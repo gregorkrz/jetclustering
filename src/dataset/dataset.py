@@ -366,7 +366,7 @@ def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present
     # dark matter particles are defined as those with abs(pdgId) > 10000 or pdgId between 50-60
     # TODO: filter out high eta - temporarily this is done here, but it should be done in the ntuplizer in order to avoid big files
-    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.1)#& (pfcands.pt > 0.5)
+    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.5)#& (pfcands.pt > 0.5)
     pfcands.mask(mask)
     return pfcands
 
@@ -388,6 +388,11 @@ class EventDataset(torch.utils.data.Dataset):
         return dataset
     def get_pfcands_key(self):
         pfcands_key = "pfcands"
+        print("get_pfcands_key")
+        if self.gen_level:
+            return "final_gen_particles"
+        if self.parton_level:
+            return "final_parton_level_particles"
         if self.model_output is None:
             if self.gen_level:
                 return "final_gen_particles"

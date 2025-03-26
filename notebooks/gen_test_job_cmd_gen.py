@@ -75,12 +75,12 @@ test_files_smaller =["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13
 test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
 
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
-aug_suffix = "-aug-soft"
 
 print("------")
 for run in runs:
     #for level in ["-pl", "-gl", ""]:
     for level in [""]:
-        print("python -m scripts.generate_test_jobs -run {} -step 40000 -template t3 -tag eval_19March2025 {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+        for aug_suffix in ["", "-aug-soft"]:
+            print("python -m scripts.generate_test_jobs -run {} -step 40000 -template t3 -tag eval_19March2025_small_aug {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
 

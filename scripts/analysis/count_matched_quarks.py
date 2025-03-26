@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=True)
 parser.add_argument("--dataset-cap", type=int, default=-1)
 parser.add_argument("--output", type=str, default="")
+parser.add_argument("--augment-soft-particles", "-aug-soft", action="store_true")
 parser.add_argument("--plot-only", action="store_true")
 parser.add_argument("--jets-object", type=str, default="fatjets")
 parser.add_argument("--eval-dir", type=str, default="")
@@ -115,7 +116,8 @@ if not args.plot_only:
         dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
                                     model_output_file=model_output_file,
                                     include_model_jets_unfiltered=True, fastjet_R=fastjet_R,
-                                    parton_level=args.parton_level, gen_level=args.gen_level)
+                                    parton_level=args.parton_level, gen_level=args.gen_level,
+                                              aug_soft=args.augment_soft_particles)
         n = 0
         for x in tqdm(range(len(dataset))):
             data = dataset[x]

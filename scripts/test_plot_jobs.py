@@ -11,7 +11,7 @@ from src.utils.wandb_utils import get_run_initial_steps, get_run_step_direct, ge
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--tag", "-tag", type=str, required=False, default="")
-parser.add_argument("--input", "-input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std")
+parser.add_argument("--input", "-input", type=str, required=False, default="Feb26_2025_E1000_N500_noPartonFilter_C_F") # --input Feb26_2025_E1000_N500_full
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
 parser.add_argument("--submit-AKX", "-AKX", action="store_true")
 parser.add_argument("--submit-AK8", "-AK8", action="store_true")
@@ -94,7 +94,7 @@ srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analys
     """
     return file
 
-def get_slurm_file_text(tag, eval_job_name, log_number):
+def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
     bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/  -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/ "
     partition = "standard"
     account = "t3"
@@ -115,7 +115,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP}
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix}
     """
     return file
 
@@ -162,12 +162,17 @@ for i, run in enumerate(runs):
     #if get_run_by_name(run).state != "finished":
     #    print("Run not finished (failed or still in progress) - skipping", run)
     #    continue
+    aug_soft_p = get_run_by_name(run).config.get("augment_soft_particles", False)
+    if aug_soft_p:
+        aug_suffix = "-aug-soft"
+    else:
+        aug_suffix = ""
     if not os.path.exists("jobs/slurm_files"):
         os.makedirs("jobs/slurm_files")
     if not os.path.exists("jobs/logs"):
         os.makedirs("jobs/logs")
     log_number = get_log_number(args.tag)
-    slurm_file_text = get_slurm_file_text(args.tag, run, log_number)
+    slurm_file_text = get_slurm_file_text(args.tag, run, log_number, aug_suffix)
     rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}/{run}"
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
