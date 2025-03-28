@@ -71,6 +71,7 @@ class TransformerModel(torch.nn.Module):
             assert inputs_scalar.shape[1] == self.n_scalars, "Expected %d, got %d" % (
             self.n_scalars, inputs_scalar.shape[1])
             inputs_transformer_events = torch.cat([inputs_scalar, inputs_v], dim=1)
+            inputs_transformer_events = inputs_transformer_events.float()
             assert inputs_transformer_events.shape[1] == self.input_dim
             mask_global = self.build_attention_mask(data_events.batch_idx)
             x_global = inputs_transformer_events.unsqueeze(0)
@@ -83,6 +84,7 @@ class TransformerModel(torch.nn.Module):
         inputs_scalar = data.input_scalars
         assert inputs_scalar.shape[1] == self.n_scalars, "Expected %d, got %d" % (self.n_scalars, inputs_scalar.shape[1])
         inputs_transformer = torch.cat([inputs_scalar, inputs_v], dim=1)
+        inputs_transformer = inputs_transformer.float()
         print("input_dim", self.input_dim, inputs_transformer.shape)
         assert inputs_transformer.shape[1] == self.input_dim
         mask = self.build_attention_mask(data.batch_idx)

@@ -480,16 +480,21 @@ class EventDataset(torch.utils.data.Dataset):
         # augment the dataset with soft particles
         eta_bounds = [-2.4, 2.4]
         phi_bounds = [-3.14, 3.14]
-        pt_bounds = [0.02, 0.5]
+        #pt_bounds = [0.02, 0.5]
         # choose random eta and phi
         # use the random generator for eta, phi
         eta = random_generator.uniform(eta_bounds[0], eta_bounds[1], n_soft).astype(np.double)
         phi = random_generator.uniform(phi_bounds[0], phi_bounds[1], n_soft).astype(np.double)
-        pt = random_generator.uniform(pt_bounds[0], pt_bounds[1], n_soft).astype(np.double)
+        #pt = random_generator.uniform(pt_bounds[0], pt_bounds[1], n_soft).astype(np.double)
+        pt = np.ones(n_soft).astype(np.double) * 1e-4
         charge = np.zeros(n_soft).astype(np.double)
         pid = np.zeros(n_soft).astype(np.double)
         mass = np.zeros(n_soft).astype(np.double)
-        soft_pfcands = EventPFCands(pt, eta, phi, mass, charge, pid, pf_cand_jet_idx=-1*torch.ones(n_soft))
+        if hasattr(pfcands, "status"):
+            status = np.zeros(n_soft)
+            soft_pfcands = EventPFCands(pt, eta, phi, mass, charge, pid, pf_cand_jet_idx=-1 * torch.ones(n_soft), status=status)
+        else:
+            soft_pfcands = EventPFCands(pt, eta, phi, mass, charge, pid, pf_cand_jet_idx=-1*torch.ones(n_soft))
         return concat_event_collection([pfcands, soft_pfcands], nobatch=1)
 
     def get_idx(self, i):
@@ -510,8 +515,8 @@ class EventDataset(torch.utils.data.Dataset):
         if self.augment_soft_particles:
             random_generator = np.random.RandomState(seed=i)
             n_soft = int(random_generator.uniform(10, 1000))
-
             result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator)
+            #result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # also augment parton-level event for testing
         if self.model_output is not None:
             #if "final_parton_level_particles" in result and len(result["final_parton_level_particles"]) == 0:
             #    print("!!")

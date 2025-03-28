@@ -145,11 +145,14 @@ def get_models_from_tag(tag):
         else:
             name = "scouting PFCands"
             if run.config["augment_soft_particles"]:
-                name += " (aug. soft part.)"
+                name += " (soft part.)"
             if run.config["gt_radius"]:
                 name += " GT_R=" + str(run.config["gt_radius"])
+            if "transformer" in run.config["network_config"]:
+                name += " (T)"
         models[name] = "train/" + run.name
     return models
+
 
 models = get_models_from_tag("eval_19March2025_small_aug")
 print(models)

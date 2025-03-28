@@ -21,7 +21,7 @@ parser.add_argument("--gen-level", "-gl", action="store_true")
 args = parser.parse_args()
 api = wandb.Api()
 
-DSCAP = 20000
+DSCAP = 2000
 
 def get_eval_run_names(tag):
     # from the api, get all the runs with the tag that are finished

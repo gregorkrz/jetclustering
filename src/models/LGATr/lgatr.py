@@ -87,8 +87,6 @@ class LGATrModel(torch.nn.Module):
 
         inputs_v = data.input_vectors.float() # four-momenta
         inputs_scalar = data.input_scalars.float()
-        print("inputs_scalar dtype", inputs_scalar.dtype)
-        print("inputs_v dtype" , inputs_v.dtype)
         assert inputs_scalar.shape[1] == self.n_scalars
         num_points, x = inputs_v.shape
         assert x == 4

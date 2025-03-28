@@ -179,9 +179,11 @@ def get_run_config(run_name):
         prefix = "gen level"
         result["level"] = "GL"
     else:
-        prefix = "scouting PFCands"
+        prefix = "scouting"
         result["level"] = "scouting"
     gt_r = config["gt_radius"]
+    if config.get("augment_soft_particles", False):
+        prefix += " (aug)"
     training_datasets = {
         "LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59": "all",
         "LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59": "900_03",
@@ -190,11 +192,13 @@ def get_run_config(run_name):
         "LGATr_training_NoPIDGL_10_16_64_0.8_2025_03_17_20_05_04": "900_03_GenLevel",
         "LGATr_training_NoPIDGL_10_16_64_2.0_2025_03_17_20_05_04": "900_03_GenLevel",
         "Transformer_training_NoPID_10_16_64_2.0_2025_03_03_17_00_38": "900_03_T",
-        "Transformer_training_NoPID_10_16_64_0.8_2025_03_03_15_55_50": "900_03_T"
+        "Transformer_training_NoPID_10_16_64_0.8_2025_03_03_15_55_50": "900_03_T",
+        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740": "900_03+SoftAug"
     }
     train_name = config["load_from_run"]
+    ckpt_step = config["ckpt_step"]
     print(train_name)
-    training_dataset = training_datasets.get(train_name, train_name)
+    training_dataset = training_datasets.get(train_name, train_name) + "_s" + str(ckpt_step)
     if "plptfilt01" in run_name.lower():
         training_dataset += "_PLPtFiltMinPt01" # min pt 0.1
     elif "noplfilter" in run_name.lower():
@@ -205,38 +209,38 @@ def get_run_config(run_name):
         training_dataset += "_noPLEtaFilter"
     result["GT_R"] = gt_r
     result["training_dataset"] = training_dataset
-    return f"GT_R={gt_r}, train on {training_dataset}, {prefix}", result
+    return f"GT_R={gt_r}, tr.: {training_dataset}, {prefix}", result
 
 
 sz = 5
-
-fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
-for i, model in tqdm(enumerate(sorted(models))):
-    output_path = os.path.join(path, model, "count_matched_quarks")
-    ak_path = os.path.join(path, "AKX", "count_matched_quarks")
-    if not os.path.exists(os.path.join(output_path, "result.pkl")):
-        continue
-    result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
-    #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
-    #result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
-    result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
-    result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
-    #matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"), ax=ax[0, i])
-    #matrix_plot(result_fakes, "Greens", "Avg. unmatched jets / event").savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"), ax=ax[1, i])
-    matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
-    matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
-    matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
-    run_config_title, run_config = get_run_config(model)
-    if run_config is None:
-        print("Skipping", model)
-        continue
-    ax[0, i].set_title(run_config_title)
-    ax[1, i].set_title(run_config_title)
-    ax[2, i].set_title(run_config_title)
-    print(model, run_config_title)
-fig.tight_layout()
-fig.savefig(out_file_PR)
-print("Saved to", out_file_PR)
+if len(models):
+    fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
+    for i, model in tqdm(enumerate(sorted(models))):
+        output_path = os.path.join(path, model, "count_matched_quarks")
+        ak_path = os.path.join(path, "AKX", "count_matched_quarks")
+        if not os.path.exists(os.path.join(output_path, "result.pkl")):
+            continue
+        result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
+        #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
+        #result_fakes = pickle.load(open(os.path.join(output_path, "result_fakes.pkl"), "rb"))
+        result_bc = pickle.load(open(os.path.join(output_path, "result_bc.pkl"), "rb"))
+        result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+        #matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"), ax=ax[0, i])
+        #matrix_plot(result_fakes, "Greens", "Avg. unmatched jets / event").savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"), ax=ax[1, i])
+        matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
+        matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
+        matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
+        run_config_title, run_config = get_run_config(model)
+        if run_config is None:
+            print("Skipping", model)
+            continue
+        ax[0, i].set_title(run_config_title)
+        ax[1, i].set_title(run_config_title)
+        ax[2, i].set_title(run_config_title)
+        print(model, run_config_title)
+    fig.tight_layout()
+    fig.savefig(out_file_PR)
+    print("Saved to", out_file_PR)
 
 ## Now do the GT R vs metrics plots
 
@@ -246,7 +250,7 @@ purples = plt.get_cmap("Purples")
 
 mDark = 20
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
-plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3]]
+plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
 sz_small = 3
 for j, model in enumerate(models):
     _, rc = get_run_config(model)
@@ -281,7 +285,9 @@ for j, model in enumerate(models):
         to_plot[td][rInv_h][mMed_h][level]["R"].append(r)
 
 to_plot_ak = {} # level ("scouting"/"GL"/"PL") -> rInv -> mMed -> {"f1score": [], "R": []}
+
 for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
+    print(model)
     if os.path.exists(os.path.join(path, model, "count_matched_quarks", "result_PR_AKX.pkl")):
         result_PR_AKX = pickle.load(open(os.path.join(path, model, "count_matched_quarks", "result_PR_AKX.pkl"), "rb"))
     else:
@@ -309,7 +315,7 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
         to_plot_ak[level][rInv_h][mMed_h]["recall"] = recall
         to_plot_ak[level][rInv_h][mMed_h]["f1score"] = f1score
         to_plot_ak[level][rInv_h][mMed_h]["R"] = rs
-
+print("AK:", to_plot_ak)
 fig, ax = plt.subplots(len(to_plot) + 1, len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot))) # also add AKX as last plot
 
 for i, td in enumerate(to_plot):

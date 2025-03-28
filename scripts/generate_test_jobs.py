@@ -17,7 +17,7 @@ parser.add_argument("--parton-level", "-pl", action="store_true") # use parton l
 parser.add_argument("--gen-level", "-gl", action="store_true") # use gen level
 parser.add_argument("--custom-test-files", type=str, default="")
 parser.add_argument("--aug-soft-particles", "-aug-soft", action="store_true")
-
+parser.add_argument("--steps-from-zero", action="store_true")
 
 # -os train/scatter_mean_Obj_Score_LGATr_8_16_64_2025_02_07_16_31_26/OS_step_47000_epoch_70.ckpt
 args = parser.parse_args()
@@ -57,7 +57,7 @@ print(get_run_step_ckpt(get_run_by_name("lgatr_CONT_ds_cap_5000_2025_01_21_19_46
 print(get_run_step_ckpt(get_run_by_name("lgatr_CONT_ds_cap_5000_2025_01_21_19_46_13"), 15000))
 '''
 
-ckpt_file, train_run = get_run_step_ckpt(get_run_by_name(args.train_run_name), args.steps)
+ckpt_file, train_run = get_run_step_ckpt(get_run_by_name(args.train_run_name), args.steps, args.steps_from_zero)
 
 test_files = "scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-700_mDark-20_rinv-0.5 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-900_mDark-20_rinv-0.5 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-1500_mDark-20_rinv-0.5 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-800_mDark-20_rinv-0.3 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-1000_mDark-20_rinv-0.7 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-1000_mDark-20_rinv-0.3 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-3000_mDark-20_rinv-0.5 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-800_mDark-20_rinv-0.7 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-700_mDark-20_rinv-0.3 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-900_mDark-20_rinv-0.3 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-3000_mDark-20_rinv-0.7 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-800_mDark-20_rinv-0.5 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-1500_mDark-20_rinv-0.3 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-1000_mDark-20_rinv-0.5 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-1500_mDark-20_rinv-0.7 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-3000_mDark-20_rinv-0.3 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-900_mDark-20_rinv-0.7 scouting_PFNano_signals2/SVJ_hadronic_std/s-channel_mMed-700_mDark-20_rinv-0.7"
 
@@ -117,7 +117,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.5 --min-samples 2 --min-cluster-size 4 --test-dataset-max-size 100  {aug_suffix}
+srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.5 --min-samples 2 --min-cluster-size 4 --test-dataset-max-size 2000  {aug_suffix}
     """
     return file
 

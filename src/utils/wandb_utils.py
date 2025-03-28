@@ -38,16 +38,18 @@ def extract_relative_path(run_path):
 def get_run_step_direct(run_path, step):
     # get the step of the run directly
     p = extract_relative_path(run_path)
+    print("Run-path:", p)
     lst = os.listdir(p)
     lst = [x for x in lst if x.endswith(".ckpt")] # files are of format step_x_epoch_y.ckpt
     steps = [int(x.split("_")[1]) for x in lst]
     if step not in steps:
+        print("Available steps:", steps)
         raise Exception("Step not found in run")
     return os.path.join(p, [x for x in lst if int(x.split("_")[1]) == step][0])
 
 
-def get_run_step_ckpt(run, step):
-    if not run.config["load_model_weights"]:
+def get_run_step_ckpt(run, step, steps_from_zero):
+    if not run.config["load_model_weights"] or steps_from_zero:
         return get_run_step_direct(run.config["run_path"], step), run
     else:
         run_name_1 = run.config["load_model_weights"].split("/")[-2]
