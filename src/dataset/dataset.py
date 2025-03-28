@@ -515,10 +515,10 @@ class EventDataset(torch.utils.data.Dataset):
         ## augment pfcands here
         if self.augment_soft_particles:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            n_soft = int(random_generator.uniform(10, 1000))
+            n_soft = int(random_generator.uniform(500, 1000))
             #n_soft = 1000
             result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator)
-            #result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # also augment parton-level event for testing
+            result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # also augment parton-level event for testing
         if self.model_output is not None:
             #if "final_parton_level_particles" in result and len(result["final_parton_level_particles"]) == 0:
             #    print("!!")

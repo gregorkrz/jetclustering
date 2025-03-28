@@ -7,7 +7,7 @@ from src.utils.paths import get_path
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std/batch_eval/params_study")
+parser.add_argument("--input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std/batch_eval/small_dataset")
 
 args = parser.parse_args()
 path = get_path(args.input, "results")
@@ -182,6 +182,7 @@ print("Saved to", out_file_PR.replace(".pdf", "_scatter_900_03.pdf"))
 
 
 fig_scatter, ax_scatter = plt.subplots(3, 2, figsize=(sz*2, sz*3))
+fig_params_paper, ax_params_paper = plt.subplots(1, 2, figsize=(sz, sz*1.5))
 
 for i, key in enumerate(sorted(list(result_by_step.keys()))):
     for model in result_by_step[key]:

@@ -154,7 +154,8 @@ def get_models_from_tag(tag):
     return models
 
 
-models = get_models_from_tag("eval_19March2025_small_aug")
+#models = get_models_from_tag("eval_19March2025_small_aug")
+models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum")
 print(models)
 # R = 2.0 models
 #models = {
@@ -196,7 +197,8 @@ for ds in range(5):
         else:
             clusters = result["model_cluster"].numpy()
             clusters_file = None
-        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True, aug_soft="soft part" in model)
+        run_config = get_run_by_name(dataset_path.split("/")[-1]).config
+        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True, aug_soft=run_config["augment_soft_particles"], seed=1000000, parton_level=run_config["parton_level"])
         for e in range(n_events_per_file):
             print("            ----- event:", e)
             c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]

@@ -89,8 +89,10 @@ print("------")
 for run in runs:
     #for level in ["-pl", "-gl"]:
     for level in ["-pl", ""]:
+    #for level in ["-pl"]:
     #for level in [""]:
         for aug_suffix in ["", "-aug-soft"]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 360 --steps-from-zero -template t3 -tag eval_19March2025_small_aug_vanishing_momentum {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 2700 --steps-from-zero -template t3 -tag eval_19March2025_small_aug_vanishing_momentum_500_to_1k_part {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
+

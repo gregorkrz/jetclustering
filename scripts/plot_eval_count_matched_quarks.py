@@ -193,7 +193,9 @@ def get_run_config(run_name):
         "LGATr_training_NoPIDGL_10_16_64_2.0_2025_03_17_20_05_04": "900_03_GenLevel",
         "Transformer_training_NoPID_10_16_64_2.0_2025_03_03_17_00_38": "900_03_T",
         "Transformer_training_NoPID_10_16_64_0.8_2025_03_03_15_55_50": "900_03_T",
-        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740": "900_03+SoftAug"
+        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740": "900_03+SoftAug",
+        "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_36_81": "900_03+SoftAugVM",
+        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_37_44": "900_03+SoftAugVM",
     }
     train_name = config["load_from_run"]
     ckpt_step = config["ckpt_step"]
@@ -251,7 +253,7 @@ purples = plt.get_cmap("Purples")
 mDark = 20
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
-sz_small = 3
+sz_small = 5
 for j, model in enumerate(models):
     _, rc = get_run_config(model)
     if rc is None:
