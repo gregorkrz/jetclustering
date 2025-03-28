@@ -93,7 +93,7 @@ def test_load(args):
     test_files = to_filelist(args, "test")
     test_loaders = {}
     for filename in test_files:
-        test_data = EventDataset.from_directory(filename, mmap=True, aug_soft=args.augment_soft_particles)
+        test_data = EventDataset.from_directory(filename, mmap=True, aug_soft=args.augment_soft_particles, seed=1000000)
         if args.test_dataset_max_size is not None:
               print("Limiting test dataset size to", args.test_dataset_max_size)
               test_data = torch.utils.data.Subset(test_data, list(range(args.test_dataset_max_size)))

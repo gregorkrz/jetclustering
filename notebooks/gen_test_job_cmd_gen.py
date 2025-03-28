@@ -35,8 +35,11 @@ runs = ["LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59", "LGATr_training
 
 #runs = runs_tr
 
-runs = ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740"] # test the aug. finetuning
-runs = ["LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_2025_03_27_17_09_14_641"] # R=2.0 version of the above run
+#runs = ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740"] # test the aug. finetuning
+#runs = ["LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_2025_03_27_17_09_14_641"] # R=2.0 version of the above run
+
+
+runs = ["LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_36_81", "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_37_44"]
 
 
 # Parton-level training - loss seems very high, maybe something is wrong with the ds?
@@ -89,6 +92,5 @@ for run in runs:
     #for level in [""]:
         for aug_suffix in ["", "-aug-soft"]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 720 --steps-from-zero -template t3 -tag eval_19March2025_small_aug_FTsoft1 {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 360 --steps-from-zero -template t3 -tag eval_19March2025_small_aug_vanishing_momentum {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
-

@@ -35,9 +35,30 @@ parser.add_argument("--gen-level", "-gl", action="store_true")
 args = parser.parse_args()
 path = get_path(args.input, "preprocessed_data")
 
+import wandb
+api = wandb.Api()
+
+def get_run_by_name(name):
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"display_name": {"$eq": name.strip()}}
+    )
+    runs = api.runs(
+        path="fcc_ml/svj_clustering",
+        filters={"display_name": {"$eq": name.strip()}}
+    )
+
+    if runs.length != 1:
+        return None
+    return runs[0]
+
+
+
 if args.eval_dir:
     eval_dir = get_path(args.eval_dir, "results", fallback=True)
     dataset_path_to_eval_file = {}
+    top_folder_name = eval_dir.split("/")[-1]
+    config = get_run_by_name(top_folder_name).config
     for file in os.listdir(eval_dir):
         if file.startswith("eval_") and file.endswith(".pkl"):
             file_number = file.split("_")[1].split(".")[0]
@@ -116,8 +137,8 @@ if not args.plot_only:
         dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
                                     model_output_file=model_output_file,
                                     include_model_jets_unfiltered=True, fastjet_R=fastjet_R,
-                                    parton_level=args.parton_level, gen_level=args.gen_level,
-                                              aug_soft=args.augment_soft_particles)
+                                    parton_level=config.get("parton_level", False), gen_level=config.get("gen_level", False),
+                                    aug_soft=args.augment_soft_particles, seed=1000000)
         n = 0
         for x in tqdm(range(len(dataset))):
             data = dataset[x]
