@@ -183,7 +183,7 @@ def get_run_config(run_name):
         result["level"] = "scouting"
     gt_r = config["gt_radius"]
     if config.get("augment_soft_particles", False):
-        prefix += " (aug)"
+        prefix += " (aug)" # ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820", "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400"]
     training_datasets = {
         "LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59": "all",
         "LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59": "900_03",
@@ -196,6 +196,10 @@ def get_run_config(run_name):
         "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740": "900_03+SoftAug",
         "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_36_81": "900_03+SoftAugVM",
         "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_37_44": "900_03+SoftAugVM",
+        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820": "900_03+qcap05",
+        "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400": "900_03+qcap05",
+        "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_38_650": "pt 1e-2",
+        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_36_446": "pt 1e-2"
     }
     train_name = config["load_from_run"]
     ckpt_step = config["ckpt_step"]

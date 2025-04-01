@@ -24,7 +24,10 @@ def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None
 
                 r = result[mMed][mDark][rinv]
                 if metric_comp_func is not None:
-                    r = metric_comp_func(r)
+                    try:
+                        r = metric_comp_func(r)
+                    except:
+                        r=0
                 data[j, k] = r
         ax[i].imshow(data, cmap="Blues")
         for (j, k), val in np.ndenumerate(data):

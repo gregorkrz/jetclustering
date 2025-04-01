@@ -151,6 +151,9 @@ def calc_LV_Lbeta(
         q = beta
     elif beta_type == "pt+bc":
         q = beta
+    if beta_type in ["pt", "pt+bc"]:
+        q[q<0.5] = 0.5 # cap the q
+
     assert_no_nans(q)
     assert q.device == device
     assert q.size() == (n_hits,)

@@ -41,10 +41,16 @@ runs = ["LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59", "LGATr_training
 
 runs = ["LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_36_81", "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_37_44"]
 
-
+runs = ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820", "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400"]
 # Parton-level training - loss seems very high, maybe something is wrong with the ds?
 
 #runs = ["LGATr_training_NoPIDPL_10_16_64_2.0_2025_03_21_14_51_15_195"]
+runs = ["LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_38_650", "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_36_446"]
+runs = ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740"]
+
+# fixed 500 particles per event and pt=1e-2
+runs = ["LGATr_pt_1e-2_500part_2025_04_01_10_33_28_457"]
+runs = ["LGATr_pt_1e-2_500part_2025_04_01_12_18_23_661"]
 
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
@@ -91,8 +97,9 @@ for run in runs:
     for level in ["-pl", ""]:
     #for level in ["-pl"]:
     #for level in [""]:
-        for aug_suffix in ["", "-aug-soft"]:
+        for aug_suffix in ["-aug-soft"]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 2700 --steps-from-zero -template t3 -tag eval_19March2025_small_aug_vanishing_momentum_500_to_1k_part {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 660 --steps-from-zero -template t3 -tag eval_19March2025_pt1e-2_500particles {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+
 print("-----")
 

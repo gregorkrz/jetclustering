@@ -21,13 +21,13 @@ warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=True)
-parser.add_argument("--dataset", type=int, required=False, default=3) # which dataset to optimize on
+parser.add_argument("--dataset", type=int, required=False, default=11) # Which dataset to optimize on
 parser.add_argument("--dataset-cap", type=int, required=False, default=-1)
-parser.add_argument("--spatial-components-only", action="store_true")
+parser.add_argument("--spatial-components-only", "-spatial-only", action="store_true")
 parser.add_argument("--lorentz-cos-sim", action="store_true")
 parser.add_argument("--cos-sim", action="store_true")
 parser.add_argument("--normalize", action="store_true")
-
+# --input train/  --dataset-cap 1000 --spatial-components-only
 args = parser.parse_args()
 path = get_path(args.input, "results")
 suffix = ""
@@ -61,8 +61,8 @@ dataset_cap = args.dataset_cap
 
 
 def objective(trial):
-    min_clust_size = trial.suggest_int("min_cluster_size", 5, 30)
-    min_samples = trial.suggest_int("min_samples", 2, 30)
+    min_clust_size = trial.suggest_int("min_cluster_size", 2, 20)
+    min_samples = trial.suggest_int("min_samples", 0, 10)
     epsilon = trial.suggest_uniform("epsilon", 0.01, 0.5)
     print("Starting trial with parameters:", trial.params)
     suffix = "{}-{}-{}".format(min_clust_size, min_samples, epsilon)
@@ -105,7 +105,7 @@ def objective(trial):
     dataset = EventDataset.from_directory(eval_result["filename"],
                                           model_clusters_file=clustering_file,
                                           model_output_file=eval_result_file,
-                                          include_model_jets_unfiltered=True)
+                                          include_model_jets_unfiltered=True, parton_level=True, aug_soft=True)
     score = compute_f1_score(dataset, dataset_cap=dataset_cap)
     print("F1 score for", suffix, ":", score)
     return score

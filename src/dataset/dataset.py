@@ -447,7 +447,7 @@ class EventDataset(torch.utils.data.Dataset):
             self.model_output["event_idx_bounds"] = get_batch_bounds(self.model_output["event_idx"])
             self.n_events = self.model_output["event_idx"].max().int().item()  # sometimes the last batch gets cut off, which causes problems
             if model_clusters_file is not None:
-                self.model_clusters = to_tensor(CPU_Unpickler(open(model_clusters_file, "rb")).load())
+                self.model_clusters = to_tensor(pickle.load((open(model_clusters_file, "rb"))))
             else:
                 self.model_clusters = self.model_output["model_cluster"]
             # model_output["batch_idx"] contains the batch index for each event. model_clusters is an array of the model labels for each event.
@@ -487,7 +487,7 @@ class EventDataset(torch.utils.data.Dataset):
         eta = random_generator.uniform(eta_bounds[0], eta_bounds[1], n_soft).astype(np.double)
         phi = random_generator.uniform(phi_bounds[0], phi_bounds[1], n_soft).astype(np.double)
         #pt = random_generator.uniform(pt_bounds[0], pt_bounds[1], n_soft).astype(np.double)
-        pt = np.ones(n_soft).astype(np.double) * 1e-4
+        pt = np.ones(n_soft).astype(np.double) * 1e-2
         charge = np.zeros(n_soft).astype(np.double)
         pid = np.zeros(n_soft).astype(np.double)
         mass = np.zeros(n_soft).astype(np.double)
@@ -515,10 +515,12 @@ class EventDataset(torch.utils.data.Dataset):
         ## augment pfcands here
         if self.augment_soft_particles:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            n_soft = int(random_generator.uniform(500, 1000))
+            n_soft = int(random_generator.uniform(10, 1000))
+            n_soft = 500
             #n_soft = 1000
             result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator)
-            result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # also augment parton-level event for testing
+            if "final_parton_level_particles" in result:
+                result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # also augment parton-level event for testing
         if self.model_output is not None:
             #if "final_parton_level_particles" in result and len(result["final_parton_level_particles"]) == 0:
             #    print("!!")

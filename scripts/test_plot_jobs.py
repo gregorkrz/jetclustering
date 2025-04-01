@@ -1,4 +1,5 @@
 # Eval a given a training run name at the given steps, taking into account the chaning of the training runs
+
 import sys
 import pickle
 import wandb
@@ -6,12 +7,12 @@ import argparse
 import os
 
 from src.utils.paths import get_path
-
 from src.utils.wandb_utils import get_run_initial_steps, get_run_step_direct, get_run_step_ckpt, get_steps_from_file, get_run_by_name
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--tag", "-tag", type=str, required=False, default="")
 parser.add_argument("--input", "-input", type=str, required=False, default="Feb26_2025_E1000_N500_noPartonFilter_C_F") # --input Feb26_2025_E1000_N500_full
+parser.add_argument("--clustering-suffix", "-c", type=str, required=False, default="") #  -c MinSamples0
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
 parser.add_argument("--submit-AKX", "-AKX", action="store_true")
 parser.add_argument("--submit-AK8", "-AK8", action="store_true")
@@ -101,6 +102,9 @@ def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
     d = "jobs/logs/{}".format(tag)
     err = d + "_{}_CPUerr.txt".format(log_number)
     log = d + "_{}_CPUlog.txt".format(log_number)
+    clust_suffix = ""
+    if args.clustering_suffix != "":
+        clust_suffix = f" --clustering-suffix {args.clustering_suffix}"
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}               # Specify the account
@@ -115,7 +119,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix}
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name}{args.clustering_suffix} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix} {clust_suffix}
     """
     return file
 
@@ -173,7 +177,7 @@ for i, run in enumerate(runs):
         os.makedirs("jobs/logs")
     log_number = get_log_number(args.tag)
     slurm_file_text = get_slurm_file_text(args.tag, run, log_number, aug_suffix)
-    rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}/{run}"
+    rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}/{run}{args.clustering_suffix}"
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)

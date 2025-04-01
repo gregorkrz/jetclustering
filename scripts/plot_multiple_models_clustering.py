@@ -153,10 +153,25 @@ def get_models_from_tag(tag):
         models[name] = "train/" + run.name
     return models
 
+# with pt=1e-2 ghost particles, also trained on this
 
-#models = get_models_from_tag("eval_19March2025_small_aug")
-models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum")
+models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum_Qcap05_p1e-2")
+
+#models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum")
+'''
+models = {}
+#models["PL_aug_working"] = "train/Eval_eval_19March2025_small_aug_FTsoft1_2025_03_27_17_15_24_17" # This one was working ~ok for parton-level, why doesn't it work anymore?
+models["reprod1"] = "train/Eval_eval_19March2025_small_aug_vanishing_momentum_Qcap05_p1e-2_reprod_1_2025_03_30_16_20_37_779" # reprod1 is using the same model as above, but eval'd on pt=1e-2 particles
+# reprod2 has pt uniform 0.01-50 particles
+models["reprod2"] = "train/Eval_eval_19March2025_reprod_2_2025_03_30_17_37_54_193"
+# reprod3: hdbscan min_samples set to 0
+
+'''
+
+
+
 print(models)
+
 # R = 2.0 models
 #models = {
 #    "parton-level": "train/Eval_eval_19March2025_2025_03_19_22_55_48",
@@ -164,21 +179,21 @@ print(models)
 #    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_43_07"
 #}
 
-output_path = get_path("eval_19March2025_small_aug", "results")
+output_path = get_path("eval_1e-2_pt", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
 sz = 3
-n_events_per_file = 10
+n_events_per_file = 25
 # len(models) columns, n_events_per_file rows
 from src.layers.object_cond import calc_eta_phi
 
-for ds in range(5):
+for ds in range(25):
     print("-------- DS:", ds)
     fig, ax = plt.subplots(n_events_per_file, len(models) * 2,
                            figsize=(len(models) * sz * 2, n_events_per_file * sz))
     # also one only with real coordinates
-    fig1, ax1 = plt.subplots(n_events_per_file, len(models),
+    fig1, ax1 = plt.subplots(n_events_per_file, len(models)+1,
                             figsize=(len(models) * sz, n_events_per_file * sz))
     for mn, model in enumerate(sorted(models.keys())):
         print("    -------- model:", model)
@@ -198,7 +213,7 @@ for ds in range(5):
             clusters = result["model_cluster"].numpy()
             clusters_file = None
         run_config = get_run_by_name(dataset_path.split("/")[-1]).config
-        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True, aug_soft=run_config["augment_soft_particles"], seed=1000000, parton_level=run_config["parton_level"])
+        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True, aug_soft=run_config["augment_soft_particles"], seed=1000000, parton_level=run_config["parton_level"]) # temporarily set seed to 0 instead of 1e6
         for e in range(n_events_per_file):
             print("            ----- event:", e)
             c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]
