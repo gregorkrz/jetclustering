@@ -60,6 +60,8 @@ def get_slurm_file_text_AKX(tag, log_number):
 #SBATCH --job-name=SVJan_AKX{pl_folder}{gl_folder}  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache

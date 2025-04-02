@@ -52,6 +52,11 @@ runs = ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_2025_03_27_12_46_12_740"
 runs = ["LGATr_pt_1e-2_500part_2025_04_01_10_33_28_457"]
 runs = ["LGATr_pt_1e-2_500part_2025_04_01_12_18_23_661"]
 
+# FT on parton-level + aug clustering
+runs = ["LGATr_pt_1e-2_500part_2025_04_01_16_49_08_406"]
+
+runs = ["LGATr_pt_1e-2_500part_2025_04_01_21_14_07_350"] + ["LGATr_pt_1e-2_500part_2025_04_01_16_49_08_406"]
+
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -93,13 +98,14 @@ test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_file
 
 print("------")
 for run in runs:
-    #for level in ["-pl", "-gl"]:
-    for level in ["-pl", ""]:
-    #for level in ["-pl"]:
+    #for level in ["-pl", ""]:
+    #for level in ["-pl", ""]:
+    for level in ["-gl"]:
     #for level in [""]:
-        for aug_suffix in ["-aug-soft"]:
+        for aug_suffix in ["-aug-soft", ""]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 660 --steps-from-zero -template t3 -tag eval_19March2025_pt1e-2_500particles {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 2100 --steps-from-zero -template t3 -tag eval_19March2025_pt1e-2_500particles_FT_PL {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 
 print("-----")
+
 

@@ -18,6 +18,8 @@ def get_path(path, type="code", fallback=False):
         return os.path.join(os.environ["SVJ_PREPROCESSED_DATA_ROOT"], path)
     if type == "results":
         results = os.path.join(os.environ["SVJ_RESULTS_ROOT"], path)
+        print("Checking if", results, "exists")
         if fallback and not os.path.exists(results):
+            print("Returning fallback")
             return os.path.join(os.environ["SVJ_RESULTS_ROOT_FALLBACK"], path) # return the record on the Storage Element
         return results

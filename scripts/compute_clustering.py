@@ -15,6 +15,18 @@ parser.add_argument("--input", type=str, required=True) # train/Eval_eval_19Marc
 # train/Eval_eval_19March2025_pt1e-2_500particles_2025_04_01_11_57_07_994
 
 # python -m scripts.compute_clustering --input  train/Eval_eval_19March2025_pt1e-2_500particles_2025_04_01_11_57_07_994 --output-suffix DefaultParams --min-cluster-size 15 --min-samples 5 --epsilon 0.1 --overwrite
+
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_01_18_23_46_933 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_01_18_23_53_208 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+
+
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_12_31_39_996 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_12_53_44_489 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_13_13_02_174 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_13_02_00_799 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+
+
+#
 parser.add_argument("--output-suffix", type=str, required=False, default="MinSamples0")
 parser.add_argument("--min-cluster-size", type=int, default=4)
 parser.add_argument("--min-samples", type=int, default=0)

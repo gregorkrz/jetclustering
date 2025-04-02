@@ -152,6 +152,9 @@ import wandb
 api = wandb.Api()
 
 def get_run_by_name(name):
+    if name.endswith("FT"):
+        #remove FT from the end
+        name = name[:-2]
     runs = api.runs(
         path="fcc_ml/svj_clustering",
         filters={"display_name": {"$eq": name.strip()}}
@@ -181,6 +184,9 @@ def get_run_config(run_name):
     else:
         prefix = "scouting"
         result["level"] = "scouting"
+    if config["augment_soft_particles"]:
+        result["ghosts"] = True
+        result["level"] += "+ghosts"
     gt_r = config["gt_radius"]
     if config.get("augment_soft_particles", False):
         prefix += " (aug)" # ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820", "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400"]
@@ -199,11 +205,16 @@ def get_run_config(run_name):
         "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820": "900_03+qcap05",
         "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400": "900_03+qcap05",
         "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_38_650": "pt 1e-2",
-        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_36_446": "pt 1e-2"
+        "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_36_446": "pt 1e-2",
+        "LGATr_pt_1e-2_500part_2025_04_01_16_49_08_406": "500_pt_1e-2_PLFT",
+        "LGATr_pt_1e-2_500part_2025_04_01_21_14_07_350": "500_pt_1e-2_PLFT"
     }
+
     train_name = config["load_from_run"]
     ckpt_step = config["ckpt_step"]
-    print(train_name)
+    print("train name", train_name)
+    if train_name not in training_datasets:
+        print("!! unknown run", train_name)
     training_dataset = training_datasets.get(train_name, train_name) + "_s" + str(ckpt_step)
     if "plptfilt01" in run_name.lower():
         training_dataset += "_PLPtFiltMinPt01" # min pt 0.1
@@ -237,6 +248,7 @@ if len(models):
         matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
         matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
         run_config_title, run_config = get_run_config(model)
+        print("RC title", run_config_title)
         if run_config is None:
             print("Skipping", model)
             continue
@@ -265,6 +277,7 @@ for j, model in enumerate(models):
         continue
     td = rc["training_dataset"]
     level = rc["level"]
+
     print(level)
     if td not in to_plot:
         to_plot[td] = {}
@@ -324,6 +337,19 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
 print("AK:", to_plot_ak)
 fig, ax = plt.subplots(len(to_plot) + 1, len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot))) # also add AKX as last plot
 
+colors = {
+    #"PL": "green",
+    #"GL": "blue",
+    #"scouting": "red",
+    "PL+ghosts": "green",
+    "GL+ghosts": "blue",
+    "scouting+ghosts": "red"
+}
+ak_colors = {
+    "PL": "green",
+    "GL": "blue",
+    "scouting": "red",
+}
 for i, td in enumerate(to_plot):
     # for each training dataset
     for j, h in enumerate(plotting_hypotheses):
@@ -334,7 +360,8 @@ for i, td in enumerate(to_plot):
         for level in sorted(list(to_plot[td][h[1]][h[0]].keys())):
             print("level", level)
             print("Plotting", td, h[1], h[0], level)
-            ax[i, j].plot(to_plot[td][h[1]][h[0]][level]["R"], to_plot[td][h[1]][h[0]][level]["f1score"], ".-", label=level)
+            if level in colors:
+                ax[i, j].plot(to_plot[td][h[1]][h[0]][level]["R"], to_plot[td][h[1]][h[0]][level]["f1score"], ".-", label=level, color=colors[level])
         ax[i, j].legend()
 for j, h in enumerate(plotting_hypotheses): # for to_plot_AK
     ax[-1, j].set_title(f"r_inv={h[1]}, m={h[0]}, AK baseline")
@@ -343,7 +370,8 @@ for j, h in enumerate(plotting_hypotheses): # for to_plot_AK
     ax[-1, j].grid()
     for i, ak_level in enumerate(sorted(list(to_plot_ak.keys()))):
         mMed_h, rInv_h = h
-        ax[-1, j].plot(to_plot_ak[ak_level][rInv_h][mMed_h]["R"], to_plot_ak[ak_level][rInv_h][mMed_h]["f1score"], ".-", label=ak_level)
+        if ak_level in ak_colors:
+            ax[-1, j].plot(to_plot_ak[ak_level][rInv_h][mMed_h]["R"], to_plot_ak[ak_level][rInv_h][mMed_h]["f1score"], ".-", label=ak_level, color=ak_colors[ak_level])
     ax[-1, j].legend()
 fig.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))

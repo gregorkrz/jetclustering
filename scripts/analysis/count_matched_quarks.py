@@ -134,6 +134,7 @@ if not args.plot_only:
         fastjet_R = None
         if args.jets_object == "fastjet_jets":
             fastjet_R = np.array([0.8, 2.0])
+            config = {"parton_level": args.parton_level, "gen_level": args.gen_level}
         print("Config:", config)
         dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
                                     model_output_file=model_output_file,

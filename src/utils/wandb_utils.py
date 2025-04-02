@@ -34,6 +34,8 @@ def get_run_initial_steps(run):
 def extract_relative_path(run_path):
     # just return everything after train/.. - run_path looks like /a/b/c/d/train/e/f
     return get_path("train/" + run_path.split("train/")[-1], type="results", fallback=True)
+    #return "train/" + run_path.split("train/")[-1]
+
 
 def get_run_step_direct(run_path, step):
     # get the step of the run directly
@@ -45,7 +47,9 @@ def get_run_step_direct(run_path, step):
     if step not in steps:
         print("Available steps:", steps)
         raise Exception("Step not found in run")
-    return os.path.join(p, [x for x in lst if int(x.split("_")[1]) == step][0])
+    full_path = os.path.join(p, [x for x in lst if int(x.split("_")[1]) == step][0])
+    # return everything after "train/"
+    return "train/" + full_path.split("train/")[-1]
 
 
 def get_run_step_ckpt(run, step, steps_from_zero):
