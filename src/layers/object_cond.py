@@ -151,13 +151,11 @@ def calc_LV_Lbeta(
         q = beta
     elif beta_type == "pt+bc":
         q = beta
-    if beta_type in ["pt", "pt+bc"]:
-        q[q<0.5] = 0.5 # cap the q
-
+    #if beta_type in ["pt", "pt+bc"]:
+    #    q[q<0.5] = 0.5 # cap the q
     assert_no_nans(q)
     assert q.device == device
     assert q.size() == (n_hits,)
-
     # Calculate q_alpha, the max q per object, and the indices of said maxima
     # assert hit_energies.shape == q.shape
     # q_alpha, index_alpha = scatter_max(hit_energies[is_sig], object_index)
@@ -908,6 +906,19 @@ def calc_eta_phi(coords, return_stacked=True):
     if not return_stacked:
         return eta, phi
     return torch.stack([eta, phi], dim=1)
+
+def loss_func_aug(y_pred, y_pred_aug, batch, batch_aug):
+    coords_pred = y_pred[:, :3]
+    coords_pred_aug = y_pred_aug[:, :3]
+    original_particle_mapping = batch_aug.original_particle_mapping
+    print("Original particle mapping:", original_particle_mapping[original_particle_mapping != -1])
+    batch_idx = batch_aug.batch_idx
+    #original_particle_mapping[original_particle_mapping != -1] += batch_idx[original_particle_mapping != -1]
+    coords_pred_aug_target = coords_pred[original_particle_mapping[original_particle_mapping != -1]]
+    coords_pred_aug_output = coords_pred_aug[original_particle_mapping != -1]
+    print("Pred:", coords_pred_aug_output[:5], "Target:", coords_pred_aug_target[:5])
+    loss = torch.nn.MSELoss()(coords_pred_aug_output, coords_pred_aug_target)
+    return loss
 
 def object_condensation_loss(
         batch, # input event

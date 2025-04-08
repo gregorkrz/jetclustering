@@ -103,6 +103,10 @@ if training_mode:
     # val_loaders and test_loaders are a dictionary file -> dataloader with only one dataset
     # train_loader is a single dataloader of all the files
     train_loader, val_loaders, val_dataset = train_load(args)
+    if args.irc_safety_loss:
+        train_loader_aug, val_loaders_aug, val_dataset_aug = train_load(args, aug_soft=False, aug_collinear=True)
+    else:
+        train_loader_aug = None
 else:
     test_loaders = test_load(args)
 
@@ -243,7 +247,8 @@ if training_mode:
             val_dataset=val_dataset,
             obj_score_model=model_obj_score,
             opt_obj_score=opt_os,
-            sched_obj_score=scheduler_os
+            sched_obj_score=scheduler_os,
+            train_loader_aug=train_loader_aug
         )
         if steps == "quit_training":
             break

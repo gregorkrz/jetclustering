@@ -222,14 +222,14 @@ parser.add_argument(
     "--min-cluster-size",
     help="parameter of the HDBSCAN clustering",
     type=int,
-    default=11
+    default=2
 )
 
 parser.add_argument(
     "--min-samples",
     help="parameter of the HDBSCAN clustering",
     type=int,
-    default=18
+    default=1
 )
 
 parser.add_argument(
@@ -248,7 +248,7 @@ parser.add_argument(
     "--epsilon",
     help="parameter of the HDBSCAN clustering",
     type=float,
-    default=0.48
+    default=0.3
 )
 
 
@@ -362,6 +362,14 @@ parser.add_argument(
     "--augment-soft-particles",
     "-aug-soft",
     help="add soft particles to the event - will add 10, 100, 1000, 10000 soft particles to the events (alternating in this order) and will split an energy of 0.5 GeV evenly among them",
+    action="store_true",
+    default=False
+)
+
+parser.add_argument(
+    "--irc-safety-loss",
+    "-irc",
+    help="add an IRC safety loss term",
     action="store_true",
     default=False
 )

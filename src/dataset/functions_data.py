@@ -499,8 +499,13 @@ def concat_event_collection(list_event_collection, nobatch=False):
     for attr in list_of_attrs:
         if hasattr(c, attr):
             result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
+    if hasattr(c, "original_particle_mapping") and c.original_particle_mapping is not None:
+        result["original_particle_mapping"] = torch.cat([c.original_particle_mapping for c in list_event_collection], dim=0)
     if not nobatch:
-        batch_number = add_batch_number(list_event_collection, attr=list_of_attrs[0])
+        batch_number, to_add_idx = add_batch_number(list_event_collection, attr=list_of_attrs[0])
+        if hasattr(c, "original_particle_mapping") and c.original_particle_mapping is not None:
+            filt = result["original_particle_mapping"] != -1
+            result["original_particle_mapping"][filt] += to_add_idx[filt]
         return type(c)(**result, batch_number=batch_number)
     else:
         return type(c)(**result)
@@ -673,7 +678,8 @@ def get_batch(event, batch_config, y, test=False):
         pt=pfcands.pt[filt],
         filter=filt,
         dropped_batches=dropped_batches,
-        renumber=not test
+        renumber=not test,
+        original_particle_mapping=pfcands.original_particle_mapping[filt]
     ), y_filt
 
 def to_tensor(item):
@@ -703,14 +709,15 @@ class EventPFCands(EventCollection):
         offline=False,
         pf_cand_jet_idx=None, # Optional: provide either this or pfcands_idx & jet_idx
         status=None,  # optional
-        pid_filter=True # if true, remove invisible GenParticles (abs(pid) > 10000 or (pid >= 50 and pid <= 60)
+        pid_filter=True, # if true, remove invisible GenParticles (abs(pid) > 10000 or (pid >= 50 and pid <= 60)
+        original_particle_mapping=None
     ):
         #print("Jet idx:", jet_idx)
         #print("PFCands_idx:", pfcands_idx)
         self.pt = to_tensor(pt)
         self.eta = to_tensor(eta)
         self.theta = 2 * torch.atan(torch.exp(-self.eta))
-        self.p = pt / torch.sin(self.theta)
+        self.p = self.pt / torch.sin(self.theta)
         self.phi = to_tensor(phi)
         self.pxyz = torch.stack(
       (self.p * torch.cos(self.phi) * torch.sin(self.theta),
@@ -730,6 +737,10 @@ class EventPFCands(EventCollection):
         self.E = torch.sqrt(self.mass ** 2 + self.p ** 2)
         self.charge = to_tensor(charge)
         self.pid = to_tensor(pid)
+        if original_particle_mapping is not None:
+            self.original_particle_mapping = to_tensor(original_particle_mapping)
+        else:
+            self.original_particle_mapping = original_particle_mapping
         if status is not None:
             self.status = to_tensor(status)
         #self.init_attrs.append("status")
@@ -926,14 +937,16 @@ def concatenate_Particles_GT(list_of_Particles_GT):
 
 def add_batch_number(list_event_collections, attr):
     list_y = []
+    list_y_to_add = [] # Computes a list of numbers to add to the original_particle_idx or similar fields
     idx = 0
     list_y.append(idx)
     for i, el in enumerate(list_event_collections):
         num_in_batch = el.__dict__[attr].shape[0]
         list_y.append(idx + num_in_batch)
+        list_y_to_add += [idx] * num_in_batch
         idx += num_in_batch
     list_y = torch.tensor(list_y)
-    return list_y
+    return list_y, torch.tensor(list_y_to_add)
 
 def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     unique_p_numbers = torch.unique(cluster_id)
@@ -962,7 +975,7 @@ def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     return mask.to(bool), ~mask_particles.to(bool)
 
 class EventBatch:
-    def __init__(self, input_vectors, input_scalars, batch_idx, pt, filter=None, dropped_batches=None, fake_nodes_idx=None, batch_idx_events=None, renumber=False):
+    def __init__(self, input_vectors, input_scalars, batch_idx, pt, original_particle_mapping=None, filter=None, dropped_batches=None, fake_nodes_idx=None, batch_idx_events=None, renumber=False):
         self.input_vectors = input_vectors
         self.input_scalars = input_scalars
         self.batch_idx = batch_idx #renumber_clusters(batch_idx)
@@ -971,6 +984,7 @@ class EventBatch:
         self.pt = pt
         self.filter = filter
         self.dropped_batches = dropped_batches
+        self.original_particle_mapping = original_particle_mapping
         if fake_nodes_idx is not None:
             self.fake_nodes_idx = fake_nodes_idx
         if batch_idx_events is not None:
@@ -982,6 +996,8 @@ class EventBatch:
         self.pt = self.pt.to(device)
         if self.filter is not None:
             self.filter = self.filter.to(device)
+        if self.original_particle_mapping is not None:
+            self.original_particle_mapping = self.original_particle_mapping.to(device)
         return self
     def cpu(self):
         return self.to(torch.device("cpu"))

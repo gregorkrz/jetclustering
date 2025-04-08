@@ -39,7 +39,11 @@ def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None
         ax[i].set_xlabel("$r_{inv}$")
         ax[i].set_ylabel("$m_{Z'}$ [GeV]")
         #ax[i].set_title(f"mDark = {mDark} GeV")
-        cbar = plt.colorbar(ax[i].imshow(data, cmap=color_scheme), ax=ax[i])
+        if color_scheme.lower() == "greens":
+            # color it from 0 to 1.0 - set limits on the cbar
+            cbar = plt.colorbar(ax[i].imshow(data, cmap=color_scheme), ax=ax[i])
+        else:
+            cbar = plt.colorbar(ax[i].imshow(data, cmap=color_scheme), ax=ax[i])
         cbar.set_label(cbar_label)
     if make_fig:
         fig.tight_layout()

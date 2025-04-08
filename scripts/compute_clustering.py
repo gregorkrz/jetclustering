@@ -26,18 +26,28 @@ parser.add_argument("--input", type=str, required=True) # train/Eval_eval_19Marc
 # python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_13_02_00_799 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
 
 
+
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_40_58_35 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_47_23_671 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_51_32_144 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_28_33_421 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_21_22_21_86 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+# python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_21_22_24_133 --output-suffix FT --min-cluster-size 15 --min-samples 1 --epsilon 0.3
+
+
 #
 parser.add_argument("--output-suffix", type=str, required=False, default="MinSamples0")
-parser.add_argument("--min-cluster-size", type=int, default=4)
-parser.add_argument("--min-samples", type=int, default=0)
-parser.add_argument("--epsilon", type=float, default=0.5)
+parser.add_argument("--min-cluster-size", type=int, default=2)
+parser.add_argument("--min-samples", type=int, default=1)
+parser.add_argument("--epsilon", type=float, default=0.3)
 parser.add_argument("--overwrite", action="store_true")
 parser.add_argument("--spatial-part-only", action="store_true")
 parser.add_argument("--dbscan", action="store_true", help="Use DBSCAN (with pt weights) instead of HDBSCAN. Only epsilon and min-samples would then be considered for clustering.")
 parser.add_argument("--pt-hdbscan", action="store_true", help="Use the special distance function in HDBSCAN that is distance * min(pt1, pt2)")
 
 args = parser.parse_args()
-path = get_path(args.input, "results")
+path = get_path(args.input, "results", fallback=True)
 
 #dir_results = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
 # For DBSCAN tests

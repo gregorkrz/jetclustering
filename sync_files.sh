@@ -17,6 +17,10 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 # Local to SE results
 rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/results/train /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/results
 
+# Local to SE data
+rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/data/Delphes_020425_train /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data
+
+
 ### Local -> Vega (when T3 is down)
 #rsync -avz -e "ssh -i .ssh/id_rs_sling_gk" /home/gregor/cern/jetclustering/ krzmancg@logingpu.vega.izum.si:/ceph/hpc/home/krzmancg/jetclustering/code --exclude "wandb" --exclude ".env" --exclude "env.sh" --exclude "__pycache__" --exclude ".git"
 

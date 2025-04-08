@@ -36,7 +36,17 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 
 # No coords loss
 # {'min_cluster_size': 5, 'min_samples': 19, 'epsilon': 0.17149658495077644}
-srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_LGATr_no_coords_loss_1_2025_01_20_16_22_21 --output-suffix FT --min-cluster-size 5 --min-samples 19 --epsilon 0.17 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_11_13_28_127 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_11_13_23_90 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_11_13_20_253 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_11_13_18_71 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_10_32_06_532 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_10_32_03_809 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_10_32_00_500 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_10_31_57_566 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_10_31_53_462 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
+#srun singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.compute_clustering --input train/Eval_eval_19March2025_pt1e-2_500particles_NoQMinReprod_2025_04_04_10_31_51_450 --output-suffix FT1 --min-cluster-size 2 --min-samples 1 --epsilon 0.3 --spatial-part-only
 
 # Run the job:
+
 # sbatch jobs/clustering.slurm

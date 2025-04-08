@@ -57,6 +57,19 @@ runs = ["LGATr_pt_1e-2_500part_2025_04_01_16_49_08_406"]
 
 runs = ["LGATr_pt_1e-2_500part_2025_04_01_21_14_07_350"] + ["LGATr_pt_1e-2_500part_2025_04_01_16_49_08_406"]
 
+
+#  Again eval on the 'old' run that was trained on 500 ghosts with pt=0.01
+runs = ["LGATr_pt_1e-2_500part_2025_04_01_10_33_28_457"]
+
+runs = ["LGATr_pt_1e-2_500part_NoQMin_2025_04_03_23_15_17_745", "LGATr_pt_1e-2_500part_NoQMin_2025_04_03_23_15_35_810"]
+runs = ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_37_44", "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_2025_03_28_10_43_36_81"]
+
+
+# Try to reproduce the results without qmin
+runs = ["LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_47_788", "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_51_536"]
+
+runs = ["LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_16_839", "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_20_113"]
+
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -100,12 +113,14 @@ print("------")
 for run in runs:
     #for level in ["-pl", ""]:
     #for level in ["-pl", ""]:
-    for level in ["-gl"]:
+    for level in ["", "-pl", "-gl"]:
+    #for level in ["-gl", "-pl", ""]:
     #for level in [""]:
-        for aug_suffix in ["-aug-soft", ""]:
+        for aug_suffix in ["-aug-soft"]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 2100 --steps-from-zero -template t3 -tag eval_19March2025_pt1e-2_500particles_FT_PL {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 660 --steps-from-zero -template t3 -tag eval_19March2025_pt1e_2_NoQMinReprod_New_Run_10_to_1000p {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 
 print("-----")
+
 
 

@@ -22,7 +22,7 @@ from src.plotting.plot_event import plot_batch_eval_OC, get_labels_jets
 from src.jetfinder.clustering import get_clustering_labels
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
 from src.utils.train_utils import get_target_obj_score, plot_obj_score_debug # for debugging only!
-
+from src.layers.object_cond import loss_func_aug
 
 def train_epoch(
     args,
@@ -42,7 +42,8 @@ def train_epoch(
     val_dataset=None,
     obj_score_model=None,
     opt_obj_score=None,
-    sched_obj_score=None
+    sched_obj_score=None,
+    train_loader_aug=None, # if it's not None, it will also use the augmented events for the IRC safety loss term
 ):
     if obj_score_model is None:
         model.train()
@@ -51,10 +52,19 @@ def train_epoch(
     step_count = current_step
     start_time = time.time()
     prev_time = time.time()
+    if train_loader_aug is not None:
+        train_loader_aug = iter(train_loader_aug)
     for event_batch in tqdm.tqdm(train_loader):
         time_preprocess_start = time.time()
         y = gt_func(event_batch)
         batch, y = get_batch(event_batch, batch_config, y)
+        if train_loader_aug is not None:
+            event_batch_aug = next(train_loader_aug)
+            y_aug = gt_func(event_batch_aug)
+            print("len(event_batch_aug):", len(event_batch_aug))
+            print("len(event_batch):", len(event_batch))
+            print("number of pfcands:", len(event_batch.pfcands.pt), len(event_batch_aug.pfcands.pt))
+            batch_aug, y_aug = get_batch(event_batch_aug, batch_config, y_aug)
         time_preprocess_end = time.time()
         step_count += 1
         y = y.to(dev)
@@ -64,14 +74,22 @@ def train_epoch(
         torch.autograd.set_detect_anomaly(True)
         with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
             batch.to(dev)
+        if train_loader_aug is not None:
+            batch_aug.to(dev)
         model_forward_time_start = time.time()
         if obj_score_model is not None:
             with torch.no_grad():
                 y_pred = model(batch) # Only train the objectness score model
         else:
             y_pred = model(batch)
+            if train_loader_aug is not None:
+                y_pred_aug = model(batch_aug)
         model_forward_time_end = time.time()
         loss, loss_dict = loss_func(batch, y_pred, y)
+        if train_loader_aug is not None:
+            loss_aug = loss_func_aug(y_pred, y_pred_aug, batch, batch_aug)
+            loss += loss_aug
+            loss_dict["loss_IRC"] = loss_aug
         loss_time_end = time.time()
         wandb.log({
             "time_preprocess": time_preprocess_end - time_preprocess_start,

@@ -46,10 +46,10 @@ class TensorCollection:
     #def __getitem__(self, i):
     #    return TensorCollection(**{k: v[i] for k, v in self.__dict__.items()})
 
-def train_load(args):
+def train_load(args, aug_soft=False, aug_collinear=False):
     train_files = to_filelist(args, "train")
     val_files = to_filelist(args, "val")
-    train_data = EventDatasetCollection(train_files, args)
+    train_data = EventDatasetCollection(train_files, args, aug_soft=aug_soft, aug_collinear=aug_collinear)
     if args.train_dataset_size is not None:
         train_data = torch.utils.data.Subset(train_data, list(range(args.train_dataset_size)))
     train_loader = DataLoader(
@@ -60,7 +60,7 @@ def train_load(args):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=True
+        shuffle=False
     )
     '''val_loaders = {}
     for filename in val_files:

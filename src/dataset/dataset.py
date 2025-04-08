@@ -301,10 +301,10 @@ class _SimpleIter(object):
         return create_jets_outputs_new(X), False
 
 class EventDatasetCollection(torch.utils.data.Dataset):
-    def __init__(self, dir_list, args):
+    def __init__(self, dir_list, args, aug_soft=False, aug_collinear=False):
         self.event_collections_dict = OrderedDict()
         for dir in dir_list:
-            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=args.augment_soft_particles, seed=0)
+            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=args.augment_soft_particles or aug_soft, seed=0, aug_collinear=aug_collinear)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
         self.event_thresholds = [x.n_events for x in self.event_collections_dict.values()]
         self.event_thresholds = np.cumsum([0] + self.event_thresholds)
@@ -372,7 +372,7 @@ def filter_pfcands(pfcands):
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0, aug_collinear=False):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -384,7 +384,8 @@ class EventDataset(torch.utils.data.Dataset):
         dataset = EventDataset(result, metadata, model_clusters_file=model_clusters_file,
                                model_output_file=model_output_file,
                                include_model_jets_unfiltered=include_model_jets_unfiltered,
-                               fastjet_R=fastjet_R, parton_level=parton_level, gen_level=gen_level, aug_soft=aug_soft, seed=seed)
+                               fastjet_R=fastjet_R, parton_level=parton_level, gen_level=gen_level, aug_soft=aug_soft,
+                               seed=seed, aug_collinear=aug_collinear)
         return dataset
     def get_pfcands_key(self):
         pfcands_key = "pfcands"
@@ -422,7 +423,7 @@ class EventDataset(torch.utils.data.Dataset):
         print("Found pfcands_key=%s" % pfcands_key)
         return pfcands_key
 
-    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0):
+    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0, aug_collinear=False):
         # events: serialized events dict
         # metadata: dict with metadata
         self.events = events
@@ -434,6 +435,7 @@ class EventDataset(torch.utils.data.Dataset):
         self.parton_level = parton_level
         self.gen_level = gen_level
         self.augment_soft_particles = aug_soft
+        self.aug_collinear = aug_collinear
         self.seed = seed
         #self.pfcands_key = "pfcands"
         # set to final_parton_level_particles or final_gen_particles in case needed
@@ -496,7 +498,39 @@ class EventDataset(torch.utils.data.Dataset):
             soft_pfcands = EventPFCands(pt, eta, phi, mass, charge, pid, pf_cand_jet_idx=-1 * torch.ones(n_soft), status=status)
         else:
             soft_pfcands = EventPFCands(pt, eta, phi, mass, charge, pid, pf_cand_jet_idx=-1*torch.ones(n_soft))
-        return concat_event_collection([pfcands, soft_pfcands], nobatch=1)
+        soft_pfcands.original_particle_mapping = torch.tensor([-1] * len(soft_pfcands))
+        pfcandsc = copy.deepcopy(pfcands)
+        pfcandsc.original_particle_mapping = torch.arange(len(pfcands))
+        return concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
+
+    @staticmethod
+    def pfcands_split_particles(pfcands, random_generator):
+        # Augment the dataset by spliting the harder particles
+        # 5 highest pt particles
+        k = min(5, len(pfcands))
+        highest_pt_idx = torch.topk(pfcands.pt, k)[1]
+        weights = pfcands.pt[highest_pt_idx]
+        # Pick a random particle to split according to weights
+        n_to_split = random_generator.randint(0, k)
+        #idx = random_generator.choice(highest_pt_idx, p=weights / weights.sum())
+        indices = highest_pt_idx[:n_to_split]
+        pfcandsc = copy.deepcopy(pfcands)
+        pfcandsc.original_particle_mapping = torch.arange(len(pfcands))
+        for idx in indices:
+            split_into = random_generator.randint(2, 5)
+            # split the particle into
+            eta = pfcands.eta[idx]
+            phi = pfcands.phi[idx]
+            pt = pfcands.pt[idx] / split_into
+            charge = pfcands.charge[idx]
+            mass = 0
+            pid = pfcands.pid[idx]
+            colinear_pfcands = EventPFCands(pt=[pt], eta=[eta], phi=[phi], mass=[mass], charge=[charge], pid=[pid], pf_cand_jet_idx=[pfcands.pf_cand_jet_idx[idx]], original_particle_mapping=[idx])
+            #pfcandsc.original_particle_mapping[idx] = idx
+            pfcandsc.pt[idx] = pt
+            for _ in range(split_into-1):
+                pfcandsc = concat_event_collection([pfcandsc, colinear_pfcands], nobatch=1)
+        return pfcandsc
 
     def get_idx(self, i):
         start = {key: self.metadata[key + "_batch_idx"][i] for key in self.attrs}
@@ -515,12 +549,24 @@ class EventDataset(torch.utils.data.Dataset):
         ## augment pfcands here
         if self.augment_soft_particles:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            n_soft = int(random_generator.uniform(10, 1000))
+            #n_soft = int(random_generator.uniform(10, 1000))
             n_soft = 500
             #n_soft = 1000
             result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator)
             if "final_parton_level_particles" in result:
-                result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # also augment parton-level event for testing
+                result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # Also augment parton-level event for testing
+            if "final_gen_particles" in result:
+                result["final_gen_particles"] = EventDataset.pfcands_add_soft_particles(result["final_gen_particles"], n_soft, random_generator)
+        if self.aug_collinear:
+            random_generator = np.random.RandomState(seed=i + self.seed)
+            result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
+            if "final_parton_level_particles" in result:
+                result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(
+                    result["final_parton_level_particles"], random_generator
+                )
+                # Also augment parton-level event for testing
+            if "final_gen_particles" in result:
+                result["final_gen_particles"] = EventDataset.pfcands_split_particles(result["final_gen_particles"], random_generator)
         if self.model_output is not None:
             #if "final_parton_level_particles" in result and len(result["final_parton_level_particles"]) == 0:
             #    print("!!")
@@ -538,7 +584,6 @@ class EventDataset(torch.utils.data.Dataset):
             else:
                 result["fastjet_jets"] = {key: EventDataset.get_fastjet_jets(result, self.fastjet_jetdef[key], key="pfcands") for key
                                           in self.fastjet_jetdef}
-
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
         evt = Event(**result)

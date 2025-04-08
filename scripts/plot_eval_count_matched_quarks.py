@@ -48,6 +48,7 @@ comments = {
 }
 
 out_file_PR = os.path.join(get_path(args.input, "results"), "precision_recall.pdf")
+out_file_PG = os.path.join(get_path(args.input, "results"), "PLoverGL.pdf")
 
 if args.threshold_obj_score != -1:
     out_file_PR_OS = os.path.join(get_path(args.input, "results"), f"precision_recall_with_obj_score.pdf")
@@ -152,9 +153,18 @@ import wandb
 api = wandb.Api()
 
 def get_run_by_name(name):
+    clust_suffix = ""
     if name.endswith("FT"):
         #remove FT from the end
         name = name[:-2]
+        clust_suffix = "FT"
+    if name.endswith("FT1"):
+        #remove FT from the end # min-samples 1 min-cluster-size 2 epsilon 0.3
+        name = name[:-3]
+        clust_suffix = "FT1"
+    if name.endswith("10_5"):
+        name = name[:-4]
+        clust_suffix = "10_5"
     runs = api.runs(
         path="fcc_ml/svj_clustering",
         filters={"display_name": {"$eq": name.strip()}}
@@ -165,11 +175,11 @@ def get_run_by_name(name):
     )
     if runs.length != 1:
         return None
-    return runs[0]
+    return runs[0], clust_suffix
 
 
 def get_run_config(run_name):
-    r = get_run_by_name(run_name)
+    r, clust_suffix = get_run_by_name(run_name)
     if r is None:
         print("Getting info from run", run_name, "failed")
         return None, None
@@ -207,7 +217,13 @@ def get_run_config(run_name):
         "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_38_650": "pt 1e-2",
         "LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_1e-2_2025_03_29_14_58_36_446": "pt 1e-2",
         "LGATr_pt_1e-2_500part_2025_04_01_16_49_08_406": "500_pt_1e-2_PLFT",
-        "LGATr_pt_1e-2_500part_2025_04_01_21_14_07_350": "500_pt_1e-2_PLFT"
+        "LGATr_pt_1e-2_500part_2025_04_01_21_14_07_350": "500_pt_1e-2_PLFT",
+        "LGATr_pt_1e-2_500part_NoQMin_2025_04_03_23_15_17_745": "500_1e-2_scFT",
+        "LGATr_pt_1e-2_500part_NoQMin_2025_04_03_23_15_35_810": "500_1e-2_scFT",
+        "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_51_536": "10_1000_1e-2_scFT",
+        "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_47_788": "10_1000_1e-2_scFT",
+        "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_16_839": "10_1000_1e-2_CW0",
+        "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_20_113": "10_1000_1e-2_CW0"
     }
 
     train_name = config["load_from_run"]
@@ -215,7 +231,7 @@ def get_run_config(run_name):
     print("train name", train_name)
     if train_name not in training_datasets:
         print("!! unknown run", train_name)
-    training_dataset = training_datasets.get(train_name, train_name) + "_s" + str(ckpt_step)
+    training_dataset = training_datasets.get(train_name, train_name) + "_s" + str(ckpt_step) + clust_suffix
     if "plptfilt01" in run_name.lower():
         training_dataset += "_PLPtFiltMinPt01" # min pt 0.1
     elif "noplfilter" in run_name.lower():
@@ -230,11 +246,19 @@ def get_run_config(run_name):
 
 
 sz = 5
+ak_path = os.path.join(path, "AKX_PL", "count_matched_quarks")
+result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
+radius = [0.8, 2.0]
+def select_radius(d, radius, depth=3):
+    # from the dictionary, select radius at the level
+    if depth == 0:
+        return d[radius]
+    return {key: select_radius(d[key], radius, depth - 1) for key in d}
+
 if len(models):
-    fig, ax = plt.subplots(3, len(models), figsize=(sz * len(models), sz * 3))
+    fig, ax = plt.subplots(3, len(models) + len(radius), figsize=(sz * len(models), sz * 3))
     for i, model in tqdm(enumerate(sorted(models))):
         output_path = os.path.join(path, model, "count_matched_quarks")
-        ak_path = os.path.join(path, "AKX", "count_matched_quarks")
         if not os.path.exists(os.path.join(output_path, "result.pkl")):
             continue
         result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
@@ -256,6 +280,18 @@ if len(models):
         ax[1, i].set_title(run_config_title)
         ax[2, i].set_title(run_config_title)
         print(model, run_config_title)
+    for i, R in enumerate(radius):
+        result_PR_AKX_current = select_radius(result_PR_AKX, R)
+        matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
+                    metric_comp_func=lambda r: r[0], ax=ax[0, i+len(models)])
+        matrix_plot(result_PR_AKX_current, "Reds", "Recall (N matched dark quarks / N dark quarks)",
+                    metric_comp_func=lambda r: r[1], ax=ax[1, i+len(models)])
+        matrix_plot(result_PR_AKX_current, "Purples", r"$F_1$ score", metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]),
+                    ax=ax[2, i+len(models)])
+        ax[0, i+len(models)].set_title(f"AK, R={R}")
+        ax[1, i+len(models)].set_title(f"AK, R={R}")
+        ax[2, i+len(models)].set_title(f"AK, R={R}")
+
     fig.tight_layout()
     fig.savefig(out_file_PR)
     print("Saved to", out_file_PR)
@@ -268,31 +304,48 @@ purples = plt.get_cmap("Purples")
 
 mDark = 20
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
+results_all = {}
+results_all_ak = {}
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
 sz_small = 5
 for j, model in enumerate(models):
     _, rc = get_run_config(model)
-    if rc is None:
+    if rc is None or model in ["Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_28_33_421FT", "Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_47_23_671FT", "Eval_eval_19March2025_small_aug_vanishing_momentum_2025_03_28_11_45_16_582", "Eval_eval_19March2025_small_aug_vanishing_momentum_2025_03_28_11_46_26_326"]:
         print("Skipping", model)
         continue
     td = rc["training_dataset"]
     level = rc["level"]
-
+    r = rc["GT_R"]
+    output_path = os.path.join(path, model, "count_matched_quarks")
+    if not os.path.exists(os.path.join(output_path, "result_PR.pkl")):
+        continue
+    result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
     print(level)
     if td not in to_plot:
         to_plot[td] = {}
+        results_all[td] = {}
+    for mMed_h in result_PR:
+        if mMed_h not in results_all[td]:
+            results_all[td][mMed_h] = {20: {}}
+        for rInv_h in result_PR[mMed_h][20]:
+            if rInv_h not in results_all[td][mMed_h][20]:
+                results_all[td][mMed_h][20][rInv_h] = {}
+            #for level in ["PL+ghosts", "GL+ghosts", "scouting+ghosts"]:
+            if level not in results_all[td][mMed_h][20][rInv_h]:
+                results_all[td][mMed_h][20][rInv_h][level] = {}
+            if r not in results_all[td][mMed_h][20][rInv_h][level]:
+                precision = result_PR[mMed_h][mDark][rInv_h][0]
+                recall = result_PR[mMed_h][mDark][rInv_h][1]
+                f1score = 2 * precision * recall / (precision + recall)
+                results_all[td][mMed_h][20][rInv_h][level][r] = f1score
     for i, h in enumerate(plotting_hypotheses):
         mMed_h, rInv_h = h
         if rInv_h not in to_plot[td]:
             to_plot[td][rInv_h] = {}
         print("Model", model)
-        r = rc["GT_R"]
-        output_path = os.path.join(path, model, "count_matched_quarks")
-        if not os.path.exists(os.path.join(output_path, "result_PR.pkl")):
-            continue
-        result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
         if mMed_h not in to_plot[td][rInv_h]:
             to_plot[td][rInv_h][mMed_h] = {} # level
+
         if level not in to_plot[td][rInv_h][mMed_h]:
             to_plot[td][rInv_h][mMed_h][level] = {"precision": [], "recall": [], "f1score": [], "R": []}
         precision = result_PR[mMed_h][mDark][rInv_h][0]
@@ -302,6 +355,7 @@ for j, model in enumerate(models):
         to_plot[td][rInv_h][mMed_h][level]["recall"].append(recall)
         to_plot[td][rInv_h][mMed_h][level]["f1score"].append(f1score)
         to_plot[td][rInv_h][mMed_h][level]["R"].append(r)
+
 
 to_plot_ak = {} # level ("scouting"/"GL"/"PL") -> rInv -> mMed -> {"f1score": [], "R": []}
 
@@ -319,6 +373,21 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
         level = "GL"
     if level not in to_plot_ak:
         to_plot_ak[level] = {}
+    for mMed_h in result_PR_AKX:
+        if mMed_h not in results_all_ak:
+            results_all_ak[mMed_h] = {20: {}}
+        for rInv_h in result_PR_AKX[mMed_h][20]:
+            if rInv_h not in results_all_ak[mMed_h][20]:
+                results_all_ak[mMed_h][20][rInv_h] = {}
+            if level not in results_all_ak[mMed_h][20][rInv_h]:
+                results_all_ak[mMed_h][20][rInv_h][level] = {}
+            for ridx, R in enumerate(result_PR_AKX[mMed_h][20][rInv_h]):
+                if R not in results_all_ak[mMed_h][20][rInv_h][level]:
+                    precision = result_PR_AKX[mMed_h][mDark][rInv_h][R][0]
+                    recall = result_PR_AKX[mMed_h][mDark][rInv_h][R][1]
+                    f1score = 2 * precision * recall / (precision + recall)
+                    results_all_ak[mMed_h][20][rInv_h][level][R] = f1score
+
     for i, h in enumerate(plotting_hypotheses):
         mMed_h, rInv_h = h
         if rInv_h not in to_plot_ak[level]:
@@ -377,7 +446,27 @@ fig.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
 print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
 
+fig, ax = plt.subplots(1, len(results_all)*len(radius) + len(radius), figsize=(7 * len(results_all)*len(radius)+len(radius), 5))
+for i, model in enumerate(results_all):
+    for j, R in enumerate(radius):
+        #if r not in results_all[model][700][20][0.3]["scouting"]:
+        #    continue
+        # for each training dataset
+        index = len(radius)*i + j
+        ax[index].set_title(model + " R={}".format(R))
+        matrix_plot(results_all[model], "Greens", r"PL/GL F1 score", ax=ax[index], metric_comp_func=lambda r: r["PL+ghosts"][R]/r["scouting+ghosts"][R])
+for i, R in enumerate(radius):
+    index = len(radius)*len(results_all) + i
+    ax[index].set_title("AK R={}".format(R))
+    matrix_plot(results_all_ak, "Greens", r"PL/GL F1 score", ax=ax[index], metric_comp_func=lambda r: r["PL"][R]/r["GL"][R])
+fig.tight_layout()
+fig.savefig(out_file_PG)
+
+print("Saved to", out_file_PG)
+
+
 1/0
+
 
 #print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
 #print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))
