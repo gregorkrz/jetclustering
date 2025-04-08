@@ -907,18 +907,24 @@ def calc_eta_phi(coords, return_stacked=True):
         return eta, phi
     return torch.stack([eta, phi], dim=1)
 
-def loss_func_aug(y_pred, y_pred_aug, batch, batch_aug):
+def loss_func_aug(y_pred, y_pred_aug, batch, batch_aug, event, event_aug):
     coords_pred = y_pred[:, :3]
     coords_pred_aug = y_pred_aug[:, :3]
     original_particle_mapping = batch_aug.original_particle_mapping
-    print("Original particle mapping:", original_particle_mapping[original_particle_mapping != -1])
-    batch_idx = batch_aug.batch_idx
+    #print("N in batch:", event.pfcands.batch_number)
+    #print("N in batch aug:", event_aug.pfcands.batch_number)
+    to_add_to_batch = event.pfcands.batch_number[:-1]
+    aug_batch_num = event_aug.pfcands.batch_number
+    for i in range(len(aug_batch_num)-1):
+        original_particle_mapping[aug_batch_num[i]:aug_batch_num[i+1]] += to_add_to_batch[i]
+    #print("Original particle mapping:", original_particle_mapping[original_particle_mapping != -1])
     #original_particle_mapping[original_particle_mapping != -1] += batch_idx[original_particle_mapping != -1]
+    assert original_particle_mapping.max() < len(coords_pred)
     coords_pred_aug_target = coords_pred[original_particle_mapping[original_particle_mapping != -1]]
     coords_pred_aug_output = coords_pred_aug[original_particle_mapping != -1]
-    print("Pred:", coords_pred_aug_output[:5], "Target:", coords_pred_aug_target[:5])
     loss = torch.nn.MSELoss()(coords_pred_aug_output, coords_pred_aug_target)
     return loss
+
 
 def object_condensation_loss(
         batch, # input event

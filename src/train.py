@@ -104,7 +104,7 @@ if training_mode:
     # train_loader is a single dataloader of all the files
     train_loader, val_loaders, val_dataset = train_load(args)
     if args.irc_safety_loss:
-        train_loader_aug, val_loaders_aug, val_dataset_aug = train_load(args, aug_soft=False, aug_collinear=True)
+        train_loader_aug, val_loaders_aug, val_dataset_aug = train_load(args, aug_soft=True, aug_collinear=True)
     else:
         train_loader_aug = None
 else:

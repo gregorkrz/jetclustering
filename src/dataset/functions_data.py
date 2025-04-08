@@ -503,9 +503,9 @@ def concat_event_collection(list_event_collection, nobatch=False):
         result["original_particle_mapping"] = torch.cat([c.original_particle_mapping for c in list_event_collection], dim=0)
     if not nobatch:
         batch_number, to_add_idx = add_batch_number(list_event_collection, attr=list_of_attrs[0])
-        if hasattr(c, "original_particle_mapping") and c.original_particle_mapping is not None:
-            filt = result["original_particle_mapping"] != -1
-            result["original_particle_mapping"][filt] += to_add_idx[filt]
+        #if hasattr(c, "original_particle_mapping") and c.original_particle_mapping is not None:
+        #    #filt = result["original_particle_mapping"] != -1
+        #    #result["original_particle_mapping"][filt] += to_add_idx[filt]
         return type(c)(**result, batch_number=batch_number)
     else:
         return type(c)(**result)
@@ -551,7 +551,6 @@ def get_corrected_batch(event_batch, cluster_idx, test):
     new_batch_idx = torch.tensor(cluster_idx[clusters])
     # for each cluster, add a fake node that has zeros for vectors, scalars and pt
     batch_idx_fake_nodes = torch.sort(new_batch_idx.unique())[0]
-
     vectors_fake_nodes = torch.zeros(len(batch_idx_fake_nodes), event_batch.input_vectors.shape[1])
     vectors_fake_nodes = vectors_fake_nodes.to(event_batch.input_vectors.device)
     scalars_fake_nodes = torch.zeros(len(batch_idx_fake_nodes), event_batch.input_scalars.shape[1])
