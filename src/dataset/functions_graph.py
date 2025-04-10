@@ -202,6 +202,73 @@ def store_track_at_vertex_at_track_at_calo(graph):
     graph.ndata["pos_pxpypz_at_vertex"][tracks_at_calo] = graph.ndata["pos_pxpypz"][tracks_at_vertex]
     return remove_hittype0(graph)
 
+def create_jets_outputs_Delphes(output):
+    n_ch = int(output["n_CH"][0, 0])
+    n_nh = int(output["n_NH"][0, 0])
+    n_photons = int(output["n_photon"][0, 0])
+    n_genp = int(output["NParticles"][0, 0])
+    print(type(output["CH"]), output["CH"].shape, output["CH"])
+    ch = output["CH"][:, :n_ch]
+    nh = output["NH"][:, :n_nh]
+    photons = output["EFlowPhoton"][:, :n_photons]
+    genp = output["GenParticles"][:, :n_genp]
+    nh_mass = [0.939] * n_nh
+    nh_charge = [0] * n_nh
+    nh_pid = [2112] * n_nh
+    nh_jets = [-1] * n_nh
+    ch_charge = ch[:, 0]
+    ch_pid = [211] * n_ch
+    ch_jets = [-1] * n_ch
+    photons_jets = [-1] * n_photons
+    photons_mass = [0] * n_photons
+    photons_charge = [0] * n_photons
+    photons_pid = [22] * n_photons
+    nh = nh.T
+    ch = ch.T
+    photons = photons.T
+    genp = genp.T
+    nh_data = EventPFCands(nh[:, 2], nh[:, 0], nh[:, 1], nh_mass, nh_charge, nh_pid, pf_cand_jet_idx=nh_jets)
+    ch_data = EventPFCands(ch[:, 2], ch[:, 0], ch[:, 1], ch[:, 3], ch_charge, ch_pid, pf_cand_jet_idx=ch_jets)
+    photon_data = EventPFCands(photons[:, 2], photons[:, 0], photons[:, 1], photons_mass, photons_charge,
+                               photons_pid, pf_cand_jet_idx=photons_jets)
+    pfcands = concat_event_collection([nh_data, ch_data, photon_data], nobatch=1)
+
+    genp_status = genp[:, 6]
+    genp_eta = genp[:, 1]
+    genp_pt = genp[:, 2]
+    filter_dq = genp_status == 23
+    filter_partons = (genp_status >= 51) & (genp_status <= 59) & (np.abs(genp_eta) < 2.4) & (genp_pt > 0.5) & ()
+    matrix_element_gen_particles = EventPFCands(
+        genp[filter_dq, 2],
+        genp[filter_dq, 0],
+        genp[filter_dq, 1],
+        genp[filter_dq, 3],
+        np.sign(genp[filter_dq, 4]),
+        genp[filter_dq, 5],
+        pf_cand_jet_idx=-1 * np.ones_like(genp[filter_dq, 0]),
+    )
+    parton_level_particles = EventPFCands(
+        genp[filter_partons, 2],
+        genp[filter_partons, 0],
+        genp[filter_partons, 1],
+        genp[filter_partons, 3],
+        np.sign(genp[filter_partons, 4]),
+        genp[filter_partons, 5],
+        pf_cand_jet_idx=-1 * np.ones_like(genp[filter_partons, 0]),
+    )
+    filter_final_gen_particles = (genp_status == 1) & (np.abs(genp_eta) < 2.4) & (genp_pt > 0.5)
+    final_gen_particles = EventPFCands(
+        genp[filter_final_gen_particles, 2],
+        genp[filter_final_gen_particles, 0],
+        genp[filter_final_gen_particles, 1],
+        genp[filter_final_gen_particles, 3],
+        np.sign(genp[filter_final_gen_particles, 4]),
+        genp[filter_final_gen_particles, 5],
+        pf_cand_jet_idx=-1 * np.ones_like(genp[filter_final_gen_particles, 0]),
+    )
+    return Event(pfcands=pfcands, matrix_element_gen_particles=matrix_element_gen_particles,
+                 final_gen_particles=final_gen_particles, final_parton_level_particles=parton_level_particles)
+
 def create_jets_outputs(
     output,
     config=None,
@@ -219,6 +286,7 @@ def create_jets_outputs(
 def create_jets_outputs_new(
     output, separate_special_pfcands=False
 ):
+    print(output)
     n_jets = int(output["n_jets"][0, 0])
     jets_data = output["jets"][:, :n_jets]
     n_genjets = int(output["n_genjets"][0, 0])

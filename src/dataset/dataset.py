@@ -23,7 +23,8 @@ from src.data.preprocess import (
 from src.dataset.functions_data import to_tensor
 from src.layers.object_cond import calc_eta_phi
 from torch_scatter import scatter_sum
-from src.dataset.functions_graph import create_graph, create_jets_outputs, create_jets_outputs_new
+from src.dataset.functions_graph import (create_graph, create_jets_outputs,
+                                         create_jets_outputs_new, create_jets_outputs_Delphes)
 from src.dataset.functions_data import Event, EventCollection, EventJets
 import fastjet
 from src.utils.utils import CPU_Unpickler
@@ -298,6 +299,8 @@ class _SimpleIter(object):
     def get_data(self, i):
         # inputs
         X = {k: self.table["_" + k][i].copy() for k in self._data_config.input_names}
+        if "EFlowPhoton" in X:
+            return create_jets_outputs_Delphes(X), False
         return create_jets_outputs_new(X), False
 
 class EventDatasetCollection(torch.utils.data.Dataset):
@@ -774,7 +777,8 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         synthetic=False,
         synthetic_npart_min=2,
         synthetic_npart_max=5,
-        jets=False
+        jets=False,
+        delphes=False
     ):
         self._iters = {} if infinity_mode or in_memory else None
         _init_args = set(self.__dict__.keys())
@@ -796,6 +800,7 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         self.dataset_cap = dataset_cap  # used to cap the dataset to some fixed number of events - used for debugging purposes
         self.n_noise = n_noise
         self.jets = jets
+        self.delphes = delphes
         # ==== sampling parameters ====
         self._sampler_options = {
             "up_sample": up_sample,
