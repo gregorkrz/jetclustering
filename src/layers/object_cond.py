@@ -915,13 +915,27 @@ def loss_func_aug(y_pred, y_pred_aug, batch, batch_aug, event, event_aug):
     #print("N in batch aug:", event_aug.pfcands.batch_number)
     to_add_to_batch = event.pfcands.batch_number[:-1]
     aug_batch_num = event_aug.pfcands.batch_number
+    print("Original particle mapping: (before sum)", original_particle_mapping[original_particle_mapping!=-1].tolist())
+    filt_idx = torch.where(original_particle_mapping != -1)[0].tolist()
     for i in range(len(aug_batch_num)-1):
-        original_particle_mapping[aug_batch_num[i]:aug_batch_num[i+1]] += to_add_to_batch[i]
+        for item in filt_idx:
+            if item >= aug_batch_num[i] and item < aug_batch_num[i+1]:
+                assert original_particle_mapping[item] != -1, "Original particle mapping should not be -1"
+                assert to_add_to_batch[i] >= 0, "Batch number should be >= 0: " + str(to_add_to_batch[i])
+                original_particle_mapping[item] += to_add_to_batch[i] # try this due to some indexing issues
+        #original_particle_mapping[aug_batch_num[i]:aug_batch_num[i+1]][filt] += to_add_to_batch[i]
     #print("Original particle mapping:", original_particle_mapping[original_particle_mapping != -1])
     #original_particle_mapping[original_particle_mapping != -1] += batch_idx[original_particle_mapping != -1]
+    if not original_particle_mapping.max() < len(coords_pred):
+        print("Coords shapes", coords_pred.shape, coords_pred_aug.shape)
+        print("Original particle mapping:", original_particle_mapping[original_particle_mapping != -1].tolist(), original_particle_mapping.shape, original_particle_mapping[original_particle_mapping!=-1].max())
+        print("Batch number in event:", event.pfcands.batch_number)
+        print("Batch number in event aug:", event_aug.pfcands.batch_number)
+        raise ValueError("Original particle mapping out of bounds")
     assert original_particle_mapping.max() < len(coords_pred)
     coords_pred_aug_target = coords_pred[original_particle_mapping[original_particle_mapping != -1]]
     coords_pred_aug_output = coords_pred_aug[original_particle_mapping != -1]
+    print("Output:", coords_pred_aug_output[:5], "Target:", coords_pred_aug_target[:5])
     loss = torch.nn.MSELoss()(coords_pred_aug_output, coords_pred_aug_target)
     return loss
 

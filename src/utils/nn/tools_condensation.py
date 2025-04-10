@@ -60,6 +60,10 @@ def train_epoch(
         batch, y = get_batch(event_batch, batch_config, y)
         if train_loader_aug is not None:
             event_batch_aug = next(train_loader_aug)
+            if len(batch.dropped_batches):
+                print("Dropped batches:", batch.dropped_batches, " - skipping this iteration")
+                # Quicker this than to implement all the indexing complications from dropped batches
+                continue
             y_aug = gt_func(event_batch_aug)
             #print("len(event_batch_aug):", len(event_batch_aug))
             #print("len(event_batch):", len(event_batch))
@@ -88,7 +92,7 @@ def train_epoch(
         loss, loss_dict = loss_func(batch, y_pred, y)
         if train_loader_aug is not None:
             loss_aug = loss_func_aug(y_pred, y_pred_aug, batch, batch_aug, event_batch, event_batch_aug)
-            loss += loss_aug
+            loss += loss_aug * 100.0
             loss_dict["loss_IRC"] = loss_aug
         loss_time_end = time.time()
         wandb.log({

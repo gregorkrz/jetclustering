@@ -1,3 +1,4 @@
+# This script is used as a tool to make it easier to generate test jobs from clustering training
 """
 python -m scripts.generate_test_jobs -run LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59 -step 40000 -template t3 -tag no_pid_eval_1 -gl --custom-test-files "Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000 Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000  Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-1200_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"
 python -m scripts.generate_test_jobs -run LGATr_training_NoPID_10_16_64_2.0_2025_02_28_12_48_58 -step 40000 -template t3 -tag no_pid_eval_1 -gl --custom-test-files "Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000 Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000  Feb26_2025_E1000_N500_folders/PFNano_s-channel_mMed-1200_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"
@@ -70,6 +71,15 @@ runs = ["LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_47_788", "LGA
 
 runs = ["LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_16_839", "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_20_113"]
 
+runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_08_22_40_33_972"] # Short irc loss training, high coord loss - not super useful I think
+
+runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569",# Longer irc loss training, coord loss converges to a lower number - probably more useful - latest step 9960
+        "LGATr_500part_NOQMin_2025_04_09_21_53_37_210"] # Reproduce the results with 500 ghosts, no qmin
+
+#runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381"] # qmin=0.5, otherwise same as above
+#runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_CoordLossWeight1_2025_04_09_15_29_29_203"]
+
+
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -118,8 +128,7 @@ for run in runs:
     #for level in [""]:
         for aug_suffix in ["-aug-soft"]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 660 --steps-from-zero -template t3 -tag eval_19March2025_pt1e_2_NoQMinReprod_New_Run_10_to_1000p {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
-
+            print("python -m scripts.generate_test_jobs -run {} -step 9960 --steps-from-zero -template t3 -tag IRCLossDebug_Reproduce {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
 
 

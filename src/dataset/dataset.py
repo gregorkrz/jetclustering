@@ -501,7 +501,9 @@ class EventDataset(torch.utils.data.Dataset):
         soft_pfcands.original_particle_mapping = torch.tensor([-1] * len(soft_pfcands))
         pfcandsc = copy.deepcopy(pfcands)
         pfcandsc.original_particle_mapping = torch.arange(len(pfcands))
-        return concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
+        pfcandsc = concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
+        pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # for now, ignore the soft particles
+        return pfcandsc
 
     @staticmethod
     def pfcands_split_particles(pfcands, random_generator):
@@ -557,6 +559,8 @@ class EventDataset(torch.utils.data.Dataset):
                 result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(result["final_parton_level_particles"], n_soft, random_generator) # Also augment parton-level event for testing
             if "final_gen_particles" in result:
                 result["final_gen_particles"] = EventDataset.pfcands_add_soft_particles(result["final_gen_particles"], n_soft, random_generator)
+        else:
+            result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
             result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
@@ -665,7 +669,7 @@ class EventDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def get_fastjet_jets(event, jetdef, key="pfcands"):
-        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(event[key], jetdef)
+        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(getattr(event, key), jetdef)
         return EventJets(torch.tensor(pt), torch.tensor(eta), torch.tensor(phi), torch.tensor(m))
 
     def get_model_jets(self, i, pfcands, filter=True, dq=None, include_target=False):

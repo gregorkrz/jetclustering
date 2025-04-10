@@ -16,10 +16,11 @@ export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 export CUDA_LAUNCH_BLOCKING=1
 nvidia-smi
 
-srun singularity exec  -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc  --nv docker://gkrz/lgatr:v3 python -m src.train -train scouting_PFNano_signals2/SVJ_hadronic_std3/s-channel_mMed-900_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-2000 -val scouting_PFNano_signals2/SVJ_hadronic_std2/s-channel_mMed-700_mDark-20_rinv-0.7 -net src/models/LGATr/lgatr.py -bs 8 --gpus 0 --run-name debug_IRC_loss --val-dataset-size 10 --num-steps 200000 --attr-loss-weight 0.1 --coord-loss-weight 0.1 --beta-type pt+bc --gt-radius 0.8 --num-blocks 10 -mv-ch 16 -s-ch 64 --spatial-part-only --validation-steps 60 --no-pid --augment-soft-particles --load-model-weights train/LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59/step_50000_epoch_37.ckpt --num-workers 0 -irc --augment-soft-particles
+srun singularity exec  -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc  --nv docker://gkrz/lgatr:v3 python -m src.train -train scouting_PFNano_signals2/SVJ_hadronic_std3/s-channel_mMed-900_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-2000 -val scouting_PFNano_signals2/SVJ_hadronic_std2/s-channel_mMed-700_mDark-20_rinv-0.7 -net src/models/LGATr/lgatr.py -bs 8 --gpus 0 --run-name debug_IRC_loss_weighted100_plus_ghosts --val-dataset-size 10 --num-steps 200000 --attr-loss-weight 0.1 --coord-loss-weight 0.1 --beta-type pt+bc --gt-radius 0.8 --num-blocks 10 -mv-ch 16 -s-ch 64 --spatial-part-only --validation-steps 60 --no-pid  --load-model-weights train/LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59/step_50000_epoch_37.ckpt --num-workers 0 -irc --augment-soft-particles
 
 exit 0
 EOT
+
 
 # Args: n_blocks mv_channels s_channels radius (default: 10, 16, 64, 0.8)
 # bash jobs/vega/lgatr_training_t3_NoPID_IRC_debug.sh

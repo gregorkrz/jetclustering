@@ -44,7 +44,7 @@ colors = {
 
 #%%
 # The 'default' models:
-
+import fastjet
 models = {
     "GATr_rinv_03_m_900": "train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45",
     "GATr_rinv_07_m_900": "train/Test_betaPt_BC_all_datasets_2025_01_08_10_54_58",
@@ -143,7 +143,7 @@ def get_models_from_tag(tag):
         elif run.config[("gen_level")]:
             name = "gen-level"
         else:
-            name = "scouting PFCands"
+            name = "sc. "
             if run.config["augment_soft_particles"]:
                 name += " (soft part.)"
             if run.config["gt_radius"]:
@@ -155,9 +155,12 @@ def get_models_from_tag(tag):
 
 # with pt=1e-2 ghost particles, also trained on this
 
-models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum_Qcap05_p1e-2")
+#models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum_Qcap05_p1e-2")
 
 #models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum")
+models = get_models_from_tag("IRCLossDebugW100PlusGhosts")
+#models  = get_models_from_tag("eval_19March2025_pt1e-2_500particles_NoQMinReprod")
+
 '''
 models = {}
 #models["PL_aug_working"] = "train/Eval_eval_19March2025_small_aug_FTsoft1_2025_03_27_17_15_24_17" # This one was working ~ok for parton-level, why doesn't it work anymore?
@@ -179,7 +182,7 @@ print(models)
 #    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_43_07"
 #}
 
-output_path = get_path("eval_1e-2_pt", "results")
+output_path = get_path("Clustering_Plots_IRCLossDebug", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
@@ -196,7 +199,7 @@ for ds in range(25):
     fig1, ax1 = plt.subplots(n_events_per_file, len(models)+1,
                             figsize=(len(models) * sz, n_events_per_file * sz))
     for mn, model in enumerate(sorted(models.keys())):
-        print("    -------- model:", model)
+        print("    -------- Model:", model)
         dataset_path = models[model]
         filename = get_path(os.path.join(dataset_path, f"eval_{str(ds)}.pkl"), "results", fallback=1)
         clusters_file = get_path(os.path.join(dataset_path, f"clustering_hdbscan_4_05_{str(ds)}.pkl"), "results", fallback=1)
@@ -213,7 +216,11 @@ for ds in range(25):
             clusters = result["model_cluster"].numpy()
             clusters_file = None
         run_config = get_run_by_name(dataset_path.split("/")[-1]).config
-        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename, model_clusters_file=clusters_file, include_model_jets_unfiltered=True, aug_soft=run_config["augment_soft_particles"], seed=1000000, parton_level=run_config["parton_level"]) # temporarily set seed to 0 instead of 1e6
+        dataset = EventDataset.from_directory(result["filename"], mmap=True, model_output_file=filename,
+                                              model_clusters_file=clusters_file, include_model_jets_unfiltered=True,
+                                              aug_soft=run_config["augment_soft_particles"], seed=1000000,
+                                              parton_level=run_config["parton_level"],
+                                              gen_level=run_config["gen_level"]) # Temporarily set seed to 0 instead of 1e6
         for e in range(n_events_per_file):
             print("            ----- event:", e)
             c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]
@@ -226,9 +233,13 @@ for ds in range(25):
             plot_event(dataset[e], colors=c, ax=ax1[e, mn], pfcands=dataset.pfcands_key)
             uj = dataset[e].model_jets_unfiltered
             # print the pt of the jet in the middle of each cluster with font size 12
+            fj_jets = EventDataset.get_fastjet_jets(dataset[e], fastjet.JetDefinition(fastjet.antikt_algorithm, 0.8),
+                                                    "final_parton_level_particles")
+            for j in range(len(fj_jets)):
+                ax[e, 2*mn].text(fj_jets.eta[j].item(), fj_jets.phi[j].item(), "AK:"+str(round(fj_jets.pt[j].item(), 1)), color="blue", fontsize=6, alpha=0.5)
             for i in range(len(uj.pt)):
-                ax[e, 2*mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
-                ax1[e, mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
+                ax[e, 2*mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=6, alpha=0.5)
+                ax1[e, mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=6, alpha=0.5)
                 #ax[e, 2*mn+1].text(model_coords[0][i], model_coords[1][i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
             ax[e, 2*mn].set_title(model)
             ax1[e, mn].set_title(model)

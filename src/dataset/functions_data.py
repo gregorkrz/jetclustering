@@ -583,7 +583,7 @@ def get_corrected_batch(event_batch, cluster_idx, test):
         renumber_clusters=not test
     )
 
-def get_batch(event, batch_config, y, test=False):
+def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
     # Returns the EventBatch class, with correct scalars etc.
     # If test=True, it will put all events in the batch, i.e. no filtering of the events without signal.
     pfcands = event.pfcands
@@ -654,7 +654,7 @@ def get_batch(event, batch_config, y, test=False):
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
     if batch_config.get("obj_score", False):
         filt_dq = ~torch.isin(dq_coords_batch_idx, torch.tensor(batch_filter))
-    dropped_batches = batch_idx[filt].unique()
+    dropped_batches = batch_idx[~filt].unique()
     #if (~filt).sum() > 0:
     #    #print("Found events with no signal!!! Dropping it in training", (~filt).sum() / len(filt), batch_filter)
     #    #print("Renumbered", renumber_clusters(batch_idx[filt]).unique())
@@ -670,6 +670,7 @@ def get_batch(event, batch_config, y, test=False):
     else:
         y_filt = y[filt]
         #print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
+    print("------- Dropped batches:", dropped_batches)
     return EventBatch(
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],

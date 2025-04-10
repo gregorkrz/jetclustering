@@ -11,7 +11,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 # CosSim
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.tune_clustering --input "/work/gkrzmanc/jetclustering/results/train/Eval_eval_19March2025_pt1e-2_500particles_2025_04_01_11_57_07_994" --dataset-cap 1500 --spatial-components-only
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ --nv docker://gkrz/lgatr:v3 python -m scripts.tune_clustering --input "/work/gkrzmanc/jetclustering/results/train/Eval_IRCLossDebugW100PlusGhosts_2025_04_09_09_39_21_844" --dataset-cap 2000 --spatial-components-only
 
 
 # sbatch jobs/tune_clustering_LGATr_March.slurm

@@ -223,7 +223,10 @@ def get_run_config(run_name):
         "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_51_536": "10_1000_1e-2_scFT",
         "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_2025_04_04_12_57_47_788": "10_1000_1e-2_scFT",
         "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_16_839": "10_1000_1e-2_CW0",
-        "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_20_113": "10_1000_1e-2_CW0"
+        "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_20_113": "10_1000_1e-2_CW0",
+        "debug_IRC_loss_weighted100_plus_ghosts_2025_04_08_22_40_33_972": "IRC_short_debug",
+        "debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569": "IRC",
+        "debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381": "IRC_qmin05"
     }
 
     train_name = config["load_from_run"]
@@ -246,7 +249,7 @@ def get_run_config(run_name):
 
 
 sz = 5
-ak_path = os.path.join(path, "AKX_PL", "count_matched_quarks")
+ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
 radius = [0.8, 2.0]
 def select_radius(d, radius, depth=3):

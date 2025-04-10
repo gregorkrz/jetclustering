@@ -1,0 +1,69 @@
+treename: Delphes;1
+selection:
+   ### use `&`, `|`, `~` for logical operations on numpy arrays
+   ### can use functions from `math`, `np` (numpy), and `awkward` in the expression
+   #(jet_tightId==1) & (jet_no<2) & (fj_pt>200) & (fj_pt<2500) & (((sample_isQCD==0) & (fj_isQCD==0)) | ((sample_isQCD==1) & (fj_isQCD==1))) & (event_no%7!=0)
+   #(recojet_e>=5)
+
+test_time_selection:
+   ### selection to apply at test time (i.e., when running w/ --predict)
+   #(jet_tightId==1) & (jet_no<2) & (fj_pt>200) & (fj_pt<2500) & (((sample_isQCD==0) & (fj_isQCD==0)) | ((sample_isQCD==1) & (fj_isQCD==1))) & (event_no%7==0)
+   #(recojet_e<5)
+
+new_variables:
+   ### [format] name: formula
+   ### can use functions from `math`, `np` (numpy), and `awkward` in the expression
+   #pfcand_mask: awkward.JaggedArray.ones_like(pfcand_etarel)
+   #sv_mask: awkward.JaggedArray.ones_like(sv_etarel)
+   #pfcand_mask: awkward.JaggedArray.ones_like(pfcand_e)
+
+preprocess:
+  ### method: [manual, auto] - whether to use manually specified parameters for variable standardization
+  ### [note]: `[var]_mask` will not be transformed even if `method=auto`
+
+inputs:
+  n_CH:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ EFlowTrack_size, null ]
+  n_NH:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ EFlowNeutralHadron_size, null ]
+  n_photon:
+    pad_mode: wrap
+    length: 1
+    vars:
+      - [ EFlowPhoton_size, null ]
+  CH:
+    pad_mode: wrap
+    length: 750
+    vars:
+       - [EFlowTrack.Eta, null]
+       - [EFlowTrack.Phi, null]
+       - [EFlowTrack.PT, null]
+       - [EFlowTrack.Mass, null]
+  NH:
+    pad_mode: wrap
+    length: 750
+    vars:
+       - [EFlowNeutralHadron.Eta, null]
+       - [EFlowNeutralHadron.Phi, null]
+       - [EFlowNeutralHadron.ET, null]
+       - [EFlowNeutralHadron.Mass, null]
+  EFlowPhoton:
+    pad_mode: wrap
+    length: 750
+    vars:
+       - [EFlowPhoton.Eta, null]
+       - [EFlowPhoton.Phi, null]
+       - [EFlowPhoton.ET, null]
+observers:
+   #- recojet_e
+   #- recojet_theta
+   #- recojet_phi
+   #- recojet_m
+   #- n_pfcand
+
