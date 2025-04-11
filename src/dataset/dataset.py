@@ -567,14 +567,32 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
-            if "final_parton_level_particles" in result:
-                result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(
-                    result["final_parton_level_particles"], random_generator
-                )
-                # Also augment parton-level event for testing
-            if "final_gen_particles" in result:
-                result["final_gen_particles"] = EventDataset.pfcands_split_particles(result["final_gen_particles"], random_generator)
+            if i % 2:
+                # Every second one:
+                result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
+                if "final_parton_level_particles" in result:
+                    result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(
+                        result["final_parton_level_particles"], random_generator
+                    )
+                    # Also augment parton-level event for testing
+                if "final_gen_particles" in result:
+                    result["final_gen_particles"] = EventDataset.pfcands_split_particles(result["final_gen_particles"], random_generator)
+            else:
+                n_soft=500
+                result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator,
+                                                                            add_original_particle_mapping=True)
+                if "final_parton_level_particles" in result:
+                    result["final_parton_level_particles"] = EventDataset.pfcands_add_soft_particles(
+                        result["final_parton_level_particles"], n_soft, random_generator, add_original_particle_mapping=True
+                    )
+                    # Also augment parton-level event for testing
+                if "final_gen_particles" in result:
+                    result["final_gen_particles"] = EventDataset.pfcands_add_soft_particles(
+                        result["final_gen_particles"],
+                        n_soft,
+                        random_generator,
+                        add_original_particle_mapping=True
+                    )
         if self.model_output is not None:
             #if "final_parton_level_particles" in result and len(result["final_parton_level_particles"]) == 0:
             #    print("!!")

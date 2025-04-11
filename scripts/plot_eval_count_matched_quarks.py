@@ -189,10 +189,10 @@ def get_run_config(run_name):
         prefix = "parton level"
         result["level"] = "PL"
     elif config["gen_level"]:
-        prefix = "gen level"
+        prefix = "GL"
         result["level"] = "GL"
     else:
-        prefix = "scouting"
+        prefix = "sc."
         result["level"] = "scouting"
     if config["augment_soft_particles"]:
         result["ghosts"] = True
@@ -246,7 +246,7 @@ def get_run_config(run_name):
         training_dataset += "_noPLEtaFilter"
     result["GT_R"] = gt_r
     result["training_dataset"] = training_dataset
-    return f"GT_R={gt_r}, tr.: {training_dataset}, {prefix}", result
+    return f"GT_R={gt_r} {training_dataset}, {prefix}", result
 
 
 sz = 5
