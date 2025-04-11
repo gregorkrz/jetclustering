@@ -482,7 +482,7 @@ class EventDataset(torch.utils.data.Dataset):
             self.model_clusters = None
 
     @staticmethod
-    def pfcands_add_soft_particles(pfcands, n_soft, random_generator):
+    def pfcands_add_soft_particles(pfcands, n_soft, random_generator, add_original_particle_mapping=False):
         # augment the dataset with soft particles
         eta_bounds = [-2.4, 2.4]
         phi_bounds = [-3.14, 3.14]
@@ -505,7 +505,8 @@ class EventDataset(torch.utils.data.Dataset):
         pfcandsc = copy.deepcopy(pfcands)
         pfcandsc.original_particle_mapping = torch.arange(len(pfcands))
         pfcandsc = concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
-        pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # for now, ignore the soft particles
+        if not add_original_particle_mapping:
+            pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # for now, ignore the soft particles
         return pfcandsc
 
     @staticmethod
@@ -778,7 +779,6 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         synthetic_npart_min=2,
         synthetic_npart_max=5,
         jets=False,
-        delphes=False
     ):
         self._iters = {} if infinity_mode or in_memory else None
         _init_args = set(self.__dict__.keys())
@@ -800,7 +800,6 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         self.dataset_cap = dataset_cap  # used to cap the dataset to some fixed number of events - used for debugging purposes
         self.n_noise = n_noise
         self.jets = jets
-        self.delphes = delphes
         # ==== sampling parameters ====
         self._sampler_options = {
             "up_sample": up_sample,

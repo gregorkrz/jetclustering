@@ -226,7 +226,8 @@ def get_run_config(run_name):
         "LGATr_pt_1e-2_500part_NoQMin_10_to_1000p_CW0_2025_04_04_15_30_20_113": "10_1000_1e-2_CW0",
         "debug_IRC_loss_weighted100_plus_ghosts_2025_04_08_22_40_33_972": "IRC_short_debug",
         "debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569": "IRC",
-        "debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381": "IRC_qmin05"
+        "debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381": "IRC_qmin05",
+        "LGATr_500part_NOQMin_2025_04_09_21_53_37_210": "500part_NOQMin_reprod",
     }
 
     train_name = config["load_from_run"]

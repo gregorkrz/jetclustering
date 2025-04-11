@@ -62,7 +62,7 @@ inputs:
        - [EFlowPhoton.ET, null]
   GenParticles:
       pad_mode: wrap
-      length: 750
+      length: 7500
       vars:
         - [Particle.Eta, null]
         - [Particle.Phi, null]

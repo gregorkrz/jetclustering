@@ -17,6 +17,7 @@ parser.add_argument("--output", type=str)
 parser.add_argument("--overwrite", action="store_true")
 parser.add_argument("--dataset-cap", type=int, default=-1)
 parser.add_argument("--v2", action="store_true") # V2 means that the dataset also stores parton-level and genParticles
+parser.add_argument("--delphes", action="store_true")
 
 args = parser.parse_args()
 path = get_path(args.input, "data")
@@ -116,7 +117,10 @@ for dir in os.listdir(path):
     if args.overwrite or not os.path.exists(os.path.join(output, dir)):
         config = get_path('config_files/config_jets.yaml', 'code')
         if args.v2:
-            config = get_path('config_files/config_jets_1.yaml', 'code')
+            delphes_suffix = ""
+            if args.delphes:
+                delphes_suffix = "_delphes"
+            config = get_path(f'config_files/config_jets_1{delphes_suffix}.yaml', 'code')
         preprocess_dataset(os.path.join(path, dir), output, config_file=config, dataset_cap=args.dataset_cap)
     else:
         print("Skipping", dir + ", already exists")

@@ -216,7 +216,7 @@ def create_jets_outputs_Delphes(output):
     nh_charge = [0] * n_nh
     nh_pid = [2112] * n_nh
     nh_jets = [-1] * n_nh
-    ch_charge = ch[:, 0]
+    ch_charge = ch[4, :]
     ch_pid = [211] * n_ch
     ch_jets = [-1] * n_ch
     photons_jets = [-1] * n_photons
@@ -232,12 +232,13 @@ def create_jets_outputs_Delphes(output):
     photon_data = EventPFCands(photons[:, 2], photons[:, 0], photons[:, 1], photons_mass, photons_charge,
                                photons_pid, pf_cand_jet_idx=photons_jets)
     pfcands = concat_event_collection([nh_data, ch_data, photon_data], nobatch=1)
-
+    filter_pfcands = (pfcands.pt > 0.5) & (torch.abs(pfcands.eta) < 2.4)
+    pfcands.mask(filter_pfcands)
     genp_status = genp[:, 6]
-    genp_eta = genp[:, 1]
+    genp_eta = genp[:, 0]
     genp_pt = genp[:, 2]
     filter_dq = genp_status == 23
-    filter_partons = (genp_status >= 51) & (genp_status <= 59) & (np.abs(genp_eta) < 2.4) & (genp_pt > 0.5) & ()
+    filter_partons = (genp_status >= 51) & (genp_status <= 59) & (np.abs(genp_eta) < 2.4) & (genp_pt > 0.5)
     matrix_element_gen_particles = EventPFCands(
         genp[filter_dq, 2],
         genp[filter_dq, 0],
@@ -266,6 +267,11 @@ def create_jets_outputs_Delphes(output):
         genp[filter_final_gen_particles, 5],
         pf_cand_jet_idx=-1 * np.ones_like(genp[filter_final_gen_particles, 0]),
     )
+    if len(final_gen_particles) == 0:
+        print("No gen particles in this event?")
+        print(genp_status, len(genp_status))
+        #print(genp_eta)
+
     return Event(pfcands=pfcands, matrix_element_gen_particles=matrix_element_gen_particles,
                  final_gen_particles=final_gen_particles, final_parton_level_particles=parton_level_particles)
 

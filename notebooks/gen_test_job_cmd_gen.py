@@ -75,7 +75,7 @@ runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_08_22_40_33_972"] # Shor
 
 runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569",# Longer irc loss training, coord loss converges to a lower number - probably more useful - latest step 9960
         "LGATr_500part_NOQMin_2025_04_09_21_53_37_210"] # Reproduce the results with 500 ghosts, no qmin
-
+runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569"] #just the 2nd one
 #runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381"] # qmin=0.5, otherwise same as above
 #runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_CoordLossWeight1_2025_04_09_15_29_29_203"]
 
@@ -128,8 +128,6 @@ for run in runs:
     #for level in [""]:
         for aug_suffix in ["-aug-soft"]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 9960 --steps-from-zero -template t3 -tag IRCLossDebug_Reproduce {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 720 --steps-from-zero -template t3 -tag IRCLossDebug_Reproduce {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
-
-
 
