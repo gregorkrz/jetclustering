@@ -671,6 +671,9 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
         y_filt = y[filt]
         #print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
     print("------- Dropped batches:", dropped_batches)
+    if pfcands.original_particle_mapping is not None:
+        opm = pfcands.original_particle_mapping[filt]
+    else: opm = None
     return EventBatch(
         input_vectors=batch_vectors[filt],
         input_scalars=batch_scalars[filt],
@@ -679,8 +682,9 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
         filter=filt,
         dropped_batches=dropped_batches,
         renumber=not test,
-        original_particle_mapping=pfcands.original_particle_mapping[filt]
+        original_particle_mapping=opm
     ), y_filt
+
 
 def to_tensor(item):
     if isinstance(item, torch.Tensor):

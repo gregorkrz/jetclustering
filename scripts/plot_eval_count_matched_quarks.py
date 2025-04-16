@@ -186,7 +186,7 @@ def get_run_config(run_name):
     config = r.config
     result = {}
     if config["parton_level"]:
-        prefix = "parton level"
+        prefix = "PL"
         result["level"] = "PL"
     elif config["gen_level"]:
         prefix = "GL"
@@ -251,7 +251,10 @@ def get_run_config(run_name):
 
 sz = 5
 ak_path = os.path.join(path, "AKX", "count_matched_quarks")
+
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
+result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+
 radius = [0.8, 2.0]
 def select_radius(d, radius, depth=3):
     # from the dictionary, select radius at the level
@@ -260,7 +263,7 @@ def select_radius(d, radius, depth=3):
     return {key: select_radius(d[key], radius, depth - 1) for key in d}
 
 if len(models):
-    fig, ax = plt.subplots(3, len(models) + len(radius), figsize=(sz * len(models), sz * 3))
+    fig, ax = plt.subplots(3, len(models) + len(radius)*2, figsize=(sz * (len(models)+len(radius)*2), sz * 3))
     for i, model in tqdm(enumerate(sorted(models))):
         output_path = os.path.join(path, model, "count_matched_quarks")
         if not os.path.exists(os.path.join(output_path, "result.pkl")):
@@ -295,7 +298,17 @@ if len(models):
         ax[0, i+len(models)].set_title(f"AK, R={R}")
         ax[1, i+len(models)].set_title(f"AK, R={R}")
         ax[2, i+len(models)].set_title(f"AK, R={R}")
-
+    for i, R in enumerate(radius):
+        result_PR_AKX_current = select_radius(result_PR_AKX_PL, R)
+        matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
+                    metric_comp_func=lambda r: r[0], ax=ax[0, i+len(models)+len(radius)])
+        matrix_plot(result_PR_AKX_current, "Reds", "Recall (N matched dark quarks / N dark quarks)",
+                    metric_comp_func=lambda r: r[1], ax=ax[1, i+len(models)+len(radius)])
+        matrix_plot(result_PR_AKX_current, "Purples", r"$F_1$ score", metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]),
+                    ax=ax[2, i+len(models)+len(radius)])
+        ax[0, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
+        ax[1, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
+        ax[2, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
     fig.tight_layout()
     fig.savefig(out_file_PR)
     print("Saved to", out_file_PR)

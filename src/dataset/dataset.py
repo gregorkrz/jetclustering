@@ -369,9 +369,10 @@ def filter_pfcands(pfcands):
     # filter the GenParticles so that dark matter particles are not present
     # dark matter particles are defined as those with abs(pdgId) > 10000 or pdgId between 50-60
     # TODO: filter out high eta - temporarily this is done here, but it should be done in the ntuplizer in order to avoid big files
-    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.5)#& (pfcands.pt > 0.5)
+    mask = (torch.abs(pfcands.pid) < 10000) & ((torch.abs(pfcands.pid) < 50) | (torch.abs(pfcands.pid) > 60)) & (torch.abs(pfcands.eta) < 2.4) & (pfcands.pt > 0.5) #& (pfcands.pt > 0.5)
     pfcands.mask(mask)
     return pfcands
+
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
@@ -691,7 +692,11 @@ class EventDataset(torch.utils.data.Dataset):
 
     @staticmethod
     def get_fastjet_jets(event, jetdef, key="pfcands"):
-        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(getattr(event, key), jetdef)
+        if type(event) == dict:
+            k = event[key]
+        else:
+            k = getattr(event, key)
+        pt, eta, phi, m = EventDataset.get_jets_fastjets_raw(k, jetdef)
         return EventJets(torch.tensor(pt), torch.tensor(eta), torch.tensor(phi), torch.tensor(m))
 
     def get_model_jets(self, i, pfcands, filter=True, dq=None, include_target=False):

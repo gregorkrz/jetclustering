@@ -100,7 +100,7 @@ from src.utils.nn.tools_condensation import evaluate as evaluate
 
 training_mode = bool(args.data_train)
 if training_mode:
-    # val_loaders and test_loaders are a dictionary file -> dataloader with only one dataset
+    # val_loaders and test_loaders are a dictionary file -> Dataloader with only one dataset
     # train_loader is a single dataloader of all the files
     train_loader, val_loaders, val_dataset = train_load(args)
     if args.irc_safety_loss:
@@ -109,7 +109,6 @@ if training_mode:
         train_loader_aug = None
 else:
     test_loaders = test_load(args)
-
 
 if args.gpus:
     if args.backend is not None:

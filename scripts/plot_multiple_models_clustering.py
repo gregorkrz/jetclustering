@@ -145,11 +145,17 @@ def get_models_from_tag(tag):
         else:
             name = "sc. "
             if run.config["augment_soft_particles"]:
-                name += " (soft part.)"
+                name += " (aug)"
             if run.config["gt_radius"]:
                 name += " GT_R=" + str(run.config["gt_radius"])
             if "transformer" in run.config["network_config"]:
                 name += " (T)"
+        if run.config["load_from_run"] == "debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569":
+            name += " IRC"
+        elif run.config["load_from_run"] == "LGATr_500part_NOQMin_2025_04_09_21_53_37_210":
+            name += " NoIRC"
+        elif run.config["load_from_run"] == "IRC_loss_Split_and_Noise_alternate_NoAug_2025_04_11_16_15_48_955":
+            name += " IRC S+N"
         models[name] = "train/" + run.name
     return models
 
@@ -158,7 +164,7 @@ def get_models_from_tag(tag):
 #models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum_Qcap05_p1e-2")
 
 #models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum")
-models = get_models_from_tag("IRCLossDebugW100PlusGhosts")
+models = get_models_from_tag("SmallDSReprod2")
 #models  = get_models_from_tag("eval_19March2025_pt1e-2_500particles_NoQMinReprod")
 
 '''
@@ -170,8 +176,6 @@ models["reprod2"] = "train/Eval_eval_19March2025_reprod_2_2025_03_30_17_37_54_19
 # reprod3: hdbscan min_samples set to 0
 
 '''
-
-
 
 print(models)
 
@@ -185,6 +189,7 @@ print(models)
 output_path = get_path("Clustering_Plots_IRCLossDebug", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
+
 
 sz = 3
 n_events_per_file = 25

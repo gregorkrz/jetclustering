@@ -75,11 +75,11 @@ runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_08_22_40_33_972"] # Shor
 
 runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569",# Longer irc loss training, coord loss converges to a lower number - probably more useful - latest step 9960
         "LGATr_500part_NOQMin_2025_04_09_21_53_37_210"] # Reproduce the results with 500 ghosts, no qmin
-runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569"] #just the 2nd one
+#runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569"] #just the 2nd one
 #runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381"] # qmin=0.5, otherwise same as above
 #runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_CoordLossWeight1_2025_04_09_15_29_29_203"]
-
-
+#runs = ["IRC_loss_Split_and_Noise_alternate_NoAug_2025_04_11_16_15_48_955"] # Split and noise alternate
+runs = ["LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59"] # pick step 50k of this one - results without ghosts (might work better on parton-level)
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -114,20 +114,22 @@ test_files_smaller =["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13
 "PFNano_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
 "PFNano_s-channel_mMed-800_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"]
 
-
-test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
-
+#test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
+#test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFixF/" + x for x in test_files]
+test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
+
 
 print("------")
 for run in runs:
     #for level in ["-pl", ""]:
     #for level in ["-pl", ""]:
-    for level in ["", "-pl", "-gl"]:
+    #for level in ["", "-pl", "-gl"]:
+    for level in ["-pl"]:
     #for level in ["-gl", "-pl", ""]:
     #for level in [""]:
-        for aug_suffix in ["-aug-soft"]:
+        for aug_suffix in [""]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 720 --steps-from-zero -template t3 -tag IRCLossDebug_Reproduce {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step 50000 --steps-from-zero -template t3 -tag SmallDSReprod2 {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
 

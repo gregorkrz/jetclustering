@@ -15,7 +15,6 @@ export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 
 # Run the Python script
-singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc --nv docker://gkrz/lgatr:v3 python -m src.preprocessing.preprocess_dataset --input /work/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K --output Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K --v2 --overwrite
+singularity exec -B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc --nv docker://gkrz/lgatr:v3 python -m src.preprocessing.preprocess_dataset --input Feb26_2025_E1000_N500_noPartonFilter_GluonFix_FullF --output Feb26_2025_E1000_N500_noPartonFilter_GluonFix_FullF --v2 --overwrite
 
-# Run the job: sbatch jobs/preprocess_v3.slurm
-s_v
+# Run the job: sbatch jobs/preprocess_v3_2ksmall_5parts.slurm

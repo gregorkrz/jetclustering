@@ -30,9 +30,9 @@ def remove_from_list(lst):
         out.append(item)
     return out
 
-def preprocess_dataset(path, output_path, config_file, dataset_cap):
-    datasets = os.listdir(path)
-    datasets = [os.path.join(path, x) for x in datasets]
+def preprocess_dataset(datasets, output_path, config_file, dataset_cap):
+    #datasets = os.listdir(path)
+    #datasets = [os.path.join(path, x) for x in datasets]
     class Args:
         def __init__(self):
             self.data_train = datasets
@@ -85,11 +85,11 @@ def preprocess_dataset(path, output_path, config_file, dataset_cap):
         except StopIteration:
             break
     t1 = time()
-    print("Took", t1-t0, "s -", path)
+    print("Took", t1-t0, "s -", datasets[0])
     from src.dataset.functions_data import concat_events
     events = concat_events(data) # TODO: This can be done in a nicer way, using less memory (?)
     result = events.serialize()
-    dir_name = path.split("/")[-1]
+    dir_name = datasets[0].split("/")[-2]
     save_to_dir = os.path.join(output_path, dir_name)
     Path(save_to_dir).mkdir(parents=True, exist_ok=True)
     for key in result[0]:
@@ -121,7 +121,9 @@ for dir in os.listdir(path):
             if args.delphes:
                 delphes_suffix = "_delphes"
             config = get_path(f'config_files/config_jets_1{delphes_suffix}.yaml', 'code')
-        preprocess_dataset(os.path.join(path, dir), output, config_file=config, dataset_cap=args.dataset_cap)
+        for i, file in enumerate(sorted(os.listdir(os.path.join(path, dir)))):
+            print("Preprocessing file", file)
+            preprocess_dataset([os.path.join(path, dir, file)], output + "_part"+str(i), config_file=config, dataset_cap=args.dataset_cap)
     else:
         print("Skipping", dir + ", already exists")
         # flush

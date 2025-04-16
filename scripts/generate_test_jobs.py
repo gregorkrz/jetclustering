@@ -122,7 +122,6 @@ srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train
     return file
 
 
-
 if not os.path.exists("jobs/slurm_files"):
     os.makedirs("jobs/slurm_files")
 if not os.path.exists("jobs/logs"):
@@ -137,4 +136,5 @@ with open("jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number), "w") as f
 
 if not args.no_submit:
     os.system("sbatch jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number))
+
 
