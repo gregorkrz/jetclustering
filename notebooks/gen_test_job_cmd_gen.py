@@ -79,7 +79,18 @@ runs = ["debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569",# Longe
 #runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381"] # qmin=0.5, otherwise same as above
 #runs = ["debug_IRC_loss_weighted100_plus_ghosts_Qmin05_CoordLossWeight1_2025_04_09_15_29_29_203"]
 #runs = ["IRC_loss_Split_and_Noise_alternate_NoAug_2025_04_11_16_15_48_955"] # Split and noise alternate
-runs = ["LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59"] # pick step 50k of this one - results without ghosts (might work better on parton-level)
+#runs = ["LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59"] # pick step 50k of this one - results without ghosts (might work better on parton-level)
+
+#runs = ["IRC_loss_Split_and_Noise_alternate_Aug_2025_04_14_11_10_21_788", "IRC_loss_Split_and_Noise_alternate_NoAug_2025_04_11_16_15_48_955"] # pick step 12900 of these
+
+
+runs = ["LGATr_training_NoPID_Delphes_10_16_64_0.8_2025_04_17_18_07_38_405"] # step 60k: initial clustering training on Delphes 900_03 dataset
+
+runs = ["LGATr_500part_NOQMin_Delphes_2025_04_19_11_15_24_417"]#, "Delphes_IRC_aug_2025_04_19_11_16_17_130"]#step 12660
+
+#runs = ["Delphes_IRC_aug_SplitOnly_2025_04_20_15_50_33_553"] # IRC loss only with splitting
+runs = ["Delphes_IRC_NOAug_SplitOnly_2025_04_21_12_58_36_99", "Delphes_IRC_NOAug_SplitAndNoise_2025_04_21_19_32_08_865"]
+runs = ["CONT_Delphes_IRC_aug_SplitOnly_2025_04_21_12_53_27_730"]
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -100,7 +111,7 @@ test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pyt
                 "PFNano_s-channel_mMed-900_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000"
               ]
 
-test_files_smaller =["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
+test_files_smaller = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
 "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
 "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
 "PFNano_s-channel_mMed-1100_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
@@ -114,22 +125,24 @@ test_files_smaller =["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13
 "PFNano_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
 "PFNano_s-channel_mMed-800_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"]
 
+test_files_delphes = ['SVJ_mZprime-1100_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.3_alpha-peak']
+
 #test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFixF/" + x for x in test_files]
 test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
-
+test_files = ["Delphes_020425_test/" + x for x in test_files_delphes] # Delphes test files
 
 print("------")
+
 for run in runs:
     #for level in ["-pl", ""]:
     #for level in ["-pl", ""]:
-    #for level in ["", "-pl", "-gl"]:
-    for level in ["-pl"]:
+    for level in ["-gl", "", "-pl"]:
+    #for level in ["-pl"]:
     #for level in ["-gl", "-pl", ""]:
     #for level in [""]:
-        for aug_suffix in [""]:
         #for aug_suffix in ["-aug-soft"]:
-            print("python -m scripts.generate_test_jobs -run {} -step 50000 --steps-from-zero -template t3 -tag SmallDSReprod2 {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
+        for aug_suffix in ["-aug-soft"]:
+            print("python -m scripts.generate_test_jobs -run {} -step 10200 --steps-from-zero -template t3 -tag DelphesTestDelphesTrain {} --custom-test-files \"{}\" {} ".format(run, level, " ".join(test_files), aug_suffix))
 print("-----")
-

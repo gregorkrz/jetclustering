@@ -18,6 +18,7 @@ parser.add_argument("--submit-AKX", "-AKX", action="store_true")
 parser.add_argument("--submit-AK8", "-AK8", action="store_true")
 parser.add_argument("--parton-level", "-pl", action="store_true") # To be used together with 'fastjet_jets' and --submit-AKX
 parser.add_argument("--gen-level", "-gl", action="store_true")
+parser.add_argument("--overwrite", "-ow", action="store_true") # overwrite the slurm job if it exists
 
 args = parser.parse_args()
 api = wandb.Api()
@@ -146,6 +147,14 @@ if args.submit_AK8:
     print("---- Submitted AK8 run -----")
     sys.exit(0)
 
+def extract_n_events(filename):
+    if not os.path.exists(filename):
+        return -1
+    content = open(filename).read().strip()
+    try:
+        return int(content)
+    except:
+        return -1
 
 if args.submit_AKX:
     # Submit also AKX
@@ -184,8 +193,9 @@ for i, run in enumerate(runs):
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)
     #if evaluated(rel_path_save):
-    if os.path.exists(os.path.join(rel_path_save, "count_matched_quarks", "eval_done.txt")):
-        print("Skipping", run, "because this file exists:", os.path.join(rel_path_save, "count_matched_quarks", "eval_done.txt"))
+    n_events = extract_n_events(os.path.join(rel_path_save, "count_matched_quarks", "n_events.txt"))
+    if os.path.exists(os.path.join(rel_path_save, "count_matched_quarks", "n_events.txt")) and not args.overwrite and n_events > 0:
+        print("Skipping", run, "because this file exists:", os.path.join(rel_path_save, "count_matched_quarks", "n_events.txt"))
         continue
     else:
         print("Evaluating", run)

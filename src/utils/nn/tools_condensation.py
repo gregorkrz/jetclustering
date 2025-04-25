@@ -277,8 +277,8 @@ def evaluate(
             "pt": [],
             "mass": [],
             "AK8_cluster": [],
-            "radius_cluster_GenJets": [],
-            "radius_cluster_FatJets": [],
+            #"radius_cluster_GenJets": [],
+            #"radius_cluster_FatJets": [],
             "model_cluster": [],
             #"event_clusters_idx": []
         }
@@ -348,8 +348,8 @@ def evaluate(
                     predictions["phi"].append(pfcands.phi.detach().cpu())
                     predictions["pt"].append(pfcands.pt.detach().cpu())
                     predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
-                    predictions["radius_cluster_GenJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets).detach().cpu())
-                    predictions["radius_cluster_FatJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets).detach().cpu())
+                    #predictions["radius_cluster_GenJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets).detach().cpu())
+                    #predictions["radius_cluster_FatJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets).detach().cpu())
                     predictions["mass"].append(pfcands.mass.detach().cpu())
                     if predictions["pred"][-1].shape[1] == 4:
                         coords = predictions["pred"][-1][:, :3]

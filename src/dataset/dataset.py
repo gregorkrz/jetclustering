@@ -306,8 +306,12 @@ class _SimpleIter(object):
 class EventDatasetCollection(torch.utils.data.Dataset):
     def __init__(self, dir_list, args, aug_soft=False, aug_collinear=False):
         self.event_collections_dict = OrderedDict()
+        if args:
+            aug_soft = args.augment_soft_particles
+        else:
+            aug_soft=False
         for dir in dir_list:
-            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=args.augment_soft_particles or aug_soft, seed=0, aug_collinear=aug_collinear)
+            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=aug_soft or aug_soft, seed=0, aug_collinear=aug_collinear)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
         self.event_thresholds = [x.n_events for x in self.event_collections_dict.values()]
         self.event_thresholds = np.cumsum([0] + self.event_thresholds)
@@ -568,7 +572,7 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            if i % 2:
+            if True:# i % 2:
                 # Every second one:
                 result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
                 if "final_parton_level_particles" in result:

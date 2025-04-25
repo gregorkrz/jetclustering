@@ -20,6 +20,9 @@ path = get_path(args.input, "results")
 
 models = sorted([x for x in os.listdir(path) if not os.path.isfile(os.path.join(path, x))])
 models = [x for x in models if "AKX" not in x]
+
+figures_all = {} # title to the f1 score figure to plot
+figures_all_sorted = {} # model used -> step -> level -> f1 figure
 print("Models:", models)
 
 radius = {
@@ -48,6 +51,8 @@ comments = {
 }
 
 out_file_PR = os.path.join(get_path(args.input, "results"), "precision_recall.pdf")
+out_file_PRf1 = os.path.join(get_path(args.input, "results"), "f1_score_sorted.pdf")
+
 out_file_PG = os.path.join(get_path(args.input, "results"), "PLoverGL.pdf")
 
 if args.threshold_obj_score != -1:
@@ -188,12 +193,15 @@ def get_run_config(run_name):
     if config["parton_level"]:
         prefix = "PL"
         result["level"] = "PL"
+        result["level_idx"] = 0
     elif config["gen_level"]:
         prefix = "GL"
         result["level"] = "GL"
+        result["level_idx"] = 2
     else:
         prefix = "sc."
         result["level"] = "scouting"
+        result["level_idx"] = 1
     if config["augment_soft_particles"]:
         result["ghosts"] = True
         result["level"] += "+ghosts"
@@ -228,6 +236,15 @@ def get_run_config(run_name):
         "debug_IRC_loss_weighted100_plus_ghosts_2025_04_09_13_48_55_569": "IRC",
         "debug_IRC_loss_weighted100_plus_ghosts_Qmin05_2025_04_09_14_45_51_381": "IRC_qmin05",
         "LGATr_500part_NOQMin_2025_04_09_21_53_37_210": "500part_NOQMin_reprod",
+        "IRC_loss_Split_and_Noise_alternate_Aug_2025_04_14_11_10_21_788": "IRC_Aug_S+N",
+        "IRC_loss_Split_and_Noise_alternate_NoAug_2025_04_11_16_15_48_955": "IRC_S+N",
+        "LGATr_training_NoPID_Delphes_10_16_64_0.8_2025_04_17_18_07_38_405": "DelphesTrain",
+        "Delphes_IRC_aug_2025_04_19_11_16_17_130": "DelphesTrain+IRC",
+        "LGATr_500part_NOQMin_Delphes_2025_04_19_11_15_24_417": "DelphesTrain+ghosts",
+        "Delphes_IRC_aug_SplitOnly_2025_04_20_15_50_33_553": "DelphesTrain+IRC_SplitOnly",
+        "Delphes_IRC_NOAug_SplitOnly_2025_04_21_12_58_36_99": "Delphes_IRC_NoAug_SplitOnly",
+        "Delphes_IRC_NOAug_SplitAndNoise_2025_04_21_19_32_08_865": "Delphes_IRC_NoAug_S+N",
+        "CONT_Delphes_IRC_aug_SplitOnly_2025_04_21_12_53_27_730": "IRC_aug_SplitOnly_ContFrom14k"
     }
 
     train_name = config["load_from_run"]
@@ -254,6 +271,7 @@ ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
 result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+result_PR_AKX_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
 
 radius = [0.8, 2.0]
 def select_radius(d, radius, depth=3):
@@ -264,6 +282,7 @@ def select_radius(d, radius, depth=3):
 
 if len(models):
     fig, ax = plt.subplots(3, len(models) + len(radius)*2, figsize=(sz * (len(models)+len(radius)*2), sz * 3))
+    # three columns: PL, GL, scouting for each model
     for i, model in tqdm(enumerate(sorted(models))):
         output_path = os.path.join(path, model, "count_matched_quarks")
         if not os.path.exists(os.path.join(output_path, "result.pkl")):
@@ -286,7 +305,25 @@ if len(models):
         ax[0, i].set_title(run_config_title)
         ax[1, i].set_title(run_config_title)
         ax[2, i].set_title(run_config_title)
+        li = run_config["level_idx"]
+        #ax_f1[i, li].set_title(run_config_title)
+        #matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax_f1[i, li])
+        figures_all[run_config_title] = result_PR
         print(model, run_config_title)
+        td, gtr, level = run_config["training_dataset"], run_config["GT_R"], run_config["level_idx"]
+        td = "R=" + str(gtr) + " " + td
+        if td not in figures_all_sorted:
+            figures_all_sorted[td] = {}
+        figures_all_sorted[td][level] = figures_all[run_config_title]
+    result_AKX_current = select_radius(result_PR_AKX, 0.8)
+    result_AKX_PL = select_radius(result_PR_AKX_PL, 0.8)
+    result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
+
+    figures_all_sorted["AK8"]: {
+        0: result_AKX_PL,
+        1: result_AKX_current,
+        2: result_AKX_GL
+    }
     for i, R in enumerate(radius):
         result_PR_AKX_current = select_radius(result_PR_AKX, R)
         matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
@@ -298,6 +335,8 @@ if len(models):
         ax[0, i+len(models)].set_title(f"AK, R={R}")
         ax[1, i+len(models)].set_title(f"AK, R={R}")
         ax[2, i+len(models)].set_title(f"AK, R={R}")
+        t = f"AK, R={R}"
+        figures_all[t] = result_PR_AKX_current
     for i, R in enumerate(radius):
         result_PR_AKX_current = select_radius(result_PR_AKX_PL, R)
         matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
@@ -309,10 +348,37 @@ if len(models):
         ax[0, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
         ax[1, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
         ax[2, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
+        figures_all[f"AK PL, R={R}"] = result_PR_AKX_current
+    for i, R in enumerate(radius):
+        result_PR_AKX_current = select_radius(result_PR_AKX_GL, R)
+        figures_all[f"AK GL, R={R}"] = result_PR_AKX_current
     fig.tight_layout()
     fig.savefig(out_file_PR)
     print("Saved to", out_file_PR)
+    #fig_f1.tight_layout()
+    #fig_f1.savefig(out_file_PRf1)
+    pickle.dump(figures_all, open(out_file_PR.replace(".pdf", ".pkl"), "wb"))
 
+figures_all_sorted["AK8"] = {
+    0: select_radius(result_PR_AKX_PL, 0.8),
+    1: select_radius(result_PR_AKX, 0.8),
+    2: select_radius(result_PR_AKX_GL, 0.8)
+}
+
+fig_f1, ax_f1 = plt.subplots(len(figures_all_sorted), 3, figsize=(sz * 1.8, sz * len(figures_all_sorted)))
+text_level = ["PL", "sc.", "GL"]
+for i in range(len(figures_all_sorted)):
+    model = list(figures_all_sorted.keys())[i]
+    for j in range(3):
+        if j in figures_all_sorted[model]:
+            if j in figures_all_sorted[model]:
+                matrix_plot(figures_all_sorted[model][j], "Purples", r"$F_1$ score",
+                            metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax_f1[i, j])
+                ax_f1[i, j].set_title(model + " "+ text_level[j])
+                ax_f1[i, j].set_xlabel("mMed")
+                ax_f1[i, j].set_ylabel("rInv")
+fig_f1.tight_layout()
+fig_f1.savefig(out_file_PRf1)
 ## Now do the GT R vs metrics plots
 
 oranges = plt.get_cmap("Oranges")
@@ -480,7 +546,6 @@ fig.tight_layout()
 fig.savefig(out_file_PG)
 
 print("Saved to", out_file_PG)
-
 
 1/0
 

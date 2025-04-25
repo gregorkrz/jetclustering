@@ -6,7 +6,7 @@ import os
 parser = argparse.ArgumentParser(description='Copy the files in appropriate folders - no matter how many parts are in the files') # /work/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Full/
 parser.add_argument("--input", type=str, default="/work/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Full")
 parser.add_argument("--output", type=str, default="/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_GluonFix_FullF")
-parser.add_argument("--overwrite", action="store_true") # if true, it will overwrite the files, otherwise, it will skip files that have been already copied
+parser.add_argument("--overwrite", action="store_true") # If True, it will overwrite the files, otherwise, it will skip files that have been already copied
 # --input /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter --output /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_Folders
 # --input /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_C --output /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_C_Folders
 # --input /work/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_C --output /work/gkrzmanc/jetclustering/data/Feb26_2025_E1000_N500_noPartonFilter_C_F

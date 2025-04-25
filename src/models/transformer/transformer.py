@@ -66,8 +66,8 @@ class TransformerModel(torch.nn.Module):
         if self.global_features_copy:
             assert data_events is not None and data_events_clusters is not None
             assert self.obj_score
-            inputs_v = data_events.input_vectors
-            inputs_scalar = data_events.input_scalars
+            inputs_v = data_events.input_vectors.float()
+            inputs_scalar = data_events.input_scalars.float()
             assert inputs_scalar.shape[1] == self.n_scalars, "Expected %d, got %d" % (
             self.n_scalars, inputs_scalar.shape[1])
             inputs_transformer_events = torch.cat([inputs_scalar, inputs_v], dim=1)

@@ -18,6 +18,7 @@ from src.dataset.dataset import EventDataset
 R = 0.8
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument("--input", type=str, required=True)
 parser.add_argument("--dataset-cap", type=int, default=-1)
 parser.add_argument("--output", type=str, default="")
@@ -53,6 +54,10 @@ def get_run_by_name(name):
     return runs[0]
 
 
+def resolve_preproc_data_path(path):
+    rel_path = path.split("/preprocessed_data/")[-1]
+    return get_path(rel_path, "preprocessed_data")
+
 
 if args.eval_dir:
     eval_dir = get_path(args.eval_dir, "results", fallback=True)
@@ -69,7 +74,7 @@ if args.eval_dir:
             clustering_file = os.path.join(eval_dir, clustering_file)
             if "model_cluster" in f and not args.clustering_suffix:
                 clustering_file = None
-            dataset_path_to_eval_file[f["filename"]] = [os.path.join(eval_dir, file), clustering_file]
+            dataset_path_to_eval_file[resolve_preproc_data_path(f["filename"])] = [os.path.join(eval_dir, file), clustering_file]
     print(dataset_path_to_eval_file)
 
 if args.output == "":
@@ -110,6 +115,7 @@ if not args.plot_only:
     precision_and_recall_fastjets = {}
     pr_obj_score_thresholds = {} # same as precision_and_recall, except it gives a dictionary instead of the array, and the keys are the thresholds for objectness score
     mass_resolution = {} # Contains {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []} # mt = transverse mass, m = invariant mass
+    matched_jet_properties = {} # contains {'pt_gen_particle': [], 'pt_mc_truth': [], 'pt_pred': [], 'eta_gen_particle': [], 'eta_mc_truth': [], 'eta_pred': [], 'phi_gen_particle': [], 'phi_mc_truth': [], 'phi_pred': []}
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
@@ -126,6 +132,7 @@ if not args.plot_only:
         if args.eval_dir:
             if current_path not in dataset_path_to_eval_file:
                 print("Skipping", current_path)
+                print(dataset_path_to_eval_file)
                 continue
             model_clusters_file = dataset_path_to_eval_file[current_path][1]
             model_output_file = dataset_path_to_eval_file[current_path][0]
@@ -164,7 +171,9 @@ if not args.plot_only:
                 for i in range(len(jets_object)):
                     for j in range(len(data.matrix_element_gen_particles)):
                         deta = jets[0][i] - dq[0][j]
-                        dphi = jets[1][i] - dq[1][j]
+                        dphi = abs(jets[1][i] - dq[1][j])
+                        if dphi > np.pi:
+                            dphi = 2 * np.pi - dphi
                         distance_matrix[i, j] = np.sqrt(deta**2 + dphi**2)
                 # row-wise argmin
                 distance_matrix = distance_matrix.T
@@ -184,11 +193,23 @@ if not args.plot_only:
                 mass_resolution[subdataset]['mt_pred'].append(calculate_m(jets_object, mt=True))
                 mass_resolution[subdataset]['n_jets'].append(n_jets)
                 if len(jets_object):
+                    if subdataset not in matched_jet_properties:
+                        matched_jet_properties[subdataset] = {'pt_gen_particle': [], 'pt_mc_truth': [], 'pt_pred': [],
+                                                              'eta_gen_particle': [], 'eta_pred': [],
+                                                              'phi_gen_particle': [], 'phi_pred': []}
                     quark_to_jet = np.min(distance_matrix, axis=1)
                     quark_to_jet[quark_to_jet > R] = -1
                     n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                     n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
+                    f = quark_to_jet != -1
+                    matched_jet_properties[subdataset]["pt_gen_particle"] += data.matrix_element_gen_particles.pt[f].tolist()
+                    matched_jet_properties[subdataset]["pt_pred"] += jets_object.pt[quark_to_jet[f]].tolist()
+                    matched_jet_properties[subdataset]["eta_gen_particle"] += data.matrix_element_gen_particles.eta[f].tolist()
+                    matched_jet_properties[subdataset]["eta_pred"] += jets_object.eta[quark_to_jet[f]].tolist()
+                    matched_jet_properties[subdataset]["phi_gen_particle"] += data.matrix_element_gen_particles.phi[f].tolist()
+                    matched_jet_properties[subdataset]["phi_pred"] += jets_object.phi[quark_to_jet[f]].tolist()
                     precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
+
                     if "obj_score" in jets_object.__dict__:
                         for i in range(len(thresholds)):
                             filt = torch.sigmoid(jets_object.obj_score) >= thresholds[i]
@@ -280,6 +301,7 @@ if not args.plot_only:
     result_PR_AKX = {}
     result_PR_thresholds = {}
     result_m = {}
+    result_jet_properties = {}
     if args.jets_object != "fastjet_jets":
         for key in avg_n_matched_quarks:
             mMed, mDark, rinv = get_properties(key)
@@ -292,6 +314,7 @@ if not args.plot_only:
                 result_PR_AKX[mMed] = {}
                 result_PR_thresholds[mMed] = {}
                 result_m[mMed] = {}
+                result_jet_properties[mMed] = {}
             if mDark not in result[mMed]:
                 result[mMed][mDark] = {}
                 result_unmatched[mMed][mDark] = {}
@@ -301,9 +324,11 @@ if not args.plot_only:
                 result_PR_thresholds[mMed][mDark] = {}
                 result_PR_AKX[mMed][mDark] = {}
                 result_m[mMed][mDark] = {}
+                result_jet_properties[mMed][mDark] = {}
             result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
             result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
             result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
+            result_jet_properties[mMed][mDark][rinv] = matched_jet_properties[key]
             #result_bc[mMed][mDark][rinv] = {
             #    "matched": bc_scores_matched[key],
             #    "unmatched": bc_scores_unmatched[key]
@@ -330,11 +355,14 @@ if not args.plot_only:
             mMed, mDark, rinv = get_properties(key)
             if mMed not in result_PR_AKX:
                 result_PR_AKX[mMed] = {}
+                result_jet_properties[mMed] = {}
             if mDark not in result_PR_AKX[mMed]:
                 result_PR_AKX[mMed][mDark] = {}
+                result_jet_properties[mMed][mDark] = {}
             r = precision_and_recall_fastjets[key]
             if rinv not in result_PR_AKX[mMed][mDark]:
                 result_PR_AKX[mMed][mDark][rinv] = {}
+                result_jet_properties[mMed][mDark][rinv] = {}
             for k in r:
                 if r[k][1] == 0 or r[k][2] == 0:
                     result_PR_AKX[mMed][mDark][rinv][k] = [0, 0]
@@ -349,6 +377,7 @@ if not args.plot_only:
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
     pickle.dump(result_PR_thresholds, open(os.path.join(output_path, "result_PR_thresholds.pkl"), "wb"))
     pickle.dump(result_m, open(os.path.join(output_path, "result_m.pkl"), "wb"))
+    pickle.dump(result_jet_properties, open(os.path.join(output_path, "result_jet_properties.pkl"), "wb"))
     with open(os.path.join(output_path, "eval_done.txt"), "w") as f:
         f.write("True")
     # Write the number of events to n_events.txt
@@ -415,6 +444,7 @@ ax[1].set_xscale("log")
 ax[2].set_xscale("log")
 fig.tight_layout()
 fig.savefig(os.path.join(output_path, "pr_thresholds.pdf"))
+
 
 matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"))
 matrix_plot(result_fakes, "Greens", "Avg. unmatched jets / event").savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"))

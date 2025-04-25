@@ -15,6 +15,7 @@ def get_path(path, type="code", fallback=False):
     if type == "data":
         return os.path.join(os.environ["SVJ_DATA_ROOT"], path)
     if type == "preprocessed_data":
+        print("Getting query for path", path, " | Preproc. data root=", os.environ["SVJ_PREPROCESSED_DATA_ROOT"])
         return os.path.join(os.environ["SVJ_PREPROCESSED_DATA_ROOT"], path)
     if type == "results":
         results = os.path.join(os.environ["SVJ_RESULTS_ROOT"], path)

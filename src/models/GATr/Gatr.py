@@ -42,11 +42,11 @@ class GATrModel(torch.nn.Module):
 
     def forward(self, data):
         # data: instance of EventBatch
-        inputs_v = data.input_vectors
-        inputs_scalar = data.input_scalars
+        inputs_v = data.input_vectors.float()
+        inputs_scalar = data.input_scalars.float()
         assert inputs_scalar.shape[1] == self.n_scalars
         if self.embed_as_vectors:
-            velocities = embed_translation(self.batch_norm(inputs_v))
+            velocities = embed_translation(inputs_v)
             embedded_inputs = (
                 velocities
             )
@@ -54,7 +54,7 @@ class GATrModel(torch.nn.Module):
             if torch.isnan(embedded_inputs).any():
                 raise ValueError("NaNs in the input!")
         else:
-            inputs = self.batch_norm(inputs_v)
+            inputs = inputs_v
             embedded_inputs = embed_point(inputs)
         embedded_inputs = embedded_inputs.unsqueeze(-2) # (batch_size*num_points, 1, 16)
         mask = self.build_attention_mask(data.batch_idx)
