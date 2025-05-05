@@ -27,7 +27,7 @@ parser.add_argument("--plot-only", action="store_true")
 parser.add_argument("--jets-object", type=str, default="fatjets")
 parser.add_argument("--eval-dir", type=str, default="")
 parser.add_argument("--clustering-suffix", type=str, default="") # default: 1020, also want to try 1010 or others...?
-
+parser.add_argument("--pt-jet-cutoff", type=float, default=100.0)
 
 parser.add_argument("--parton-level", "-pl", action="store_true") # To be used together with 'fastjet_jets'
 parser.add_argument("--gen-level", "-gl", action="store_true")
@@ -147,7 +147,7 @@ if not args.plot_only:
                                     model_output_file=model_output_file,
                                     include_model_jets_unfiltered=True, fastjet_R=fastjet_R,
                                     parton_level=config.get("parton_level", False), gen_level=config.get("gen_level", False),
-                                    aug_soft=args.augment_soft_particles, seed=1000000)
+                                    aug_soft=args.augment_soft_particles, seed=1000000, pt_jet_cutoff=args.pt_jet_cutoff)
         n = 0
         for x in tqdm(range(len(dataset))):
             data = dataset[x]

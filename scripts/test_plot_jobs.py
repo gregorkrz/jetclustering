@@ -19,6 +19,7 @@ parser.add_argument("--submit-AK8", "-AK8", action="store_true")
 parser.add_argument("--parton-level", "-pl", action="store_true") # To be used together with 'fastjet_jets' and --submit-AKX
 parser.add_argument("--gen-level", "-gl", action="store_true")
 parser.add_argument("--overwrite", "-ow", action="store_true") # overwrite the slurm job if it exists
+parser.add_argument("--pt-cutoff-jet", "-pt", type=float, default=100.0, help="pt cutoff for what is considered a jet")
 
 args = parser.parse_args()
 api = wandb.Api()
@@ -53,6 +54,12 @@ def get_slurm_file_text_AKX(tag, log_number):
     suffix_gl = "--gen-level" if args.gen_level else ""
     pl_folder = "_PL" if args.parton_level else ""
     gl_folder = "_GL" if args.gen_level else ""
+    if args.pt_cutoff_jet != 100.0:
+        pt_cutoff_suffix = f"_pt_{args.pt_cutoff_jet}"
+        pt_cutoff_suffix_cmd = " --pt-jet-cutoff {}".format(args.pt_cutoff_jet)
+    else:
+        pt_cutoff_suffix = ""
+        pt_cutoff_suffix_cmd = ""
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
@@ -67,7 +74,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap {DSCAP}
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}{pt_cutoff_suffix}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap {DSCAP}  {pt_cutoff_suffix_cmd}
     """
     return file
 
@@ -108,6 +115,10 @@ def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
     clust_suffix = ""
     if args.clustering_suffix != "":
         clust_suffix = f" --clustering-suffix {args.clustering_suffix}"
+    pt_cutoff_suffix_cmd = f" --pt-jet-cutoff {args.pt_cutoff_jet}"
+    pt_cutoff_suffix = ""
+    if args.pt_cutoff_jet != 100.0:
+        pt_cutoff_suffix = f"_pt_{args.pt_cutoff_jet}"
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}               # Specify the account
@@ -122,7 +133,7 @@ source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/{eval_job_name}{args.clustering_suffix} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix} {clust_suffix}
+srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}{pt_cutoff_suffix}/{eval_job_name}{args.clustering_suffix} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix} {clust_suffix} {pt_cutoff_suffix_cmd}
     """
     return file
 
@@ -156,6 +167,7 @@ def extract_n_events(filename):
     except:
         return -1
 
+
 if args.submit_AKX:
     # Submit also AKX
     if not os.path.exists("jobs/slurm_files"):
@@ -187,8 +199,11 @@ for i, run in enumerate(runs):
     if not os.path.exists("jobs/logs"):
         os.makedirs("jobs/logs")
     log_number = get_log_number(args.tag)
+    pt_cutoff_suffix = ""
+    if args.pt_cutoff_jet != 100.0:
+        pt_cutoff_suffix = f"_pt_{args.pt_cutoff_jet}"
     slurm_file_text = get_slurm_file_text(args.tag, run, log_number, aug_suffix)
-    rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}/{run}{args.clustering_suffix}"
+    rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}{pt_cutoff_suffix}/{run}{args.clustering_suffix}"
     rel_path_save = get_path(rel_path_save, "results")
     if not os.path.exists(rel_path_save):
         os.makedirs(rel_path_save)

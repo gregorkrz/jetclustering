@@ -120,7 +120,7 @@ for dir in os.listdir(path):
             delphes_suffix = ""
             if args.delphes:
                 delphes_suffix = "_delphes"
-            config = get_path(f'config_files/config_jets_1{delphes_suffix}.yaml', 'code')
+            config = get_path(f'config_files/config_jets_2{delphes_suffix}.yaml', 'code')
         for i, file in enumerate(sorted(os.listdir(os.path.join(path, dir)))):
             print("Preprocessing file", file)
             preprocess_dataset([os.path.join(path, dir, file)], output + "_part"+str(i), config_file=config, dataset_cap=args.dataset_cap)

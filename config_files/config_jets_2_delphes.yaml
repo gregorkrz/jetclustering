@@ -22,44 +22,21 @@ preprocess:
   ### [note]: `[var]_mask` will not be transformed even if `method=auto`
 
 inputs:
-  n_CH:
+  n_PFCands:
     pad_mode: wrap
     length: 1
     vars:
-      - [ EFlowTrack_size, null ]
-  n_NH:
-    pad_mode: wrap
-    length: 1
-    vars:
-      - [ EFlowNeutralHadron_size, null ]
-  n_photon:
-    pad_mode: wrap
-    length: 1
-    vars:
-      - [ EFlowPhoton_size, null ]
-  CH:
+      - [ ParticleFlowCandidate_size, null ]
+  PFCands:
     pad_mode: wrap
     length: 1500
     vars:
-       - [EFlowTrack.Eta, null]
-       - [EFlowTrack.Phi, null]
-       - [EFlowTrack.PT, null]
-       - [EFlowTrack.Mass, null]
-       - [EFlowTrack.Charge, null]
-  NH:
-    pad_mode: wrap
-    length: 1500
-    vars:
-       - [EFlowNeutralHadron.Eta, null]
-       - [EFlowNeutralHadron.Phi, null]
-       - [EFlowNeutralHadron.ET, null]
-  EFlowPhoton:
-    pad_mode: wrap
-    length: 1500
-    vars:
-       - [EFlowPhoton.Eta, null]
-       - [EFlowPhoton.Phi, null]
-       - [EFlowPhoton.ET, null]
+       - [ParticleFlowCandidate.Eta, null]
+       - [ParticleFlowCandidate.Phi, null]
+       - [ParticleFlowCandidate.PT, null]
+       - [ParticleFlowCandidate.Mass, null]
+       - [ParticleFlowCandidate.Charge, null]
+       - [ParticleFlowCandidate.PID, null]
   GenParticles:
       pad_mode: wrap
       length: 7500

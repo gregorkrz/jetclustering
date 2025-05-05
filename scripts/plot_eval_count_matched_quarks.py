@@ -270,8 +270,17 @@ sz = 5
 ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
-result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
-result_PR_AKX_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+try:
+    result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+except FileNotFoundError:
+    print("FileNotFoundError")
+    result_PR_AKX_PL = result_PR_AKX
+try:
+    result_PR_AKX_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+
+except FileNotFoundError:
+    print("FileNotFoundError")
+    result_PR_AKX_GL = result_PR_AKX
 
 radius = [0.8, 2.0]
 def select_radius(d, radius, depth=3):
@@ -297,7 +306,7 @@ if len(models):
         matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
         matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
         matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
-        run_config_title, run_config = get_run_config(model)
+        run_config_title, run_config = get_run_config(model.replace("_pt_95.0", ""))
         print("RC title", run_config_title)
         if run_config is None:
             print("Skipping", model)
@@ -366,6 +375,8 @@ figures_all_sorted["AK8"] = {
 }
 
 fig_f1, ax_f1 = plt.subplots(len(figures_all_sorted), 3, figsize=(sz * 1.8, sz * len(figures_all_sorted)))
+if len(figures_all_sorted) == 1:
+    ax_f1 = np.array([ax_f1])
 text_level = ["PL", "sc.", "GL"]
 for i in range(len(figures_all_sorted)):
     model = list(figures_all_sorted.keys())[i]
@@ -392,7 +403,7 @@ results_all_ak = {}
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
 sz_small = 5
 for j, model in enumerate(models):
-    _, rc = get_run_config(model)
+    _, rc = get_run_config(model.replace("_pt_95.0", ""))
     if rc is None or model in ["Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_28_33_421FT", "Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_47_23_671FT", "Eval_eval_19March2025_small_aug_vanishing_momentum_2025_03_28_11_45_16_582", "Eval_eval_19March2025_small_aug_vanishing_momentum_2025_03_28_11_46_26_326"]:
         print("Skipping", model)
         continue
@@ -488,7 +499,8 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
         to_plot_ak[level][rInv_h][mMed_h]["R"] = rs
 print("AK:", to_plot_ak)
 fig, ax = plt.subplots(len(to_plot) + 1, len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot))) # also add AKX as last plot
-
+if len(to_plot) == 0:
+    ax = np.array([ax])
 colors = {
     #"PL": "green",
     #"GL": "blue",
