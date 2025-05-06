@@ -22,6 +22,5 @@ exit 0
 EOT
 
 
-# Args: n_blocks mv_channels s_channels radius (default: 10, 16, 64, 0.8)
 # bash jobs/vega/lgatr_training_t3_NoPID_IRC_debug.sh
 
