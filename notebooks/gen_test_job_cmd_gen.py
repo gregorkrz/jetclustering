@@ -94,6 +94,41 @@ runs = [["LGATr_training_NoPID_Delphes_10_16_64_0.8_2025_04_17_18_07_38_405", 60
 #runs = ["Delphes_IRC_aug_SplitOnly_2025_04_20_15_50_33_553"] # IRC loss only with splitting
 #runs = ["Delphes_IRC_NOAug_SplitOnly_2025_04_21_12_58_36_99", "Delphes_IRC_NOAug_SplitAndNoise_2025_04_21_19_32_08_865"]
 #runs = ["CONT_Delphes_IRC_aug_SplitOnly_2025_04_21_12_53_27_730"]
+
+
+
+# PFfix Delphes runs
+runs = [
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 2000],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 4000],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 10000],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 20000],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 40000],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 50000],
+]
+
+
+runs = [
+    #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 2000],
+    #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 4000],
+    #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 10000],
+    #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 20000],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 40000],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 50000],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 60000],
+]
+
+'''runs = [
+    ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 2000],
+    ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 4000],
+    ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 10000],
+    ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 20000],
+    ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 40000],
+    ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 50000],
+]
+runs = [["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 60000]]
+'''
+
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -129,12 +164,12 @@ test_files_smaller = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_1
 "PFNano_s-channel_mMed-800_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000"]
 
 test_files_delphes = ['SVJ_mZprime-1100_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.3_alpha-peak']
-
+test_files_delphes = 'SVJ_mZprime-1000_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.7_alpha-peak'
 #test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFixF/" + x for x in test_files]
 test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
-test_files = ["Delphes_020425_test_PU_part0/" + x for x in test_files_delphes] # Delphes test files
+test_files = ["Delphes_020425_test_PU_PFfix_part0/" + x for x in test_files_delphes] # Delphes test files
 print("------")
 
 for run, step in runs:
@@ -145,12 +180,11 @@ for run, step in runs:
     #for level in ["-gl", "-pl", ""]:
     #for level in [""]:
         #for aug_suffix in ["-aug-soft"]:
-        aug_suffixes = ["-aug-soft"]
-        if step >= 40000:
-            aug_suffixes = [""] # without ghosts for the base clustering
+        #aug_suffixes = ["-aug-soft"]
+        #if step >= 40000:
+        #    aug_suffixes = [""] # without ghosts for the base clustering
+        aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
-            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesTestDelphesTrainPU {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
 
 print("-----")
-
-

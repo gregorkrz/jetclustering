@@ -151,6 +151,7 @@ class LGATrModel(torch.nn.Module):
         if torch.isnan(x).any():
             raise ValueError("NaNs in the output!")
         #print(x[:5])
+        print("LGATr x shape:", x.shape)
         return x
 
     def build_attention_mask(self, batch_numbers):

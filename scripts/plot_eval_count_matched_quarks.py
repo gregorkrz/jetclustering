@@ -244,7 +244,11 @@ def get_run_config(run_name):
         "Delphes_IRC_aug_SplitOnly_2025_04_20_15_50_33_553": "DelphesTrain+IRC_SplitOnly",
         "Delphes_IRC_NOAug_SplitOnly_2025_04_21_12_58_36_99": "Delphes_IRC_NoAug_SplitOnly",
         "Delphes_IRC_NOAug_SplitAndNoise_2025_04_21_19_32_08_865": "Delphes_IRC_NoAug_S+N",
-        "CONT_Delphes_IRC_aug_SplitOnly_2025_04_21_12_53_27_730": "IRC_aug_SplitOnly_ContFrom14k"
+        "CONT_Delphes_IRC_aug_SplitOnly_2025_04_21_12_53_27_730": "IRC_aug_SplitOnly_ContFrom14k",
+        "Transformer_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_37_01_188": "base_Tr_Old",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134": "base_LGATr",
+        "GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163": "base_GATr_Old",
+        "Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755": "base_Tr"
     }
 
     train_name = config["load_from_run"]
@@ -263,6 +267,8 @@ def get_run_config(run_name):
         training_dataset += "_noPLEtaFilter"
     result["GT_R"] = gt_r
     result["training_dataset"] = training_dataset
+    result["training_dataset_nostep"] = training_datasets.get(train_name, train_name)  + clust_suffix
+    result["ckpt_step"] = ckpt_step
     return f"GT_R={gt_r} {training_dataset}, {prefix}", result
 
 
@@ -374,7 +380,7 @@ figures_all_sorted["AK8"] = {
     2: select_radius(result_PR_AKX_GL, 0.8)
 }
 
-fig_f1, ax_f1 = plt.subplots(len(figures_all_sorted), 3, figsize=(sz * 1.8, sz * len(figures_all_sorted)))
+fig_f1, ax_f1 = plt.subplots(len(figures_all_sorted), 3, figsize=(sz * 2.5, sz * len(figures_all_sorted)))
 if len(figures_all_sorted) == 1:
     ax_f1 = np.array([ax_f1])
 text_level = ["PL", "sc.", "GL"]
@@ -398,16 +404,18 @@ purples = plt.get_cmap("Purples")
 
 mDark = 20
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
+to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
 results_all = {}
 results_all_ak = {}
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
 sz_small = 5
 for j, model in enumerate(models):
-    _, rc = get_run_config(model.replace("_pt_95.0", ""))
+    _, rc = get_run_config(model)
     if rc is None or model in ["Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_28_33_421FT", "Eval_eval_19March2025_pt1e-2_500particles_FT_PL_2025_04_02_14_47_23_671FT", "Eval_eval_19March2025_small_aug_vanishing_momentum_2025_03_28_11_45_16_582", "Eval_eval_19March2025_small_aug_vanishing_momentum_2025_03_28_11_46_26_326"]:
         print("Skipping", model)
         continue
     td = rc["training_dataset"]
+    td_raw = rc["training_dataset_nostep"]
     level = rc["level"]
     r = rc["GT_R"]
     output_path = os.path.join(path, model, "count_matched_quarks")
@@ -418,10 +426,18 @@ for j, model in enumerate(models):
     if td not in to_plot:
         to_plot[td] = {}
         results_all[td] = {}
+    if td_raw not in to_plot_steps:
+        to_plot_steps[td_raw] = {}
     for mMed_h in result_PR:
+        if mMed_h not in to_plot_steps[td_raw]:
+            to_plot_steps[td_raw][mMed_h] = {}
         if mMed_h not in results_all[td]:
             results_all[td][mMed_h] = {20: {}}
         for rInv_h in result_PR[mMed_h][20]:
+            if rInv_h not in to_plot_steps[td_raw][mMed_h]:
+                to_plot_steps[td_raw][mMed_h][rInv_h] = {}
+            if level not in to_plot_steps[td_raw][mMed_h][rInv_h]:
+                to_plot_steps[td_raw][mMed_h][rInv_h][level] = {}
             if rInv_h not in results_all[td][mMed_h][20]:
                 results_all[td][mMed_h][20][rInv_h] = {}
             #for level in ["PL+ghosts", "GL+ghosts", "scouting+ghosts"]:
@@ -432,14 +448,67 @@ for j, model in enumerate(models):
                 recall = result_PR[mMed_h][mDark][rInv_h][1]
                 f1score = 2 * precision * recall / (precision + recall)
                 results_all[td][mMed_h][20][rInv_h][level][r] = f1score
-    for i, h in enumerate(plotting_hypotheses):
+            ckpt_step = rc["ckpt_step"]
+            to_plot_steps[td_raw][mMed_h][rInv_h][level][ckpt_step] = f1score
+
+m_Meds = []
+r_invs = []
+for key in to_plot_steps:
+    m_Meds += list(to_plot_steps[key].keys())
+    for key2 in to_plot_steps[key]:
+        r_invs += list(to_plot_steps[key][key2].keys())
+
+m_Meds = sorted(list(set(m_Meds)))
+r_invs = sorted(list(set(r_invs)))
+
+result_AKX_current = select_radius(result_PR_AKX, 0.8)
+result_AKX_PL = select_radius(result_PR_AKX_PL, 0.8)
+result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
+
+if len(models):
+    fig_steps, ax_steps = plt.subplots(len(m_Meds), len(r_invs),  figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
+    colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green"}
+    level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
+    for i, mMed_h in enumerate(m_Meds):
+        for j, rInv_h in enumerate(r_invs):
+            if i == len(r_invs) - 1:
+                ax_steps[i, j].set_xlabel("$m_{{Z'}} = {}$".format(mMed_h))
+            if j == 0:
+                ax_steps[i, j].set_ylabel("$r_{{inv.}} = {}$".format(rInv_h))
+            for model in to_plot_steps:
+                for lvl in to_plot_steps[model][mMed_h][rInv_h]:
+                    if model not in colors:
+                        print("Skipping", model)
+                        continue
+                    print(model)
+                    ls = level_styles[lvl]
+                    plt_dict = to_plot_steps[model][mMed_h][rInv_h][lvl]
+                    x_pts = sorted(list(plt_dict.keys()))
+                    y_pts = [plt_dict[k] for k in x_pts]
+                    ax_steps[i, j].plot(x_pts, y_pts, label=model, marker=".", linestyle=ls, color=colors[model])
+                    # now plot a horizontal line for the AKX same level
+                    if lvl == "scouting":
+                        rc = result_AKX_current
+                    elif lvl == "PL":
+                        rc = result_AKX_PL
+                    elif lvl == "GL":
+                        rc = result_AKX_GL
+                    else:
+                        raise Exception
+                    pr = rc[mMed_h][20][rInv_h][0]
+                    rec = rc[mMed_h][20][rInv_h][1]
+                    f1ak = 2 * pr * rec / (pr + rec)
+                    ax_steps[i, j].axhline(f1ak, color="gray", linestyle=ls, alpha=0.5)
+    path_steps_fig = os.path.join(get_path(args.input, "results"), "score_vs_step_plots.pdf")
+    fig_steps.savefig(path_steps_fig)
+    print("Saved to", path_steps_fig)
+'''for i, h in enumerate(plotting_hypotheses):
         mMed_h, rInv_h = h
         if rInv_h not in to_plot[td]:
             to_plot[td][rInv_h] = {}
         print("Model", model)
         if mMed_h not in to_plot[td][rInv_h]:
             to_plot[td][rInv_h][mMed_h] = {} # level
-
         if level not in to_plot[td][rInv_h][mMed_h]:
             to_plot[td][rInv_h][mMed_h][level] = {"precision": [], "recall": [], "f1score": [], "R": []}
         precision = result_PR[mMed_h][mDark][rInv_h][0]
@@ -450,7 +519,7 @@ for j, model in enumerate(models):
         to_plot[td][rInv_h][mMed_h][level]["f1score"].append(f1score)
         to_plot[td][rInv_h][mMed_h][level]["R"].append(r)
 
-
+'''
 to_plot_ak = {} # level ("scouting"/"GL"/"PL") -> rInv -> mMed -> {"f1score": [], "R": []}
 
 for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
@@ -499,6 +568,7 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
         to_plot_ak[level][rInv_h][mMed_h]["R"] = rs
 print("AK:", to_plot_ak)
 fig, ax = plt.subplots(len(to_plot) + 1, len(plotting_hypotheses), figsize=(sz_small * len(plotting_hypotheses), sz_small * len(to_plot))) # also add AKX as last plot
+
 if len(to_plot) == 0:
     ax = np.array([ax])
 colors = {
@@ -514,6 +584,7 @@ ak_colors = {
     "GL": "blue",
     "scouting": "red",
 }
+'''
 for i, td in enumerate(to_plot):
     # for each training dataset
     for j, h in enumerate(plotting_hypotheses):
@@ -540,7 +611,7 @@ for j, h in enumerate(plotting_hypotheses): # for to_plot_AK
 fig.tight_layout()
 fig.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
 print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_1.pdf"))
-
+'''
 fig, ax = plt.subplots(1, len(results_all)*len(radius) + len(radius), figsize=(7 * len(results_all)*len(radius)+len(radius), 5))
 for i, model in enumerate(results_all):
     for j, R in enumerate(radius):
@@ -596,7 +667,6 @@ if args.threshold_obj_score != -1:
         ax[0, i].set_title(model)
         ax[1, i].set_title(model)
         ax[2, i].set_title(model)
-
     fig.tight_layout()
     fig.savefig(out_file_PR_OS)
     print("Saved to", out_file_PR_OS)

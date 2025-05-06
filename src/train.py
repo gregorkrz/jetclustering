@@ -59,6 +59,10 @@ if args.load_from_run:
 timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
 random_number = str(np.random.randint(0, 1000)) # to avoid overwriting in case two jobs are started at the same time
 args.run_name = f"{args.run_name}_{timestamp}_{random_number}"
+if "transformer" in args.network_config.lower() or args.network_config == "src/models/GATr/Gatr.py":
+    args.spatial_part_only = False
+
+
 if args.load_model_weights:
     print("Changing args.load_model_weights")
     args.load_model_weights = get_path(args.load_model_weights, "results", fallback=True)
