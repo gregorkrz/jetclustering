@@ -248,7 +248,9 @@ def get_run_config(run_name):
         "Transformer_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_37_01_188": "base_Tr_Old",
         "LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134": "base_LGATr",
         "GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163": "base_GATr_Old",
-        "Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755": "base_Tr"
+        "Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755": "base_Tr",
+        "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579": "base_GATr_S",
+        "GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898": "base_GATr"
     }
 
     train_name = config["load_from_run"]
@@ -295,7 +297,7 @@ def select_radius(d, radius, depth=3):
         return d[radius]
     return {key: select_radius(d[key], radius, depth - 1) for key in d}
 
-if len(models):
+if len(models) and False: # temporarily do not plot this one
     fig, ax = plt.subplots(3, len(models) + len(radius)*2, figsize=(sz * (len(models)+len(radius)*2), sz * 3))
     # three columns: PL, GL, scouting for each model
     for i, model in tqdm(enumerate(sorted(models))):
@@ -471,10 +473,10 @@ if len(models):
     level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
     for i, mMed_h in enumerate(m_Meds):
         for j, rInv_h in enumerate(r_invs):
-            if i == len(r_invs) - 1:
-                ax_steps[i, j].set_xlabel("$m_{{Z'}} = {}$".format(mMed_h))
             if j == 0:
-                ax_steps[i, j].set_ylabel("$r_{{inv.}} = {}$".format(rInv_h))
+                ax_steps[i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
+            if i == len(m_Meds)-1:
+                ax_steps[i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
             for model in to_plot_steps:
                 for lvl in to_plot_steps[model][mMed_h][rInv_h]:
                     if model not in colors:
@@ -499,7 +501,9 @@ if len(models):
                     rec = rc[mMed_h][20][rInv_h][1]
                     f1ak = 2 * pr * rec / (pr + rec)
                     ax_steps[i, j].axhline(f1ak, color="gray", linestyle=ls, alpha=0.5)
+                ax_steps[i, j].grid(1)
     path_steps_fig = os.path.join(get_path(args.input, "results"), "score_vs_step_plots.pdf")
+    fig_steps.tight_layout()
     fig_steps.savefig(path_steps_fig)
     print("Saved to", path_steps_fig)
 '''for i, h in enumerate(plotting_hypotheses):

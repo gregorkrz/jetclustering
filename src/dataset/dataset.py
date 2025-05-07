@@ -516,6 +516,7 @@ class EventDataset(torch.utils.data.Dataset):
         pfcandsc = concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
         if not add_original_particle_mapping:
             pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # for now, ignore the soft particles
+        print("Original PM:", pfcandsc.original_particle_mapping)
         return pfcandsc
 
     @staticmethod
@@ -578,8 +579,7 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            if True:# i % 2:
-                # Every second one:
+            if i % 2: # Every second one:
                 result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
                 if "final_parton_level_particles" in result:
                     result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(
@@ -589,7 +589,7 @@ class EventDataset(torch.utils.data.Dataset):
                 if "final_gen_particles" in result:
                     result["final_gen_particles"] = EventDataset.pfcands_split_particles(result["final_gen_particles"], random_generator)
             else:
-                n_soft=500
+                n_soft = 500
                 result["pfcands"] = EventDataset.pfcands_add_soft_particles(result["pfcands"], n_soft, random_generator,
                                                                             add_original_particle_mapping=True)
                 if "final_parton_level_particles" in result:

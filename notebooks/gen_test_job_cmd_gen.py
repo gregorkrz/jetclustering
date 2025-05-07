@@ -113,12 +113,12 @@ runs = [
     #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 4000],
     #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 10000],
     #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 20000],
-    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 40000],
-    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 50000],
-    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 60000],
+    #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 40000],
+    #["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 50000],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755", 70000],
 ]
 
-'''runs = [
+'''runs = [ #OLD GATR DONT USE
     ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 2000],
     ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 4000],
     ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 10000],
@@ -126,8 +126,26 @@ runs = [
     ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 40000],
     ["GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163", 50000],
 ]
-runs = [["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 60000]]
+runs = [["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 70000]]
+
 '''
+
+runs = [
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898", 2000],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898", 4000],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898", 10000],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898", 20000],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898", 40000],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898", 50000],
+]
+
+
+# IRC loss on L-GATr and its variants
+
+runs = [
+    ["LGATr_Aug_2025_05_06_10_08_05_956", 15000], # LGATr with the ghosts training
+    ["", 15000] # LGATr with the ghosts + IRC_split training
+]
 
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",

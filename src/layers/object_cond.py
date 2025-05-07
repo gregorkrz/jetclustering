@@ -915,7 +915,7 @@ def loss_func_aug(y_pred, y_pred_aug, batch, batch_aug, event, event_aug):
     #print("N in batch aug:", event_aug.pfcands.batch_number)
     to_add_to_batch = event.pfcands.batch_number[:-1]
     aug_batch_num = event_aug.pfcands.batch_number
-    print("Original particle mapping: (before sum)", original_particle_mapping[original_particle_mapping!=-1].tolist())
+    print("Original particle mapping: (before sum)", original_particle_mapping.tolist())
     filt_idx = torch.where(original_particle_mapping != -1)[0].tolist()
     for i in range(len(aug_batch_num)-1):
         for item in filt_idx:
