@@ -173,7 +173,7 @@ if not args.plot_only:
                         deta = jets[0][i] - dq[0][j]
                         dphi = abs(jets[1][i] - dq[1][j])
                         if dphi > np.pi:
-                            dphi = 2 * np.pi - dphi
+                            dphi -= 2 * np.pi #- dphi
                         distance_matrix[i, j] = np.sqrt(deta**2 + dphi**2)
                 # row-wise argmin
                 distance_matrix = distance_matrix.T
@@ -198,16 +198,17 @@ if not args.plot_only:
                                                               'eta_gen_particle': [], 'eta_pred': [],
                                                               'phi_gen_particle': [], 'phi_pred': []}
                     quark_to_jet = np.min(distance_matrix, axis=1)
+                    quark_to_jet_idx = np.argmin(distance_matrix, axis=1)
                     quark_to_jet[quark_to_jet > R] = -1
                     n_matched_quarks[subdataset] = n_matched_quarks.get(subdataset, []) + [np.sum(quark_to_jet != -1)]
                     n_fake_jets[subdataset] = n_fake_jets.get(subdataset, []) + [n_jets - np.sum(quark_to_jet != -1)]
                     f = quark_to_jet != -1
                     matched_jet_properties[subdataset]["pt_gen_particle"] += data.matrix_element_gen_particles.pt[f].tolist()
-                    matched_jet_properties[subdataset]["pt_pred"] += jets_object.pt[quark_to_jet[f]].tolist()
+                    matched_jet_properties[subdataset]["pt_pred"] += jets_object.pt[quark_to_jet_idx[f]].tolist()
                     matched_jet_properties[subdataset]["eta_gen_particle"] += data.matrix_element_gen_particles.eta[f].tolist()
-                    matched_jet_properties[subdataset]["eta_pred"] += jets_object.eta[quark_to_jet[f]].tolist()
+                    matched_jet_properties[subdataset]["eta_pred"] += jets_object.eta[quark_to_jet_idx[f]].tolist()
                     matched_jet_properties[subdataset]["phi_gen_particle"] += data.matrix_element_gen_particles.phi[f].tolist()
-                    matched_jet_properties[subdataset]["phi_pred"] += jets_object.phi[quark_to_jet[f]].tolist()
+                    matched_jet_properties[subdataset]["phi_pred"] += jets_object.phi[quark_to_jet_idx[f]].tolist()
                     precision_and_recall[subdataset][0] += np.sum(quark_to_jet != -1)
 
                     if "obj_score" in jets_object.__dict__:

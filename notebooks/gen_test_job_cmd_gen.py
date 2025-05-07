@@ -147,6 +147,18 @@ runs = [
     ["", 15000] # LGATr with the ghosts + IRC_split training
 ]
 
+
+# For the smaller dataset (500 event training) evaluation
+run_ids = [
+    "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579",
+    "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_05_16_24_16_127",
+    "Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_19_936"
+]
+runs = []
+for r in run_ids:
+    for step in [2000, 4000, 6000, 8000, 10000, 12000]:
+        runs.append([r, step])
+
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",

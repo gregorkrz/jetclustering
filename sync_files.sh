@@ -15,7 +15,7 @@ rsync -avz -e "ssh" --exclude "old_code" --exclude "env.sh" $prefix_left $prefix
 # rsync -avz -e "ssh" /ceph/hpc/home/krzmancg/jetclustering/results t3:/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering
 
 # Local to SE results
-rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/results/train /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/results
+rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/results/ /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/results
 
 # Local to SE data
 rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/data/ /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/data

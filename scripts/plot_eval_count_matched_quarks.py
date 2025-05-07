@@ -409,6 +409,7 @@ to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
 to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
 results_all = {}
 results_all_ak = {}
+jet_properties = {} # training dataset -> rInv -> mMed -> level -> step -> jet property dict
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
 sz_small = 5
 for j, model in enumerate(models):
@@ -424,22 +425,27 @@ for j, model in enumerate(models):
     if not os.path.exists(os.path.join(output_path, "result_PR.pkl")):
         continue
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+    result_jet_props = pickle.load(open(os.path.join(output_path, "result_jet_properties.pkl"), "rb"))
     print(level)
     if td not in to_plot:
         to_plot[td] = {}
         results_all[td] = {}
     if td_raw not in to_plot_steps:
         to_plot_steps[td_raw] = {}
+        jet_properties[td_raw] = {}
     for mMed_h in result_PR:
         if mMed_h not in to_plot_steps[td_raw]:
             to_plot_steps[td_raw][mMed_h] = {}
+            jet_properties[td_raw][mMed_h] = {}
         if mMed_h not in results_all[td]:
             results_all[td][mMed_h] = {20: {}}
         for rInv_h in result_PR[mMed_h][20]:
             if rInv_h not in to_plot_steps[td_raw][mMed_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h] = {}
+                jet_properties[td_raw][mMed_h][rInv_h] = {}
             if level not in to_plot_steps[td_raw][mMed_h][rInv_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h][level] = {}
+                jet_properties[td_raw][mMed_h][rInv_h][level] = {}
             if rInv_h not in results_all[td][mMed_h][20]:
                 results_all[td][mMed_h][20][rInv_h] = {}
             #for level in ["PL+ghosts", "GL+ghosts", "scouting+ghosts"]:
@@ -452,6 +458,7 @@ for j, model in enumerate(models):
                 results_all[td][mMed_h][20][rInv_h][level][r] = f1score
             ckpt_step = rc["ckpt_step"]
             to_plot_steps[td_raw][mMed_h][rInv_h][level][ckpt_step] = f1score
+            jet_properties[td_raw][mMed_h][rInv_h][level][ckpt_step] = result_jet_props[mMed_h][20][rInv_h]
 
 m_Meds = []
 r_invs = []
@@ -469,14 +476,48 @@ result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
 
 if len(models):
     fig_steps, ax_steps = plt.subplots(len(m_Meds), len(r_invs),  figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
+    histograms = {}
+    for i in ["pt", "eta", "phi"]:
+        histograms[i] = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
     colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green"}
     level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
+    step_to_plot_histograms = 50000  # phi, eta, pt histograms...
+    level_to_plot_histograms = "scouting"
+
     for i, mMed_h in enumerate(m_Meds):
         for j, rInv_h in enumerate(r_invs):
             if j == 0:
                 ax_steps[i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
+                for key in histograms:
+                    histograms[key][1][i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
             if i == len(m_Meds)-1:
                 ax_steps[i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
+                for key in histograms:
+                    histograms[key][1][i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
+            for model in jet_properties:
+                if model not in colors:
+                    continue
+                for key in histograms:
+                    pred = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_pred"])
+                    truth = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_gen_particle"])
+                    if key == "pt":
+                        q = pred/truth
+                        symbol = "/"
+                        bins = np.linspace(0, 2, 50)
+                    elif key == "eta":
+                        q = (pred - truth)
+                        symbol = "-"
+                        bins = np.linspace(-2, 2, 50)
+                    elif key == "phi":
+                        q = pred-truth
+                        symbol = "-"
+                        #q[q > np.pi] -= 2 * np.pi
+                        bins = np.linspace(-np.pi*2, np.pi*2, 50)
+                        print("Max", np.max(q), "Min", np.min(q))
+                    histograms[key][1][i, j].hist(q, histtype="step", color=colors[model], label=model, bins=bins, density=True)
+                    histograms[key][1][i, j].set_title(f"{key}_pred{symbol}{key}_true")
+                    histograms[key][1][i, j].legend()
+                    histograms[key][1][i, j].grid(True)
             for model in to_plot_steps:
                 for lvl in to_plot_steps[model][mMed_h][rInv_h]:
                     if model not in colors:
@@ -505,6 +546,10 @@ if len(models):
     path_steps_fig = os.path.join(get_path(args.input, "results"), "score_vs_step_plots.pdf")
     fig_steps.tight_layout()
     fig_steps.savefig(path_steps_fig)
+    for key in histograms:
+        fig = histograms[key][0]
+        fig.tight_layout()
+        fig.savefig(os.path.join(get_path(args.input, "results"), "histogram_{}.pdf".format(key)))
     print("Saved to", path_steps_fig)
 '''for i, h in enumerate(plotting_hypotheses):
         mMed_h, rInv_h = h
