@@ -680,6 +680,38 @@ class EventDataset(torch.utils.data.Dataset):
         return EventJets(jets_pt[mask], jets_eta[mask], jets_phi[mask], jets_mass[mask])
 
     @staticmethod
+    def get_jets_fastjets_raw_with_assignment(pfcands, jetdef, pt_cutoff=100):
+        pt = []
+        eta = []
+        phis = []
+        mass = []
+        particle_to_jet = {}  # this will map particle_idx -> jet_idx
+        array = get_pseudojets_fastjet(pfcands)
+        for idx, pseudojet in enumerate(array):
+            pseudojet.set_user_index(idx)
+
+        cluster = fastjet.ClusterSequence(array, jetdef)
+        inc_jets = cluster.inclusive_jets()
+        jet_idx = 0
+        for elem in inc_jets:
+            if elem.pt() < pt_cutoff:
+                continue
+            # print("pt:", elem.pt(), "eta:", elem.rap(), "phi:", elem.phi())ž
+            pt.append(elem.pt())
+            eta.append(elem.rap())
+            phi = elem.phi()
+            if phi > np.pi:
+                phi -= 2 * np.pi
+            phis.append(phi)
+            mass.append(elem.m())
+            # Get constituents of this jet
+            constituents = cluster.constituents(elem)
+            for constituent in constituents:
+                particle_idx = constituent.user_index()
+                particle_to_jet[particle_idx] = jet_idx
+            jet_idx += 1
+        return pt, eta, phis, mass, particle_to_jet
+    @staticmethod
     def get_jets_fastjets_raw(pfcands, jetdef, pt_cutoff=100):
         pt = []
         eta = []
@@ -701,6 +733,14 @@ class EventDataset(torch.utils.data.Dataset):
             mass.append(elem.m())
         return pt, eta, phis, mass
 
+    @staticmethod
+    def get_fastjet_jets_with_assignment(event, jetdef, key="pfcands", pt_cutoff=100):
+        if type(event) == dict:
+            k = event[key]
+        else:
+            k = getattr(event, key)
+        pt, eta, phi, m, assignment = EventDataset.get_jets_fastjets_raw_with_assignment(k, jetdef, pt_cutoff=pt_cutoff)
+        return EventJets(torch.tensor(pt), torch.tensor(eta), torch.tensor(phi), torch.tensor(m)), assignment
     @staticmethod
     def get_fastjet_jets(event, jetdef, key="pfcands", pt_cutoff=100):
         if type(event) == dict:

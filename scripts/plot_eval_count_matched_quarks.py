@@ -278,6 +278,7 @@ sz = 5
 ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
+result_jet_props_akx = pickle.load(open(os.path.join(ak_path, "result_jet_properties_AKX.pkl"), "rb"))
 try:
     result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
 except FileNotFoundError:
@@ -410,6 +411,7 @@ to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
 results_all = {}
 results_all_ak = {}
 jet_properties = {} # training dataset -> rInv -> mMed -> level -> step -> jet property dict
+jet_properties_ak = {} # rInv -> mMed -> level -> radius
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
 sz_small = 5
 for j, model in enumerate(models):
@@ -459,7 +461,6 @@ for j, model in enumerate(models):
             ckpt_step = rc["ckpt_step"]
             to_plot_steps[td_raw][mMed_h][rInv_h][level][ckpt_step] = f1score
             jet_properties[td_raw][mMed_h][rInv_h][level][ckpt_step] = result_jet_props[mMed_h][20][rInv_h]
-
 m_Meds = []
 r_invs = []
 for key in to_plot_steps:
@@ -473,13 +474,24 @@ r_invs = sorted(list(set(r_invs)))
 result_AKX_current = select_radius(result_PR_AKX, 0.8)
 result_AKX_PL = select_radius(result_PR_AKX_PL, 0.8)
 result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
+result_AKX_jet_properties = select_radius(result_jet_props_akx, 0.8)
+
+jet_properties["AK8"] = {}
+for mMed_h in result_AKX_jet_properties:
+    for rInv_h in result_AKX_jet_properties[mMed_h][20]:
+        if mMed_h not in jet_properties["AK8"]:
+            jet_properties["AK8"][mMed_h] = {}
+        if rInv_h not in jet_properties["AK8"][mMed_h]:
+            jet_properties["AK8"][mMed_h][rInv_h] = {}
+        jet_properties["AK8"][mMed_h][rInv_h] = {"scouting": {50000: result_AKX_jet_properties[mMed_h][20][rInv_h]}}
+
 
 if len(models):
     fig_steps, ax_steps = plt.subplots(len(m_Meds), len(r_invs),  figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
     histograms = {}
     for i in ["pt", "eta", "phi"]:
         histograms[i] = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
-    colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green"}
+    colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}
     level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
     step_to_plot_histograms = 50000  # phi, eta, pt histograms...
     level_to_plot_histograms = "scouting"
@@ -503,19 +515,20 @@ if len(models):
                     if key == "pt":
                         q = pred/truth
                         symbol = "/"
-                        bins = np.linspace(0, 2, 50)
+                        bins = np.linspace(0, 1.5, 50)
                     elif key == "eta":
                         q = (pred - truth)
                         symbol = "-"
-                        bins = np.linspace(-2, 2, 50)
+                        bins = np.linspace(-0.8, 0.8, 50)
                     elif key == "phi":
                         q = pred-truth
                         symbol = "-"
-                        #q[q > np.pi] -= 2 * np.pi
-                        bins = np.linspace(-np.pi*2, np.pi*2, 50)
+                        q[q > np.pi] -= 2 * np.pi
+                        q[q< -np.pi] += 2 * np.pi
+                        bins = np.linspace(-0.8, 0.8, 50)
                         print("Max", np.max(q), "Min", np.min(q))
                     histograms[key][1][i, j].hist(q, histtype="step", color=colors[model], label=model, bins=bins, density=True)
-                    histograms[key][1][i, j].set_title(f"{key}_pred{symbol}{key}_true")
+                    histograms[key][1][i, j].set_title(f"{key}_pred{symbol}{key}_true m={mMed_h} r_inv={rInv_h}")
                     histograms[key][1][i, j].legend()
                     histograms[key][1][i, j].grid(True)
             for model in to_plot_steps:
@@ -795,6 +808,7 @@ for i, rinv in enumerate(rinvs):
     if not os.path.exists(os.path.join(ak_path, "result_PR_AKX.pkl")):
         continue
     result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
+    result_jet_props_akx = pickle.load(open(os.path.join(ak_path, "result_jet_properties_AKX.pkl"), "rb"))
     #if radius not in to_plot[rinv]:
     #    to_plot[rinv][radius] = {}
     for k, mMed in enumerate(sorted(result_PR_AKX.keys())):

@@ -110,27 +110,26 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True, pfc
         #    phi_special = phi[-len(phi_special):]
         #    eta = eta[:-len(eta_special)]
         #    phi = phi[:-len(eta_special)]
-    genjet_eta = event.genjets.eta
-    genjet_phi = event.genjets.phi
-    genjet_pt = event.genjets.pt
+    #genjet_eta = event.genjets.eta
+    #genjet_phi = event.genjets.phi
+    #genjet_pt = event.genjets.pt
     #if len(eta_special):
     #    colors_special = colors[-len(eta_special):]
     #    colors = colors[:-len(eta_special)]
     #    print("Colors_special", colors_special)
     #    assert len(colors) == len(phi)
     #    assert len(colors_special) == len(eta_special)
-    ax.scatter(eta, phi, s=pt, c=colors)
+    ax.scatter(eta, phi, s=pt, c=colors, alpha=0.7)
     ax.scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=0.5) # Dark quarks
-    ax.scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=0.5)
+    #ax.scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=0.5)
     #if len(eta_special):
     #    ax.scatter(eta_special, phi_special, s=pt_special, c=colors_special, marker="v")
     if jets:
-        jet_eta = event.fatjets.eta
-        jet_phi = event.fatjets.phi
-
-        for i in range(len(jet_eta)):
-            circle = plt.Circle((jet_eta[i], jet_phi[i]), 0.8, color="red", fill=False)
-            ax.add_artist(circle)
+        #jet_eta = event.fatjets.eta
+        #jet_phi = event.fatjets.phi
+        #for i in range(len(jet_eta)):
+        #    circle = plt.Circle((jet_eta[i], jet_phi[i]), 0.8, color="red", fill=False)
+        #    ax.add_artist(circle)
         if hasattr(event, "model_jets") and event.model_jets is not None:
             model_jet_eta = event.model_jets.eta
             model_jet_phi = event.model_jets.phi
@@ -138,11 +137,18 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True, pfc
             if hasattr(event.model_jets, "obj_score"):
                 obj_score = event.model_jets.obj_score
             for i in range(len(model_jet_eta)):
-                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.75, color="blue", fill=False)
+                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.77, color="blue", fill=False, alpha=.7)
                 ax.add_artist(circle)
                 # plot text with obj score
                 if obj_score is not None:
                     ax.text(model_jet_eta[i]+0.2, model_jet_phi[i]-0.2, "o.s.=" + str(round(torch.sigmoid(obj_score[i]).item(), 2)), color="gray", fontsize=10, alpha=0.5)
+        if hasattr(event, "fastjet_jets") and event.fastjet_jets is not None:
+            fj_r = 0.8
+            model_jet_eta = event.fastjet_jets[fj_r].eta
+            model_jet_phi = event.fastjet_jets[fj_r].phi
+            for i in range(len(model_jet_eta)):
+                circle = plt.Circle((model_jet_eta[i], model_jet_phi[i]), 0.74, color="green", fill=False, alpha=.7)
+                ax.add_artist(circle)
     ax.set_xlabel(r"$\eta$")
     ax.set_ylabel(r"$\phi$")
     ax.set_aspect("equal")

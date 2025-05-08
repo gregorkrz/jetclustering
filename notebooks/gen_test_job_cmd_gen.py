@@ -143,8 +143,8 @@ runs = [
 # IRC loss on L-GATr and its variants
 
 runs = [
-    ["LGATr_Aug_2025_05_06_10_08_05_956", 15000], # LGATr with the ghosts training
-    ["", 15000] # LGATr with the ghosts + IRC_split training
+   # ["LGATr_Aug_2025_05_06_10_08_05_956", 15000], # LGATr with the ghosts training
+    ["Delphes_Aug_IRCSplit_CONT_2025_05_07_11_00_18_422", 6180] # LGATr with the ghosts + IRC_split training
 ]
 
 
@@ -158,6 +158,7 @@ runs = []
 for r in run_ids:
     for step in [2000, 4000, 6000, 8000, 10000, 12000]:
         runs.append([r, step])
+
 
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",

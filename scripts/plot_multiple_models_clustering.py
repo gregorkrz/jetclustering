@@ -164,7 +164,7 @@ def get_models_from_tag(tag):
 #models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum_Qcap05_p1e-2")
 
 #models = get_models_from_tag("eval_19March2025_small_aug_vanishing_momentum")
-models = get_models_from_tag("SmallDSReprod2")
+#models = get_models_from_tag("SmallDSReprod2")
 #models  = get_models_from_tag("eval_19March2025_pt1e-2_500particles_NoQMinReprod")
 
 '''
@@ -177,6 +177,10 @@ models["reprod2"] = "train/Eval_eval_19March2025_reprod_2_2025_03_30_17_37_54_19
 
 '''
 
+models = {
+    "L-GATr": "train/Eval_DelphesPFfix_2025_05_05_08_21_23_380"
+}
+
 print(models)
 
 # R = 2.0 models
@@ -186,7 +190,7 @@ print(models)
 #    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_43_07"
 #}
 
-output_path = get_path("Clustering_Plots_IRCLossDebug", "results")
+output_path = get_path("Model_vs_AK8_plots_08052025", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
@@ -198,8 +202,8 @@ from src.layers.object_cond import calc_eta_phi
 
 for ds in range(25):
     print("-------- DS:", ds)
-    fig, ax = plt.subplots(n_events_per_file, len(models) * 2,
-                           figsize=(len(models) * sz * 2, n_events_per_file * sz))
+    fig, ax = plt.subplots(n_events_per_file, len(models) * 3, # Colored by the model clusters,
+                           figsize=(len(models) * sz * 3, n_events_per_file * sz))
     # also one only with real coordinates
     fig1, ax1 = plt.subplots(n_events_per_file, len(models)+1,
                             figsize=(len(models) * sz, n_events_per_file * sz))
@@ -225,33 +229,58 @@ for ds in range(25):
                                               model_clusters_file=clusters_file, include_model_jets_unfiltered=True,
                                               aug_soft=run_config["augment_soft_particles"], seed=1000000,
                                               parton_level=run_config["parton_level"],
-                                              gen_level=run_config["gen_level"]) # Temporarily set seed to 0 instead of 1e6
+                                              gen_level=run_config["gen_level"], fastjet_R=[0.8])
         for e in range(n_events_per_file):
             print("            ----- event:", e)
-            c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]
+            uj = dataset[e].model_jets_unfiltered
+            fj_jets, assignment = EventDataset.get_fastjet_jets_with_assignment(dataset[e], fastjet.JetDefinition(fastjet.antikt_algorithm, 0.8),
+                                                                "pfcands", pt_cutoff=30)
+            cl = clusters[result["event_idx"] == e]
+            large_pt_clusters = []
+            for i in np.unique(cl):
+                if i == -1: continue
+                if uj.pt[i].item() >= 30:
+                    large_pt_clusters.append(i)
+            #c = [colors.get(i, "purple") for i in clusters[result["event_idx"] == e]]
+            c_ak = []
+            c = []
+            print("Large pt clusters:", large_pt_clusters)
+            for i in range(len(cl)):
+                if i not in assignment:
+                    c_ak.append("purple")
+                else:
+                    c_ak.append(colors.get(assignment[i], "purple"))
+
+            for i in clusters[result["event_idx"] == e]:
+                if i in large_pt_clusters:
+                    c.append(colors.get(large_pt_clusters.index(i), "purple"))
+                else:
+                    c.append("purple")
             model_coords = result["pred"][result["event_idx"] == e]
             if model_coords.shape[1] == 5:
                 model_coords = model_coords[:, 1:]
             model_coords = calc_eta_phi(model_coords, 0)
-            plot_event(dataset[e], colors=c, ax=ax[e, 2*mn], pfcands=dataset.pfcands_key)
-            plot_event(dataset[e], colors=c, ax=ax[e, 2*mn+1], custom_coords=model_coords, pfcands=dataset.pfcands_key)
+            plot_event(dataset[e], colors=c, ax=ax[e, 3*mn], pfcands=dataset.pfcands_key)
+            plot_event(dataset[e], colors=c, ax=ax[e, 3*mn+2], custom_coords=model_coords, pfcands=dataset.pfcands_key)
+            plot_event(dataset[e], colors=c_ak, ax=ax[e, 3*mn+1], pfcands=dataset.pfcands_key)
             plot_event(dataset[e], colors=c, ax=ax1[e, mn], pfcands=dataset.pfcands_key)
-            uj = dataset[e].model_jets_unfiltered
+
             # print the pt of the jet in the middle of each cluster with font size 12
-            fj_jets = EventDataset.get_fastjet_jets(dataset[e], fastjet.JetDefinition(fastjet.antikt_algorithm, 0.8),
-                                                    "final_parton_level_particles")
             for j in range(len(fj_jets)):
-                ax[e, 2*mn].text(fj_jets.eta[j].item(), fj_jets.phi[j].item(), "AK:"+str(round(fj_jets.pt[j].item(), 1)), color="blue", fontsize=6, alpha=0.5)
+                if fj_jets.pt[j].item() >= 30:
+                    ax[e, 3*mn].text(fj_jets.eta[j].item()+0.1, fj_jets.phi[j].item()+0.1, "AK pt="+str(round(fj_jets.pt[j].item(), 1)), color="blue", fontsize=6, alpha=0.5)
             for i in range(len(uj.pt)):
-                ax[e, 2*mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=6, alpha=0.5)
-                ax1[e, mn].text(uj.eta[i], uj.phi[i], round(uj.pt[i].item(), 1), color="black", fontsize=6, alpha=0.5)
+                if uj.pt[i].item() >= 30:
+                    ax[e, 3*mn].text(uj.eta[i], uj.phi[i], "M pt=" + str(round(uj.pt[i].item(), 1)), color="black", fontsize=6, alpha=0.5)
+                    ax1[e, mn].text(uj.eta[i], uj.phi[i], "M pt=" + str(round(uj.pt[i].item(), 1)), color="black", fontsize=6, alpha=0.5)
                 #ax[e, 2*mn+1].text(model_coords[0][i], model_coords[1][i], round(uj.pt[i].item(), 1), color="black", fontsize=10, alpha=0.5)
-            ax[e, 2*mn].set_title(model)
+            ax[e, 3 * mn].set_title(model)
             ax1[e, mn].set_title(model)
-            ax[e, 2*mn + 1].set_title(model + " (virt. coord.)")
+            ax[e, 3 * mn + 2].set_title(model + " (clust. space)")
+            ax[e, 3 * mn + 1].set_title(model + " (colored AK clust.)")
         fig.tight_layout()
         fig1.tight_layout()
-        fname = os.path.join(output_path, f"noDM_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
+        fname = os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}.pdf")
         fig.savefig(fname)
-        fig1.savefig(os.path.join(output_path, f"noDM_m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
+        fig1.savefig(os.path.join(output_path, f"m_med_{m_med}_m_dark_{m_dark}_r_inv_{str(r_inv).replace('.','')}_real_only.pdf"))
         print("Saving to", fname)

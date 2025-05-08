@@ -116,6 +116,7 @@ if not args.plot_only:
     pr_obj_score_thresholds = {} # same as precision_and_recall, except it gives a dictionary instead of the array, and the keys are the thresholds for objectness score
     mass_resolution = {} # Contains {'m_true': [], 'm_pred': [], 'mt_true': [], 'mt_pred': []} # mt = transverse mass, m = invariant mass
     matched_jet_properties = {} # contains {'pt_gen_particle': [], 'pt_mc_truth': [], 'pt_pred': [], 'eta_gen_particle': [], 'eta_mc_truth': [], 'eta_pred': [], 'phi_gen_particle': [], 'phi_mc_truth': [], 'phi_pred': []}
+    matched_jet_properties_fastjets = {}
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
         current_path = os.path.join(path, subdataset)
@@ -124,6 +125,7 @@ if not args.plot_only:
         if subdataset not in precision_and_recall:
             precision_and_recall[subdataset] = [0, 0, 0]
             precision_and_recall_fastjets[subdataset] = {}
+            matched_jet_properties_fastjets[subdataset] = {}
             pr_obj_score_thresholds[subdataset] = {}
             for i in range(len(thresholds)):
                 pr_obj_score_thresholds[subdataset][i] = [0, 0, 0]
@@ -270,12 +272,24 @@ if not args.plot_only:
                     n_jets = len(jets_object[key])
                     if key not in precision_and_recall_fastjets[subdataset]:
                         precision_and_recall_fastjets[subdataset][key] = [0, 0, 0]
+                    if key not in matched_jet_properties_fastjets[subdataset]:
+                        matched_jet_properties_fastjets[subdataset][key] = {"pt_gen_particle": [], "pt_pred": [],
+                                                                            "eta_gen_particle": [], "eta_pred": [],
+                                                                            "phi_gen_particle": [], "phi_pred": []}
                     precision_and_recall_fastjets[subdataset][key][1] += n_jets
                     precision_and_recall_fastjets[subdataset][key][2] += len(data.matrix_element_gen_particles)
                     if len(jets_object[key]):
                         quark_to_jet = np.min(distance_matrix, axis=1)
+                        quark_to_jet_idx = np.argmin(distance_matrix, axis=1)
                         quark_to_jet[quark_to_jet > R] = -1
                         precision_and_recall_fastjets[subdataset][key][0] += np.sum(quark_to_jet != -1)
+                        f = quark_to_jet != -1
+                        matched_jet_properties_fastjets[subdataset][key]["pt_gen_particle"] += data.matrix_element_gen_particles.pt[f].tolist()
+                        matched_jet_properties_fastjets[subdataset][key]["pt_pred"] += jets_object[key].pt[quark_to_jet_idx[f]].tolist()
+                        matched_jet_properties_fastjets[subdataset][key]["eta_gen_particle"] += data.matrix_element_gen_particles.eta[f].tolist()
+                        matched_jet_properties_fastjets[subdataset][key]["eta_pred"] += jets_object[key].eta[quark_to_jet_idx[f]].tolist()
+                        matched_jet_properties_fastjets[subdataset][key]["phi_gen_particle"] += data.matrix_element_gen_particles.phi[f].tolist()
+                        matched_jet_properties_fastjets[subdataset][key]["phi_pred"] += jets_object[key].phi[quark_to_jet_idx[f]].tolist()
     avg_n_matched_quarks = {}
     avg_n_fake_jets = {}
     for key in n_matched_quarks:
@@ -303,6 +317,7 @@ if not args.plot_only:
     result_PR_thresholds = {}
     result_m = {}
     result_jet_properties = {}
+    result_jet_properties_AKX = {}
     if args.jets_object != "fastjet_jets":
         for key in avg_n_matched_quarks:
             mMed, mDark, rinv = get_properties(key)
@@ -316,6 +331,7 @@ if not args.plot_only:
                 result_PR_thresholds[mMed] = {}
                 result_m[mMed] = {}
                 result_jet_properties[mMed] = {}
+                result_jet_properties_AKX[mMed] = {}
             if mDark not in result[mMed]:
                 result[mMed][mDark] = {}
                 result_unmatched[mMed][mDark] = {}
@@ -326,6 +342,7 @@ if not args.plot_only:
                 result_PR_AKX[mMed][mDark] = {}
                 result_m[mMed][mDark] = {}
                 result_jet_properties[mMed][mDark] = {}
+                result_jet_properties_AKX[mMed][mDark] = {}
             result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
             result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
             result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
@@ -356,15 +373,16 @@ if not args.plot_only:
             mMed, mDark, rinv = get_properties(key)
             if mMed not in result_PR_AKX:
                 result_PR_AKX[mMed] = {}
-                result_jet_properties[mMed] = {}
+                result_jet_properties_AKX[mMed] = {}
             if mDark not in result_PR_AKX[mMed]:
                 result_PR_AKX[mMed][mDark] = {}
-                result_jet_properties[mMed][mDark] = {}
+                result_jet_properties_AKX[mMed][mDark] = {}
             r = precision_and_recall_fastjets[key]
             if rinv not in result_PR_AKX[mMed][mDark]:
                 result_PR_AKX[mMed][mDark][rinv] = {}
-                result_jet_properties[mMed][mDark][rinv] = {}
+                result_jet_properties_AKX[mMed][mDark][rinv] = {}
             for k in r:
+                result_jet_properties_AKX[mMed][mDark][rinv][k] = matched_jet_properties_fastjets[key][k]
                 if r[k][1] == 0 or r[k][2] == 0:
                     result_PR_AKX[mMed][mDark][rinv][k] = [0, 0]
                 else:
@@ -375,6 +393,7 @@ if not args.plot_only:
     pickle.dump(result_bc, open(os.path.join(output_path, "result_bc.pkl"), "wb"))
     if args.jets_object == "fastjet_jets":
         pickle.dump(result_PR_AKX, open(os.path.join(output_path, "result_PR_AKX.pkl"), "wb"))
+        pickle.dump(result_jet_properties_AKX, open(os.path.join(output_path, "result_jet_properties_AKX.pkl"), "wb"))
     pickle.dump(result_PR, open(os.path.join(output_path, "result_PR.pkl"), "wb"))
     pickle.dump(result_PR_thresholds, open(os.path.join(output_path, "result_PR_thresholds.pkl"), "wb"))
     pickle.dump(result_m, open(os.path.join(output_path, "result_m.pkl"), "wb"))
