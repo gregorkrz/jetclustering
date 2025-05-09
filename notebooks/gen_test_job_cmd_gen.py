@@ -144,7 +144,10 @@ runs = [
 
 runs = [
    # ["LGATr_Aug_2025_05_06_10_08_05_956", 15000], # LGATr with the ghosts training
-    ["Delphes_Aug_IRCSplit_CONT_2025_05_07_11_00_18_422", 6180] # LGATr with the ghosts + IRC_split training
+    #["Delphes_Aug_IRCSplit_CONT_2025_05_07_11_00_18_422", 6180] # LGATr with the ghosts + IRC_split training
+    #["Delphes_Aug_IRC_Split_and_Noise_2025_05_07_14_43_13_968", 15000]
+    #["Delphes_Aug_IRCSplit_CONT_2025_05_07_11_00_18_422", 1320], ["LGATr_Aug_2025_05_06_10_08_05_956", 10140]
+    ["LGATr_Aug_2025_05_06_10_08_05_956", 5040], ["Delphes_Aug_IRCSplit_2025_05_06_10_09_00_567", 5040]
 ]
 
 
@@ -154,11 +157,11 @@ run_ids = [
     "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_05_16_24_16_127",
     "Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_19_936"
 ]
-runs = []
-for r in run_ids:
-    for step in [2000, 4000, 6000, 8000, 10000, 12000]:
-        runs.append([r, step])
 
+#runs = []
+#for r in run_ids:
+#    for step in [2000, 4000, 6000, 8000, 10000, 12000]:
+#        runs.append([r, step])
 
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
@@ -217,5 +220,4 @@ for run, step in runs:
         aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
             print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
-
 print("-----")

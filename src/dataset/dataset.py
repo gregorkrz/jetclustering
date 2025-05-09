@@ -579,7 +579,7 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            if i % 2: # Every second one:
+            if i % 2 and False: # Every second one:
                 result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
                 if "final_parton_level_particles" in result:
                     result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(

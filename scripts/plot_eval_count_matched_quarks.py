@@ -114,7 +114,7 @@ for mi, mass in enumerate([700, 900, 1500]):
             if mass not in result_PR_thresholds:
                 continue
             if rinv not in result_PR_thresholds[mass]:
-                continue
+                continue6
             precisions, recalls, f1_scores = get_plots_for_params(mass, 20, rinv, result_PR_thresholds)
             if not run_config["gt_radius"] == 0.8:
                 continue
@@ -250,7 +250,13 @@ def get_run_config(run_name):
         "GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163": "base_GATr_Old",
         "Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755": "base_Tr",
         "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579": "base_GATr_S",
-        "GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898": "base_GATr"
+        "GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898": "base_GATr",
+        "LGATr_Aug_2025_05_06_10_08_05_956": "LGATr_GP",
+        "Delphes_Aug_IRCSplit_CONT_2025_05_07_11_00_18_422": "LGATr_GP_IRC_S",
+        "Delphes_Aug_IRC_Split_and_Noise_2025_05_07_14_43_13_968": "LGATr_GP_IRC_SN",
+        "Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_19_936": "base_Tr_SD",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_05_16_24_16_127": "base_LGATr_SD",
+        "Delphes_Aug_IRCSplit_2025_05_06_10_09_00_567": "LGATr_GP_IRC_S"
     }
 
     train_name = config["load_from_run"]
@@ -291,6 +297,8 @@ except FileNotFoundError:
     print("FileNotFoundError")
     result_PR_AKX_GL = result_PR_AKX
 
+plot_only = ["LGATr_GP", "LGATr_GP_IRC_S", "LGATr_GP_IRC_SN"]
+
 radius = [0.8, 2.0]
 def select_radius(d, radius, depth=3):
     # from the dictionary, select radius at the level
@@ -298,8 +306,8 @@ def select_radius(d, radius, depth=3):
         return d[radius]
     return {key: select_radius(d[key], radius, depth - 1) for key in d}
 
-if len(models) and False: # temporarily do not plot this one
-    fig, ax = plt.subplots(3, len(models) + len(radius)*2, figsize=(sz * (len(models)+len(radius)*2), sz * 3))
+if len(models): # temporarily do not plot this one
+    #fig, ax = plt.subplots(3, len(plot_only) + len(radius)*2, figsize=(sz * (len(plot_only)+len(radius)*2), sz * 3))
     # three columns: PL, GL, scouting for each model
     for i, model in tqdm(enumerate(sorted(models))):
         output_path = os.path.join(path, model, "count_matched_quarks")
@@ -312,27 +320,29 @@ if len(models) and False: # temporarily do not plot this one
         result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
         #matrix_plot(result, "Blues", "Avg. matched dark quarks / event").savefig(os.path.join(output_path, "avg_matched_dark_quarks.pdf"), ax=ax[0, i])
         #matrix_plot(result_fakes, "Greens", "Avg. unmatched jets / event").savefig(os.path.join(output_path, "avg_unmatched_jets.pdf"), ax=ax[1, i])
-        matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
-        matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
-        matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
+        #matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
+        #matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
+        #matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
         run_config_title, run_config = get_run_config(model.replace("_pt_95.0", ""))
         print("RC title", run_config_title)
         if run_config is None:
             print("Skipping", model)
             continue
-        ax[0, i].set_title(run_config_title)
-        ax[1, i].set_title(run_config_title)
-        ax[2, i].set_title(run_config_title)
+        #ax[0, i].set_title(run_config_title)
+        #ax[1, i].set_title(run_config_title)
+        #ax[2, i].set_title(run_config_title)
         li = run_config["level_idx"]
         #ax_f1[i, li].set_title(run_config_title)
         #matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax_f1[i, li])
         figures_all[run_config_title] = result_PR
         print(model, run_config_title)
-        td, gtr, level = run_config["training_dataset"], run_config["GT_R"], run_config["level_idx"]
-        td = "R=" + str(gtr) + " " + td
-        if td not in figures_all_sorted:
-            figures_all_sorted[td] = {}
-        figures_all_sorted[td][level] = figures_all[run_config_title]
+        td, gtr, level, tdns = run_config["training_dataset"], run_config["GT_R"], run_config["level_idx"], run_config["training_dataset_nostep"]
+        if tdns in plot_only:
+            td = "R=" + str(gtr) + " " + td
+            if td not in figures_all_sorted:
+                figures_all_sorted[td] = {}
+            figures_all_sorted[td][level] = figures_all[run_config_title]
+
     result_AKX_current = select_radius(result_PR_AKX, 0.8)
     result_AKX_PL = select_radius(result_PR_AKX_PL, 0.8)
     result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
@@ -344,36 +354,36 @@ if len(models) and False: # temporarily do not plot this one
     }
     for i, R in enumerate(radius):
         result_PR_AKX_current = select_radius(result_PR_AKX, R)
-        matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
-                    metric_comp_func=lambda r: r[0], ax=ax[0, i+len(models)])
-        matrix_plot(result_PR_AKX_current, "Reds", "Recall (N matched dark quarks / N dark quarks)",
-                    metric_comp_func=lambda r: r[1], ax=ax[1, i+len(models)])
-        matrix_plot(result_PR_AKX_current, "Purples", r"$F_1$ score", metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]),
-                    ax=ax[2, i+len(models)])
-        ax[0, i+len(models)].set_title(f"AK, R={R}")
-        ax[1, i+len(models)].set_title(f"AK, R={R}")
-        ax[2, i+len(models)].set_title(f"AK, R={R}")
+        #matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
+        #            metric_comp_func=lambda r: r[0], ax=ax[0, i+len(models)])
+        #matrix_plot(result_PR_AKX_current, "Reds", "Recall (N matched dark quarks / N dark quarks)",
+        #            metric_comp_func=lambda r: r[1], ax=ax[1, i+len(models)])
+        #matrix_plot(result_PR_AKX_current, "Purples", r"$F_1$ score", metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]),
+        #            ax=ax[2, i+len(models)])
+        #ax[0, i+len(models)].set_title(f"AK, R={R}")
+        #ax[1, i+len(models)].set_title(f"AK, R={R}")
+        #ax[2, i+len(models)].set_title(f"AK, R={R}")
         t = f"AK, R={R}"
         figures_all[t] = result_PR_AKX_current
     for i, R in enumerate(radius):
         result_PR_AKX_current = select_radius(result_PR_AKX_PL, R)
-        matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
-                    metric_comp_func=lambda r: r[0], ax=ax[0, i+len(models)+len(radius)])
-        matrix_plot(result_PR_AKX_current, "Reds", "Recall (N matched dark quarks / N dark quarks)",
-                    metric_comp_func=lambda r: r[1], ax=ax[1, i+len(models)+len(radius)])
-        matrix_plot(result_PR_AKX_current, "Purples", r"$F_1$ score", metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]),
-                    ax=ax[2, i+len(models)+len(radius)])
-        ax[0, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
-        ax[1, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
-        ax[2, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
+        #matrix_plot(result_PR_AKX_current, "Oranges", "Precision (N matched dark quarks / N predicted jets)",
+        #            metric_comp_func=lambda r: r[0], ax=ax[0, i+len(models)+len(radius)])
+        #matrix_plot(result_PR_AKX_current, "Reds", "Recall (N matched dark quarks / N dark quarks)",
+        #            metric_comp_func=lambda r: r[1], ax=ax[1, i+len(models)+len(radius)])
+        #matrix_plot(result_PR_AKX_current, "Purples", r"$F_1$ score", metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]),
+        #            ax=ax[2, i+len(models)+len(radius)])
+        #ax[0, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
+        #ax[1, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
+        #ax[2, i+len(models)+len(radius)].set_title(f"AK PL, R={R}")
         figures_all[f"AK PL, R={R}"] = result_PR_AKX_current
     for i, R in enumerate(radius):
         result_PR_AKX_current = select_radius(result_PR_AKX_GL, R)
         figures_all[f"AK GL, R={R}"] = result_PR_AKX_current
-    fig.tight_layout()
-    fig.savefig(out_file_PR)
-    print("Saved to", out_file_PR)
-    #fig_f1.tight_layout()
+    #fig.tight_layout()
+    #fig.savefig(out_file_PR)
+    #print("Saved to", out_file_PR)
+    #fig_f1.tight_layout().463
     #fig_f1.savefig(out_file_PRf1)
     pickle.dump(figures_all, open(out_file_PR.replace(".pdf", ".pkl"), "wb"))
 
@@ -492,8 +502,10 @@ if len(models):
     for i in ["pt", "eta", "phi"]:
         histograms[i] = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
     colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}
+    #colors_small_dataset = {"base_LGATr_SD": "orange", "base_Tr_SD": "blue", "base_GATr_SD": "green", "AK8": "gray"}
+    #colors = colors_small_dataset
     level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
-    step_to_plot_histograms = 50000  # phi, eta, pt histograms...
+    step_to_plot_histograms = 2000  # phi, eta, pt histograms...
     level_to_plot_histograms = "scouting"
 
     for i, mMed_h in enumerate(m_Meds):
@@ -510,6 +522,8 @@ if len(models):
                 if model not in colors:
                     continue
                 for key in histograms:
+                    if step_to_plot_histograms not in jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms]:
+                        step_to_plot_histograms = sorted(list(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms].keys()))[0]
                     pred = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_pred"])
                     truth = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_gen_particle"])
                     if key == "pt":
