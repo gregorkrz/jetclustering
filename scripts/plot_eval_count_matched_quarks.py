@@ -204,7 +204,7 @@ def get_run_config(run_name):
         result["level_idx"] = 1
     if config["augment_soft_particles"]:
         result["ghosts"] = True
-        result["level"] += "+ghosts"
+        #result["level"] += "+ghosts"
     gt_r = config["gt_radius"]
     if config.get("augment_soft_particles", False):
         prefix += " (aug)" # ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820", "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400"]
@@ -249,14 +249,20 @@ def get_run_config(run_name):
         "LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134": "base_LGATr",
         "GATr_training_NoPID_Delphes_PU_10_16_64_0.8_2025_05_03_18_35_48_163": "base_GATr_Old",
         "Transformer_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_05_20_755": "base_Tr",
-        "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579": "base_GATr_S",
+        "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579": "base_GATr_SD",
         "GATr_training_NoPID_Delphes_PU_CoordFix_10_16_64_0.8_2025_05_05_13_06_27_898": "base_GATr",
         "LGATr_Aug_2025_05_06_10_08_05_956": "LGATr_GP",
         "Delphes_Aug_IRCSplit_CONT_2025_05_07_11_00_18_422": "LGATr_GP_IRC_S",
         "Delphes_Aug_IRC_Split_and_Noise_2025_05_07_14_43_13_968": "LGATr_GP_IRC_SN",
         "Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_19_936": "base_Tr_SD",
         "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_05_16_24_16_127": "base_LGATr_SD",
-        "Delphes_Aug_IRCSplit_2025_05_06_10_09_00_567": "LGATr_GP_IRC_S"
+        "Delphes_Aug_IRCSplit_2025_05_06_10_09_00_567": "LGATr_GP_IRC_S",
+        "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_34_13_531": "base_GATr_SD",
+        "Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_216": "base_Tr_SD",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_875": "base_LGATr_SD",
+        "Delphes_Aug_IRCSplit_50k_from10k_2025_05_11_14_08_49_675": "LGATr_GP_IRC_S_50k",
+        "LGATr_Aug_50k_2025_05_09_15_25_32_34": "LGATr_GP_50k",
+        "Delphes_Aug_IRCSplit_50k_2025_05_09_15_22_38_956": "LGATr_GP_IRC_S_50k"
     }
 
     train_name = config["load_from_run"]
@@ -297,7 +303,8 @@ except FileNotFoundError:
     print("FileNotFoundError")
     result_PR_AKX_GL = result_PR_AKX
 
-plot_only = ["LGATr_GP", "LGATr_GP_IRC_S", "LGATr_GP_IRC_SN"]
+#plot_only = ["LGATr_GP", "LGATr_GP_IRC_S", "LGATr_GP_IRC_SN", "LGATr_GP_50k", "LGATr_GP_IRC_S_50k"]
+plot_only = []
 
 radius = [0.8, 2.0]
 def select_radius(d, radius, depth=3):
@@ -337,7 +344,7 @@ if len(models): # temporarily do not plot this one
         figures_all[run_config_title] = result_PR
         print(model, run_config_title)
         td, gtr, level, tdns = run_config["training_dataset"], run_config["GT_R"], run_config["level_idx"], run_config["training_dataset_nostep"]
-        if tdns in plot_only:
+        if tdns in plot_only or not len(plot_only):
             td = "R=" + str(gtr) + " " + td
             if td not in figures_all_sorted:
                 figures_all_sorted[td] = {}
@@ -463,10 +470,10 @@ for j, model in enumerate(models):
             #for level in ["PL+ghosts", "GL+ghosts", "scouting+ghosts"]:
             if level not in results_all[td][mMed_h][20][rInv_h]:
                 results_all[td][mMed_h][20][rInv_h][level] = {}
+            precision = result_PR[mMed_h][mDark][rInv_h][0]
+            recall = result_PR[mMed_h][mDark][rInv_h][1]
+            f1score = 2 * precision * recall / (precision + recall)
             if r not in results_all[td][mMed_h][20][rInv_h][level]:
-                precision = result_PR[mMed_h][mDark][rInv_h][0]
-                recall = result_PR[mMed_h][mDark][rInv_h][1]
-                f1score = 2 * precision * recall / (precision + recall)
                 results_all[td][mMed_h][20][rInv_h][level][r] = f1score
             ckpt_step = rc["ckpt_step"]
             to_plot_steps[td_raw][mMed_h][rInv_h][level][ckpt_step] = f1score
@@ -493,58 +500,90 @@ for mMed_h in result_AKX_jet_properties:
             jet_properties["AK8"][mMed_h] = {}
         if rInv_h not in jet_properties["AK8"][mMed_h]:
             jet_properties["AK8"][mMed_h][rInv_h] = {}
-        jet_properties["AK8"][mMed_h][rInv_h] = {"scouting": {50000: result_AKX_jet_properties[mMed_h][20][rInv_h]}}
+        jet_properties["AK8"][mMed_h][rInv_h] = {"GL": {50000: result_AKX_jet_properties[mMed_h][20][rInv_h]}}
 
+
+from matplotlib.lines import Line2D
+
+# Define custom legend handles
+custom_lines = [
+    Line2D([0], [0], color='orange', linestyle='-', label='LGATr'),
+    Line2D([0], [0], color='green', linestyle='-', label='GATr'),
+    Line2D([0], [0], color='blue', linestyle='-', label='Transformer'),
+    Line2D([0], [0], color='gray', linestyle='-', label='AK8'),
+    Line2D([0], [0], color='black', linestyle='-', label='reco'),
+    Line2D([0], [0], color='black', linestyle=':', label='gen'),
+    Line2D([0], [0], color='black', linestyle='--', label='parton'),
+]
 
 if len(models):
     fig_steps, ax_steps = plt.subplots(len(m_Meds), len(r_invs),  figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
     histograms = {}
-    for i in ["pt", "eta", "phi"]:
-        histograms[i] = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
+    histograms_dict = {
+        "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
+        "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple"}]
+    }
+    for key in histograms_dict:
+        if key not in histograms:
+            histograms[key] = {}
+        for i in ["pt", "eta", "phi"]:
+            histograms[key][i] = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
     colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}
     #colors_small_dataset = {"base_LGATr_SD": "orange", "base_Tr_SD": "blue", "base_GATr_SD": "green", "AK8": "gray"}
     #colors = colors_small_dataset
     level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
-    step_to_plot_histograms = 2000  # phi, eta, pt histograms...
+    #step_to_plot_histograms = 50000  # phi, eta, pt histograms...
     level_to_plot_histograms = "scouting"
+
 
     for i, mMed_h in enumerate(m_Meds):
         for j, rInv_h in enumerate(r_invs):
             if j == 0:
                 ax_steps[i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
-                for key in histograms:
-                    histograms[key][1][i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
+                for subset in histograms:
+                    for key in histograms[subset]:
+                        histograms[subset][key][1][i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
             if i == len(m_Meds)-1:
                 ax_steps[i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
-                for key in histograms:
-                    histograms[key][1][i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
+                for subset in histograms:
+                    for key in histograms[subset]:
+                        histograms[subset][key][1][i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
             for model in jet_properties:
-                if model not in colors:
+                if level_to_plot_histograms not in jet_properties[model][mMed_h][rInv_h]:
+                    print("Skipping", model, level_to_plot_histograms, " - levels:", jet_properties[model][mMed_h][rInv_h].keys())
                     continue
-                for key in histograms:
-                    if step_to_plot_histograms not in jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms]:
-                        step_to_plot_histograms = sorted(list(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms].keys()))[0]
-                    pred = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_pred"])
-                    truth = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_gen_particle"])
-                    if key == "pt":
-                        q = pred/truth
-                        symbol = "/"
-                        bins = np.linspace(0, 1.5, 50)
-                    elif key == "eta":
-                        q = (pred - truth)
-                        symbol = "-"
-                        bins = np.linspace(-0.8, 0.8, 50)
-                    elif key == "phi":
-                        q = pred-truth
-                        symbol = "-"
-                        q[q > np.pi] -= 2 * np.pi
-                        q[q< -np.pi] += 2 * np.pi
-                        bins = np.linspace(-0.8, 0.8, 50)
-                        print("Max", np.max(q), "Min", np.min(q))
-                    histograms[key][1][i, j].hist(q, histtype="step", color=colors[model], label=model, bins=bins, density=True)
-                    histograms[key][1][i, j].set_title(f"{key}_pred{symbol}{key}_true m={mMed_h} r_inv={rInv_h}")
-                    histograms[key][1][i, j].legend()
-                    histograms[key][1][i, j].grid(True)
+                for subset in histograms:
+                    for key in histograms[subset]:
+                        if model not in histograms_dict[subset][1]:
+                            continue
+                        step_to_plot_histograms = histograms_dict[subset][0][model]
+                        if step_to_plot_histograms not in jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms]:
+                            print("Swapping the step to plot histograms", jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms].keys())
+                            step_to_plot_histograms = sorted(list(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms].keys()))[0]
+                        pred = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_pred"])
+                        truth = np.array(jet_properties[model][mMed_h][rInv_h][level_to_plot_histograms][step_to_plot_histograms][key + "_gen_particle"])
+                        if key.startswith("pt"):
+                            q = pred/truth
+                            symbol = "/" # division instead of subtraction symbol for pt
+                            quantity = "p_{T,pred}/p_{T,true}"
+                            bins = np.linspace(0, 1.5, 50)
+                        elif key.startswith("eta"):
+                            q = (pred - truth)
+                            symbol = "-"
+                            quantity="\eta_{pred}-\eta_{true}"
+                            bins = np.linspace(-0.8, 0.8, 50)
+                        elif key.startswith("phi"):
+                            q = pred - truth
+                            symbol = "-"
+                            quantity = "\phi_{pred}-\phi_{true}"
+                            q[q > np.pi] -= 2 * np.pi
+                            q[q< -np.pi] += 2 * np.pi
+                            bins = np.linspace(-0.8, 0.8, 50)
+                            print("Max", np.max(q), "Min", np.min(q))
+                        histograms[subset][key][1][i, j].hist(q, histtype="step", color=histograms_dict[subset][1][model], label=model, bins=bins, density=True)
+                        histograms[subset][key][1][i, j].set_title(f"${quantity}$ $m_{{Z'}}={mMed_h}$ GeV, $r_{{inv.}}={rInv_h}$")
+                        histograms[subset][key][1][i, j].legend()
+                        histograms[subset][key][1][i, j].grid(True)
             for model in to_plot_steps:
                 for lvl in to_plot_steps[model][mMed_h][rInv_h]:
                     if model not in colors:
@@ -555,7 +594,12 @@ if len(models):
                     plt_dict = to_plot_steps[model][mMed_h][rInv_h][lvl]
                     x_pts = sorted(list(plt_dict.keys()))
                     y_pts = [plt_dict[k] for k in x_pts]
-                    ax_steps[i, j].plot(x_pts, y_pts, label=model, marker=".", linestyle=ls, color=colors[model])
+                    if ls == "solid":
+                        ax_steps[i, j].plot(x_pts, y_pts, label=model, marker=".", linestyle=ls, color=colors[model])
+                    else:
+                        # No label
+                        ax_steps[i, j].plot(x_pts, y_pts, marker=".", linestyle=ls, color=colors[model])
+                    ax_steps[i, j].legend(handles=custom_lines)
                     # now plot a horizontal line for the AKX same level
                     if lvl == "scouting":
                         rc = result_AKX_current
@@ -573,11 +617,14 @@ if len(models):
     path_steps_fig = os.path.join(get_path(args.input, "results"), "score_vs_step_plots.pdf")
     fig_steps.tight_layout()
     fig_steps.savefig(path_steps_fig)
-    for key in histograms:
-        fig = histograms[key][0]
-        fig.tight_layout()
-        fig.savefig(os.path.join(get_path(args.input, "results"), "histogram_{}.pdf".format(key)))
+    for subset in histograms:
+        for key in histograms[subset]:
+            fig = histograms[subset][key][0]
+            fig.tight_layout()
+            fig.savefig(os.path.join(get_path(args.input, "results"), "histogram_{}_{}.pdf".format(key, subset)))
     print("Saved to", path_steps_fig)
+
+
 '''for i, h in enumerate(plotting_hypotheses):
         mMed_h, rInv_h = h
         if rInv_h not in to_plot[td]:

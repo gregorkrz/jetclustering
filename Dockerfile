@@ -1,5 +1,5 @@
 # gkrz/lgatr:v3
-
+# docker build -t gkrz/lgatr:v4 .
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
 SHELL ["/bin/bash", "-c"]
@@ -54,6 +54,7 @@ RUN python3 -m pip install tables
 RUN python3 -m pip install tensorboard
 RUN python3 -m pip install plotly
 RUN python3 -m pip install xformers --index-url https://download.pytorch.org/whl/cu118
+RUN python3 -m pip install fastjet
 
 # remove pip cache
 RUN python3 -m pip cache purge

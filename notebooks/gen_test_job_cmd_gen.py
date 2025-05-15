@@ -153,16 +153,36 @@ runs = [
 
 # For the smaller dataset (500 event training) evaluation
 run_ids = [
-    "GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579",
+    #"GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_13_579",
     "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_05_16_24_16_127",
-    "Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_19_936"
+    #"Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_05_16_24_19_936"
 ]
 
-#runs = []
-#for r in run_ids:
-#    for step in [2000, 4000, 6000, 8000, 10000, 12000]:
-#        runs.append([r, step])
+runs = []
+for r in run_ids:
+    for step in [10000,12000,16000, 20000]:
+        runs.append([r, step])
 
+runs = [
+    ["Delphes_Aug_IRCSplit_50k_from10k_2025_05_11_14_08_49_675", 12900], # step 26k
+    #["Delphes_Aug_IRCSplit_50k_2025_05_09_15_22_38_956", 9960],
+    ["LGATr_Aug_50k_2025_05_09_15_25_32_34", 25020],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 50000]
+]
+
+
+'''runs = [
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_875", 100],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_875", 500],
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_875", 1000],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_216", 100],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_216", 500],
+    ["Transformer_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_216", 1000],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_34_13_531", 100],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_34_13_531", 500],
+    ["GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_34_13_531", 1000]
+]
+'''
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -199,6 +219,8 @@ test_files_smaller = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_1
 
 test_files_delphes = ['SVJ_mZprime-1100_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1500_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1300_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1400_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.3_alpha-peak']
 test_files_delphes = 'SVJ_mZprime-1000_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1000_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1100_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-1200_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-700_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-800_mDark-20_rinv-0.7_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.5_alpha-peak', 'SVJ_mZprime-900_mDark-20_rinv-0.7_alpha-peak'
+
+
 #test_files = ["Feb26_2025_E1000_N500_noPartonFilter_C_F/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFixF/" + x for x in test_files]
 test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" + x for x in test_files]
@@ -213,11 +235,11 @@ for run, step in runs:
     #for level in ["-pl"]:
     #for level in ["-gl", "-pl", ""]:
     #for level in [""]:
-        #for aug_suffix in ["-aug-soft"]:
-        #aug_suffixes = ["-aug-soft"]
-        #if step >= 40000:
-        #    aug_suffixes = [""] # without ghosts for the base clustering
-        aug_suffixes = [""]
+    #for aug_suffix in ["-aug-soft"]:
+        aug_suffixes = ["-aug-soft"]
+        if step >= 40000:
+            aug_suffixes = [""] # without ghosts for the base clustering
+        #aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
-            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix_FullDataset {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
 print("-----")

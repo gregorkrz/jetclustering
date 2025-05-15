@@ -76,7 +76,7 @@ def get_log_number(tag):
 
 
 def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
-    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/ "
+    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/  -H /t3home/gkrzmanc  "
     partition = "gpu"
     account = "gpu_gres"
     if template.lower().strip() == "vega":
@@ -112,12 +112,13 @@ def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
 #SBATCH --output={log}      # Redirect stderr to a log file
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=END,FAIL
+#SBATCH --nodelist=t3gpu02
 #SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
 export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 -bs 16 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.3 --min-samples 1 --min-cluster-size 2 --test-dataset-max-size 2000  {aug_suffix}
+srun singularity exec {bindings} --nv docker://gkrz/lgatr:v3 python -m src.train -test {test_files} --gpus 0 -bs 16 --run-name Eval_{tag} --load-model-weights {ckpt_file} --num-workers 0 {tag_suffix} --load-from-run {run_name} --ckpt-step {args.steps} {obj_score_suffix} {glob_features_obj_score_suffix} {eval_suffix} --epsilon 0.3 --min-samples 1 --min-cluster-size 2 --test-dataset-max-size 10000  {aug_suffix}
     """
     return file
 
@@ -135,6 +136,5 @@ with open("jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number), "w") as f
     print("Wrote file to jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number))
 
 if not args.no_submit:
-    os.system("sbatch jobs/slurm_files/{}_{}.slurm".format(args.tag, log_number))
-
+    os.system("sbatch jobs/slurm_files/{}_{}.slurm --nodelist=t3gpu02".format(args.tag, log_number))
 

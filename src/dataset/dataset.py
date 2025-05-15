@@ -1,3 +1,4 @@
+import fastjet
 import os
 import copy
 import json
@@ -26,7 +27,6 @@ from torch_scatter import scatter_sum
 from src.dataset.functions_graph import (create_graph, create_jets_outputs,
                                          create_jets_outputs_new, create_jets_outputs_Delphes, create_jets_outputs_Delphes2)
 from src.dataset.functions_data import Event, EventCollection, EventJets
-import fastjet
 from src.utils.utils import CPU_Unpickler
 from src.dataset.functions_data import EventPFCands, concat_event_collection
 

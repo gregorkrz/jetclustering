@@ -20,11 +20,12 @@ parser.add_argument("--parton-level", "-pl", action="store_true") # To be used t
 parser.add_argument("--gen-level", "-gl", action="store_true")
 parser.add_argument("--overwrite", "-ow", action="store_true") # overwrite the slurm job if it exists
 parser.add_argument("--pt-cutoff-jet", "-pt", type=float, default=100.0, help="pt cutoff for what is considered a jet")
+parser.add_argument("--ds-cap", "-ds", type=int, default=2000, help="dataset cap ")
 
 args = parser.parse_args()
 api = wandb.Api()
 
-DSCAP = 2000
+DSCAP = args.ds_cap
 
 def get_eval_run_names(tag):
     # from the api, get all the runs with the tag that are finished
@@ -189,7 +190,13 @@ for i, run in enumerate(runs):
     #if get_run_by_name(run).state != "finished":
     #    print("Run not finished (failed or still in progress) - skipping", run)
     #    continue
-    aug_soft_p = get_run_by_name(run).config.get("augment_soft_particles", False)
+
+    conf = get_run_by_name(run).config
+    if( conf.get("parton_level") or conf.get("gen_level")) and args.pt_cutoff_jet != 100.0:
+        print("Skipping run", run, "because it is parton level or gen level and pt cutoff is not 100.0")
+        continue
+    aug_soft_p = conf.get("augment_soft_particles", False)
+
     if aug_soft_p:
         aug_suffix = "-aug-soft"
     else:
