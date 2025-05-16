@@ -112,7 +112,6 @@ def get_slurm_file_text(template, run_name, tag, ckpt_file, log_number):
 #SBATCH --output={log}      # Redirect stderr to a log file
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=END,FAIL
-#SBATCH --nodelist=t3gpu02
 #SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp

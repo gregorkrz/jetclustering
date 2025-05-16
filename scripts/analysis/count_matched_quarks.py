@@ -296,6 +296,9 @@ if not args.plot_only:
         avg_n_matched_quarks[key] = np.mean(n_matched_quarks[key])
         avg_n_fake_jets[key] = np.mean(n_fake_jets[key])
     def get_properties(name):
+        if "qcd" in name.lower():
+            print("QCD file! Not using mMed, mDark, rinv")
+            return 0, 0, 0
         # get mediator mass, dark quark mass, r_inv from the filename
         parts = name.strip().strip("/").split("/")[-1].split("_")
         try:

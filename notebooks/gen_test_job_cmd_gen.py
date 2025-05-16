@@ -226,6 +226,13 @@ test_files_delphes = 'SVJ_mZprime-1000_mDark-20_rinv-0.3_alpha-peak', 'SVJ_mZpri
 test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" + x for x in test_files]
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
 test_files = ["Delphes_020425_test_PU_PFfix_part0/" + x for x in test_files_delphes] # Delphes test files
+
+print("QCD")
+
+test_files = ["QCD_test_part0/qcd_test"]
+
+
+
 print("------")
 
 for run, step in runs:
@@ -241,5 +248,5 @@ for run, step in runs:
             aug_suffixes = [""] # without ghosts for the base clustering
         #aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
-            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix_FullDataset {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix_FullDataset_QCD {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
 print("-----")

@@ -13,6 +13,8 @@ from pathlib import Path
 #%%
 
 def get_properties(name):
+    if "qcd" in name.lower():
+        return 0, 0, 0 # Standard Model events
     # get mediator mass, dark quark mass, r_inv from the filename
     parts = name.strip().strip("/").split("/")[-1].split("_")
     try:
@@ -181,19 +183,21 @@ models = {
     "L-GATr": "train/Eval_DelphesPFfix_2025_05_05_08_21_23_380"
 }
 
+models = {
+    "L-GATr": "train/Eval_DelphesPFfix_FullDataset_QCD_2025_05_15_17_42_39_541"
+}
 print(models)
 
 # R = 2.0 models
 #models = {
 #    "parton-level": "train/Eval_eval_19March2025_2025_03_19_22_55_48",
 #    "gen-level": "train/Eval_eval_19March2025_2025_03_19_23_20_01",
-#    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_43_07"
+#    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_4x3_07"
 #}
 
-output_path = get_path("Model_vs_AK8_plots_08052025", "results")
+output_path = get_path("QCD_plots", "results")
 
 Path(output_path).mkdir(parents=1, exist_ok=1)
-
 
 sz = 3
 n_events_per_file = 25

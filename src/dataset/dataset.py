@@ -389,6 +389,7 @@ class EventDataset(torch.utils.data.Dataset):
             if file == "metadata.pkl":
                 metadata = pickle.load(open(os.path.join(dir, file), "rb"))
             else:
+                print("File:", file)
                 result[file.split(".")[0]] = np.load(
                     os.path.join(dir, file), mmap_mode="r" if mmap else None
                 )

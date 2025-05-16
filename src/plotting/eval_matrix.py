@@ -2,9 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None):
+def matrix_plot(result, color_scheme, cbar_label, ax=None, metric_comp_func=None, is_qcd=False):
     make_fig = ax is None
     dark_masses = [20]
+    if is_qcd:
+        dark_masses = [0]
     if make_fig:
         fig, ax = plt.subplots(len(dark_masses), 1, figsize=(5, 5))
     mediator_masses = sorted(list(result.keys()))

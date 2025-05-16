@@ -410,7 +410,7 @@ for i in range(len(figures_all_sorted)):
         if j in figures_all_sorted[model]:
             if j in figures_all_sorted[model]:
                 matrix_plot(figures_all_sorted[model][j], "Purples", r"$F_1$ score",
-                            metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax_f1[i, j])
+                            metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax_f1[i, j], is_qcd="qcd" in path.lower())
                 ax_f1[i, j].set_title(model + " "+ text_level[j])
                 ax_f1[i, j].set_xlabel("mMed")
                 ax_f1[i, j].set_ylabel("rInv")
@@ -423,6 +423,9 @@ reds = plt.get_cmap("Reds")
 purples = plt.get_cmap("Purples")
 
 mDark = 20
+if "qcd" in path.lower():
+    print("QCD events")
+    mDark=0
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
 to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
 results_all = {}
@@ -457,27 +460,27 @@ for j, model in enumerate(models):
             to_plot_steps[td_raw][mMed_h] = {}
             jet_properties[td_raw][mMed_h] = {}
         if mMed_h not in results_all[td]:
-            results_all[td][mMed_h] = {20: {}}
-        for rInv_h in result_PR[mMed_h][20]:
+            results_all[td][mMed_h] = {mDark: {}}
+        for rInv_h in result_PR[mMed_h][mDark]:
             if rInv_h not in to_plot_steps[td_raw][mMed_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h] = {}
                 jet_properties[td_raw][mMed_h][rInv_h] = {}
             if level not in to_plot_steps[td_raw][mMed_h][rInv_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h][level] = {}
                 jet_properties[td_raw][mMed_h][rInv_h][level] = {}
-            if rInv_h not in results_all[td][mMed_h][20]:
-                results_all[td][mMed_h][20][rInv_h] = {}
+            if rInv_h not in results_all[td][mMed_h][mDark]:
+                results_all[td][mMed_h][mDark][rInv_h] = {}
             #for level in ["PL+ghosts", "GL+ghosts", "scouting+ghosts"]:
-            if level not in results_all[td][mMed_h][20][rInv_h]:
-                results_all[td][mMed_h][20][rInv_h][level] = {}
+            if level not in results_all[td][mMed_h][mDark][rInv_h]:
+                results_all[td][mMed_h][mDark][rInv_h][level] = {}
             precision = result_PR[mMed_h][mDark][rInv_h][0]
             recall = result_PR[mMed_h][mDark][rInv_h][1]
             f1score = 2 * precision * recall / (precision + recall)
-            if r not in results_all[td][mMed_h][20][rInv_h][level]:
-                results_all[td][mMed_h][20][rInv_h][level][r] = f1score
+            if r not in results_all[td][mMed_h][mDark][rInv_h][level]:
+                results_all[td][mMed_h][mDark][rInv_h][level][r] = f1score
             ckpt_step = rc["ckpt_step"]
             to_plot_steps[td_raw][mMed_h][rInv_h][level][ckpt_step] = f1score
-            jet_properties[td_raw][mMed_h][rInv_h][level][ckpt_step] = result_jet_props[mMed_h][20][rInv_h]
+            jet_properties[td_raw][mMed_h][rInv_h][level][ckpt_step] = result_jet_props[mMed_h][mDark][rInv_h]
 m_Meds = []
 r_invs = []
 for key in to_plot_steps:
@@ -495,12 +498,12 @@ result_AKX_jet_properties = select_radius(result_jet_props_akx, 0.8)
 
 jet_properties["AK8"] = {}
 for mMed_h in result_AKX_jet_properties:
-    for rInv_h in result_AKX_jet_properties[mMed_h][20]:
+    for rInv_h in result_AKX_jet_properties[mMed_h][mDark]:
         if mMed_h not in jet_properties["AK8"]:
             jet_properties["AK8"][mMed_h] = {}
         if rInv_h not in jet_properties["AK8"][mMed_h]:
             jet_properties["AK8"][mMed_h][rInv_h] = {}
-        jet_properties["AK8"][mMed_h][rInv_h] = {"GL": {50000: result_AKX_jet_properties[mMed_h][20][rInv_h]}}
+        jet_properties["AK8"][mMed_h][rInv_h] = {"GL": {50000: result_AKX_jet_properties[mMed_h][mDark][rInv_h]}}
 
 
 from matplotlib.lines import Line2D
@@ -518,6 +521,8 @@ custom_lines = [
 
 if len(models):
     fig_steps, ax_steps = plt.subplots(len(m_Meds), len(r_invs),  figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
+    if len(m_Meds) == 1 and len(r_invs) == 1:
+        ax_steps = np.array([[ax_steps]])
     histograms = {}
     histograms_dict = {
         "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
@@ -609,8 +614,8 @@ if len(models):
                         rc = result_AKX_GL
                     else:
                         raise Exception
-                    pr = rc[mMed_h][20][rInv_h][0]
-                    rec = rc[mMed_h][20][rInv_h][1]
+                    pr = rc[mMed_h][mDark][rInv_h][0]
+                    rec = rc[mMed_h][mDark][rInv_h][1]
                     f1ak = 2 * pr * rec / (pr + rec)
                     ax_steps[i, j].axhline(f1ak, color="gray", linestyle=ls, alpha=0.5)
                 ax_steps[i, j].grid(1)
@@ -661,25 +666,25 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
         to_plot_ak[level] = {}
     for mMed_h in result_PR_AKX:
         if mMed_h not in results_all_ak:
-            results_all_ak[mMed_h] = {20: {}}
-        for rInv_h in result_PR_AKX[mMed_h][20]:
-            if rInv_h not in results_all_ak[mMed_h][20]:
-                results_all_ak[mMed_h][20][rInv_h] = {}
-            if level not in results_all_ak[mMed_h][20][rInv_h]:
-                results_all_ak[mMed_h][20][rInv_h][level] = {}
-            for ridx, R in enumerate(result_PR_AKX[mMed_h][20][rInv_h]):
-                if R not in results_all_ak[mMed_h][20][rInv_h][level]:
+            results_all_ak[mMed_h] = {mDark: {}}
+        for rInv_h in result_PR_AKX[mMed_h][mDark]:
+            if rInv_h not in results_all_ak[mMed_h][mDark]:
+                results_all_ak[mMed_h][mDark][rInv_h] = {}
+            if level not in results_all_ak[mMed_h][mDark][rInv_h]:
+                results_all_ak[mMed_h][mDark][rInv_h][level] = {}
+            for ridx, R in enumerate(result_PR_AKX[mMed_h][mDark][rInv_h]):
+                if R not in results_all_ak[mMed_h][mDark][rInv_h][level]:
                     precision = result_PR_AKX[mMed_h][mDark][rInv_h][R][0]
                     recall = result_PR_AKX[mMed_h][mDark][rInv_h][R][1]
                     f1score = 2 * precision * recall / (precision + recall)
-                    results_all_ak[mMed_h][20][rInv_h][level][R] = f1score
+                    results_all_ak[mMed_h][mDark][rInv_h][level][R] = f1score
 
     for i, h in enumerate(plotting_hypotheses):
         mMed_h, rInv_h = h
         if rInv_h not in to_plot_ak[level]:
             to_plot_ak[level][rInv_h] = {}
         print("Model", model)
-        rs = sorted(result_PR_AKX[mMed_h][20][rInv_h].keys())
+        rs = sorted(result_PR_AKX[mMed_h][mDark][rInv_h].keys())
         if mMed_h not in to_plot_ak[level][rInv_h]:
             to_plot_ak[level][rInv_h][mMed_h] = {"precision": [], "recall": [], "f1score": [], "R": []}
         precision = np.array([result_PR_AKX[mMed_h][mDark][rInv_h][i][0] for i in rs])
@@ -932,3 +937,4 @@ fig_AK_ratio.savefig(os.path.join(get_path(args.input, "results"), "score_vs_GT_
 
 print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
 print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))
+
