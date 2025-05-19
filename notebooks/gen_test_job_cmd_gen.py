@@ -164,12 +164,23 @@ for r in run_ids:
         runs.append([r, step])
 
 runs = [
-    ["Delphes_Aug_IRCSplit_50k_from10k_2025_05_11_14_08_49_675", 12900], # step 26k
+    #["Delphes_Aug_IRCSplit_50k_from10k_2025_05_11_14_08_49_675", 12900], # step 26k
     #["Delphes_Aug_IRCSplit_50k_2025_05_09_15_22_38_956", 9960],
-    ["LGATr_Aug_50k_2025_05_09_15_25_32_34", 25020],
+    #["LGATr_Aug_50k_2025_05_09_15_25_32_34", 25020],
     ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 50000]
 ]
 
+
+# Different training DS study
+'''runs = [
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_10_16_64_0.8_2025_05_03_18_35_53_134", 50000], # 900_03
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_16_19_44_46_795", 50000], # 700_07
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_16_19_46_57_48", 50000], # QCD
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_10_16_64_0.8_2025_05_16_21_04_26_991", 50000], # 700_07 and 900_03
+    ["LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_16_21_04_26_937", 50000] # 700_07, 900_03 and QCD
+]'''
+
+#runs = [["Delphes_Aug_IRCSplit_50k_SN_from3kFT_2025_05_16_14_07_29_474", 22020]]
 
 '''runs = [
     ["LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_875", 100],
@@ -228,7 +239,6 @@ test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" +
 test_files = ["Delphes_020425_test_PU_PFfix_part0/" + x for x in test_files_delphes] # Delphes test files
 
 print("QCD")
-
 test_files = ["QCD_test_part0/qcd_test"]
 
 
@@ -248,5 +258,5 @@ for run, step in runs:
             aug_suffixes = [""] # without ghosts for the base clustering
         #aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
-            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix_FullDataset_QCD {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag QCD_reprod  {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
 print("-----")

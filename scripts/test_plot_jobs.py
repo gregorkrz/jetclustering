@@ -20,7 +20,7 @@ parser.add_argument("--parton-level", "-pl", action="store_true") # To be used t
 parser.add_argument("--gen-level", "-gl", action="store_true")
 parser.add_argument("--overwrite", "-ow", action="store_true") # overwrite the slurm job if it exists
 parser.add_argument("--pt-cutoff-jet", "-pt", type=float, default=100.0, help="pt cutoff for what is considered a jet")
-parser.add_argument("--ds-cap", "-ds", type=int, default=2000, help="dataset cap ")
+parser.add_argument("--ds-cap", "-ds", type=int, default=10000, help="dataset cap ")
 
 args = parser.parse_args()
 api = wandb.Api()

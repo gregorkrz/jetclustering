@@ -32,7 +32,8 @@ intersections = sorted(list(set.intersection(*titles.values())))
 titles_to_plot = {
     "AK, R=0.8": ["AK8", "gray"],
     "GT_R=0.8 LGATr_GP_IRC_S_50k_s12900, sc. (aug)": ["LGATr_GP_IRC_S", "red"],
-    "GT_R=0.8 LGATr_GP_50k_s25020, sc. (aug)": ["LGATr_GP", "orange"]
+    "GT_R=0.8 LGATr_GP_50k_s25020, sc. (aug)": ["LGATr_GP", "purple"],
+    "GT_R=0.8 base_LGATr_s50000, sc.": ["LGATr", "orange"]
 }
 
 intersections = sorted(list(titles_to_plot.keys()))
@@ -51,7 +52,7 @@ fig, ax = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs
 figp, axp = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), sz*len(mediator_masses)))
 figr, axr = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), sz*len(mediator_masses)))
 
-
+grids = set()
 
 for i, mMed in enumerate(mediator_masses):
     for j, rInv in enumerate(r_invs):
@@ -82,9 +83,11 @@ for i, mMed in enumerate(mediator_masses):
             ax[i, j].legend()
             axp[i, j].legend()
             axr[i, j].legend()
-            ax[i, j].grid()
-            axp[i, j].grid()
-            axr[i, j].grid()
+            if (i, j) not in grids:
+                ax[i, j].grid()
+                axp[i, j].grid()
+                axr[i, j].grid()
+            grids.add((i, j))
 
 
 for f in output_dirs:

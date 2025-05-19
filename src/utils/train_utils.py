@@ -60,7 +60,7 @@ def train_load(args, aug_soft=False, aug_collinear=False):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=False
+        shuffle=True
     )
     '''val_loaders = {}
     for filename in val_files:

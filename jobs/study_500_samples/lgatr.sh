@@ -22,6 +22,6 @@ exit 0
 EOT
 
 # Args: n_blocks mv_channels s_channels radius (default: 10, 16, 64, 0.8)
-# bash jobs/study_500_samples/lgatr.sh 10 16 64 0.8
+# bash jobs/study_500_samples/lgatr_700_07.sh 10 16 64 0.8
 
 

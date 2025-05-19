@@ -208,6 +208,7 @@ def get_run_config(run_name):
     gt_r = config["gt_radius"]
     if config.get("augment_soft_particles", False):
         prefix += " (aug)" # ["LGATr_training_NoPID_10_16_64_0.8_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_25_820", "LGATr_training_NoPID_10_16_64_2.0_Aug_Finetune_vanishing_momentum_QCap05_2025_03_28_17_12_26_400"]
+
     training_datasets = {
         "LGATr_training_NoPID_10_16_64_0.8_AllData_2025_02_28_13_42_59": "all",
         "LGATr_training_NoPID_10_16_64_0.8_2025_02_28_12_42_59": "900_03",
@@ -262,9 +263,13 @@ def get_run_config(run_name):
         "LGATr_training_NoPID_Delphes_PU_PFfix_SmallDS_10_16_64_0.8_2025_05_09_15_56_50_875": "base_LGATr_SD",
         "Delphes_Aug_IRCSplit_50k_from10k_2025_05_11_14_08_49_675": "LGATr_GP_IRC_S_50k",
         "LGATr_Aug_50k_2025_05_09_15_25_32_34": "LGATr_GP_50k",
-        "Delphes_Aug_IRCSplit_50k_2025_05_09_15_22_38_956": "LGATr_GP_IRC_S_50k"
+        "Delphes_Aug_IRCSplit_50k_2025_05_09_15_22_38_956": "LGATr_GP_IRC_S_50k",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_16_21_04_26_937": "LGATr_700_07+900_03+QCD",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_10_16_64_0.8_2025_05_16_21_04_26_991": "LGATr_700_07+900_03",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_16_19_46_57_48": "LGATr_QCD",
+        "LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_16_19_44_46_795": "LGATr_700_07",
+        "Delphes_Aug_IRCSplit_50k_SN_from3kFT_2025_05_16_14_07_29_474": "LGATr_GP_IRC_SN_50k",
     }
-
     train_name = config["load_from_run"]
     ckpt_step = config["ckpt_step"]
     print("train name", train_name)
@@ -403,19 +408,51 @@ figures_all_sorted["AK8"] = {
 fig_f1, ax_f1 = plt.subplots(len(figures_all_sorted), 3, figsize=(sz * 2.5, sz * len(figures_all_sorted)))
 if len(figures_all_sorted) == 1:
     ax_f1 = np.array([ax_f1])
-text_level = ["PL", "sc.", "GL"]
+text_level = ["PL", "PFCands", "GL"]
 for i in range(len(figures_all_sorted)):
     model = list(figures_all_sorted.keys())[i]
+    renames = {
+        "R=0.8 base_LGATr_s50000": "LGATr",
+        "R=0.8 LGATr_GP_50k_s25020": "LGATr_GP",
+        "R=0.8 LGATr_GP_IRC_S_50k_s12900": "LGATr_GP_IRC_S",
+        "AK8": "AK8"
+    }
     for j in range(3):
         if j in figures_all_sorted[model]:
             if j in figures_all_sorted[model]:
                 matrix_plot(figures_all_sorted[model][j], "Purples", r"$F_1$ score",
                             metric_comp_func=lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax_f1[i, j], is_qcd="qcd" in path.lower())
-                ax_f1[i, j].set_title(model + " "+ text_level[j])
-                ax_f1[i, j].set_xlabel("mMed")
-                ax_f1[i, j].set_ylabel("rInv")
+                ax_f1[i, j].set_title(renames.get(model, model) + " "+ text_level[j])
+                ax_f1[i, j].set_xlabel("$m_{Z'}$")
+                ax_f1[i, j].set_ylabel("$r_{inv.}$")
 fig_f1.tight_layout()
 fig_f1.savefig(out_file_PRf1)
+
+
+import pandas as pd
+
+# plot QCD results:
+def get_qcd_results(i):
+    # i=0: precision, i=1: recall, i=2: f1 score
+    qcd_results = {}
+    for model in figures_all_sorted:
+        qcd_results[model] = {}
+        for level in figures_all_sorted[model]:
+            r = figures_all_sorted[model][level][0][0][0]
+            r = [float(x) for x in r] # append f1 score
+            r.append(r[0]*2*r[1] / (r[0]+r[1]))
+            qcd_results[model][text_level[level]] = r[i]
+    return pd.DataFrame(qcd_results).T
+
+if "qcd" in path.lower():
+    print("Precision:")
+    print(get_qcd_results(0))
+    print("----------------")
+    print("Recall:")
+    print(get_qcd_results(1))
+    print("----------------")
+    print("F1 score:")
+    print(get_qcd_results(2))
 ## Now do the GT R vs metrics plots
 
 oranges = plt.get_cmap("Oranges")
@@ -503,7 +540,7 @@ for mMed_h in result_AKX_jet_properties:
             jet_properties["AK8"][mMed_h] = {}
         if rInv_h not in jet_properties["AK8"][mMed_h]:
             jet_properties["AK8"][mMed_h][rInv_h] = {}
-        jet_properties["AK8"][mMed_h][rInv_h] = {"GL": {50000: result_AKX_jet_properties[mMed_h][mDark][rInv_h]}}
+        jet_properties["AK8"][mMed_h][rInv_h] = {"scouting": {50000: result_AKX_jet_properties[mMed_h][mDark][rInv_h]}}
 
 
 from matplotlib.lines import Line2D
@@ -526,14 +563,18 @@ if len(models):
     histograms = {}
     histograms_dict = {
         "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
-        "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple"}]
+        "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "AK8": "gray"}],
+        "LGATr_comparsion_DifferentTrainingDS": [{"base_LGATr": 50000, "LGATr_700_07": 50000, "LGATr_QCD": 50000, "LGATr_700_07+900_03": 50000, "LGATr_700_07+900_03+QCD": 50000, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"},]
     }
     for key in histograms_dict:
         if key not in histograms:
             histograms[key] = {}
         for i in ["pt", "eta", "phi"]:
-            histograms[key][i] = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
-    colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}
+            f, a = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
+            if len(r_invs) == 1 and len(m_Meds) == 1:
+                a = np.array([[a]])
+            histograms[key][i] = f, a
+    colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"} # THE COLORS FOR THE STEP VS. F1 SCORE
     #colors_small_dataset = {"base_LGATr_SD": "orange", "base_Tr_SD": "blue", "base_GATr_SD": "green", "AK8": "gray"}
     #colors = colors_small_dataset
     level_styles = {"scouting": "solid", "PL": "dashed", "GL": "dotted"}
@@ -543,11 +584,14 @@ if len(models):
 
     for i, mMed_h in enumerate(m_Meds):
         for j, rInv_h in enumerate(r_invs):
-            if j == 0:
-                ax_steps[i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
-                for subset in histograms:
-                    for key in histograms[subset]:
-                        histograms[subset][key][1][i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
+            ax_steps[i, j].set_title("$m_{{Z'}} = {}$ GeV, $r_{{inv.}} = {}$".format(mMed_h, rInv_h))
+            ax_steps[i, j].set_xlabel("Training step")
+            ax_steps[i, j].set_ylabel("Test $F_1$ score")
+            #if j == 0:
+                #ax_steps[i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
+                #for subset in histograms:
+                    #for key in histograms[subset]:
+                        #histograms[subset][key][1][i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
             if i == len(m_Meds)-1:
                 ax_steps[i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
                 for subset in histograms:
@@ -571,7 +615,7 @@ if len(models):
                             q = pred/truth
                             symbol = "/" # division instead of subtraction symbol for pt
                             quantity = "p_{T,pred}/p_{T,true}"
-                            bins = np.linspace(0, 1.5, 50)
+                            bins = np.linspace(0, 2.5, 100)
                         elif key.startswith("eta"):
                             q = (pred - truth)
                             symbol = "-"
@@ -585,8 +629,15 @@ if len(models):
                             q[q< -np.pi] += 2 * np.pi
                             bins = np.linspace(-0.8, 0.8, 50)
                             print("Max", np.max(q), "Min", np.min(q))
-                        histograms[subset][key][1][i, j].hist(q, histtype="step", color=histograms_dict[subset][1][model], label=model, bins=bins, density=True)
-                        histograms[subset][key][1][i, j].set_title(f"${quantity}$ $m_{{Z'}}={mMed_h}$ GeV, $r_{{inv.}}={rInv_h}$")
+                        rename = {"base_LGATr": "LGATr",
+                                  "LGATr_GP_IRC_S_50k": "LGATr_GP_IRC_S",
+                                  "AK8": "AK8",
+                                  "LGATr_GP_50k": "LGATr_GP"}
+                        histograms[subset][key][1][i, j].hist(q, histtype="step", color=histograms_dict[subset][1][model], label=rename.get(model, model), bins=bins, density=True)
+                        if mMed_h > 0:
+                            histograms[subset][key][1][i, j].set_title(f"${quantity}$ $m_{{Z'}}={mMed_h}$ GeV, $r_{{inv.}}={rInv_h}$")
+                        else:
+                            histograms[subset][key][1][i, j].set_title(f"${quantity}$")
                         histograms[subset][key][1][i, j].legend()
                         histograms[subset][key][1][i, j].grid(True)
             for model in to_plot_steps:
