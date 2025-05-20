@@ -2,10 +2,27 @@ import os
 from tqdm import tqdm
 import argparse
 import pickle
-from src.plotting.eval_matrix import matrix_plot, scatter_plot
+from src.plotting.eval_matrix import matrix_plot, scatter_plot, multiple_matrix_plot
 from src.utils.paths import get_path
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import OrderedDict
+
+### Change this to make custom plots highlighting differences between different models
+histograms_dict = {
+        "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
+        "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "AK8": "gray"}],
+        "LGATr_comparsion_DifferentTrainingDS": [{"base_LGATr": 50000, "LGATr_700_07": 50000, "LGATr_QCD": 50000, "LGATr_700_07+900_03": 50000, "LGATr_700_07+900_03+QCD": 50000, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}]
+    }
+
+results_dict = {
+    "LGATr_comparison_DifferentTrainingDS":
+        [{"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue",
+         "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}, {"base_LGATr": "LGATr_900_03"}], # 2nd dict in list is rename dict
+    "LGATr_comparison": [{"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "LGATr_GP_IRC_SN_50k": "pink", "AK8": "gray"},
+                         {"base_LGATr": "LGATr", "LGATr_GP_IRC_S_50k": "LGATr_GP_IRC_S", "LGATr_GP_50k": "LGATr_GP", "LGATr_GP_IRC_SN_50k": "LGATr_GP_IRC_SN"}], # 2nd dict in list is rename dict
+}
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=False, default="scouting_PFNano_signals2/SVJ_hadronic_std/batch_eval/objectness_score")
@@ -324,6 +341,7 @@ if len(models): # temporarily do not plot this one
     for i, model in tqdm(enumerate(sorted(models))):
         output_path = os.path.join(path, model, "count_matched_quarks")
         if not os.path.exists(os.path.join(output_path, "result.pkl")):
+            print("Result not exists for model", model)
             continue
         result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
         #result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))
@@ -335,7 +353,8 @@ if len(models): # temporarily do not plot this one
         #matrix_plot(result_PR, "Oranges", "Precision (N matched dark quarks / N predicted jets)", metric_comp_func = lambda r: r[0], ax=ax[0, i])
         #matrix_plot(result_PR, "Reds", "Recall (N matched dark quarks / N dark quarks)", metric_comp_func = lambda r: r[1], ax=ax[1, i])
         #matrix_plot(result_PR, "Purples", r"$F_1$ score", metric_comp_func = lambda r: 2 * r[0] * r[1] / (r[0] + r[1]), ax=ax[2, i])
-        run_config_title, run_config = get_run_config(model.replace("_pt_95.0", ""))
+        print("Getting run config for model", model)
+        run_config_title, run_config = get_run_config(model)
         print("RC title", run_config_title)
         if run_config is None:
             print("Skipping", model)
@@ -404,18 +423,19 @@ figures_all_sorted["AK8"] = {
     1: select_radius(result_PR_AKX, 0.8),
     2: select_radius(result_PR_AKX_GL, 0.8)
 }
+text_level = ["PL", "PFCands", "GL"]
 
 fig_f1, ax_f1 = plt.subplots(len(figures_all_sorted), 3, figsize=(sz * 2.5, sz * len(figures_all_sorted)))
 if len(figures_all_sorted) == 1:
     ax_f1 = np.array([ax_f1])
-text_level = ["PL", "PFCands", "GL"]
 for i in range(len(figures_all_sorted)):
     model = list(figures_all_sorted.keys())[i]
     renames = {
         "R=0.8 base_LGATr_s50000": "LGATr",
         "R=0.8 LGATr_GP_50k_s25020": "LGATr_GP",
         "R=0.8 LGATr_GP_IRC_S_50k_s12900": "LGATr_GP_IRC_S",
-        "AK8": "AK8"
+        "AK8": "AK8",
+        "R=0.8 LGATr_GP_IRC_SN_50k_s22020": "LGATr_GP_IRC_SN"
     }
     for j in range(3):
         if j in figures_all_sorted[model]:
@@ -465,6 +485,7 @@ if "qcd" in path.lower():
     mDark=0
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
 to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
+to_plot_v2 = {} # level -> rInv -> mMed -> {"model": [P,R]}
 results_all = {}
 results_all_ak = {}
 jet_properties = {} # training dataset -> rInv -> mMed -> level -> step -> jet property dict
@@ -492,13 +513,20 @@ for j, model in enumerate(models):
     if td_raw not in to_plot_steps:
         to_plot_steps[td_raw] = {}
         jet_properties[td_raw] = {}
+    level_idx = ["PL", "scouting", "GL"].index(level)
+    if level_idx not in to_plot_v2:
+        to_plot_v2[level_idx] = {}
     for mMed_h in result_PR:
+        if mMed_h not in to_plot_v2[level_idx]:
+            to_plot_v2[level_idx][mMed_h] = {}
         if mMed_h not in to_plot_steps[td_raw]:
             to_plot_steps[td_raw][mMed_h] = {}
             jet_properties[td_raw][mMed_h] = {}
         if mMed_h not in results_all[td]:
             results_all[td][mMed_h] = {mDark: {}}
         for rInv_h in result_PR[mMed_h][mDark]:
+            if rInv_h not in to_plot_v2[level_idx][mMed_h]:
+                to_plot_v2[level_idx][mMed_h][rInv_h] = {}
             if rInv_h not in to_plot_steps[td_raw][mMed_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h] = {}
                 jet_properties[td_raw][mMed_h][rInv_h] = {}
@@ -513,6 +541,7 @@ for j, model in enumerate(models):
             precision = result_PR[mMed_h][mDark][rInv_h][0]
             recall = result_PR[mMed_h][mDark][rInv_h][1]
             f1score = 2 * precision * recall / (precision + recall)
+            to_plot_v2[level_idx][mMed_h][rInv_h][td_raw] = [precision, recall]
             if r not in results_all[td][mMed_h][mDark][rInv_h][level]:
                 results_all[td][mMed_h][mDark][rInv_h][level][r] = f1score
             ckpt_step = rc["ckpt_step"]
@@ -534,14 +563,33 @@ result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
 result_AKX_jet_properties = select_radius(result_jet_props_akx, 0.8)
 
 jet_properties["AK8"] = {}
+
 for mMed_h in result_AKX_jet_properties:
     for rInv_h in result_AKX_jet_properties[mMed_h][mDark]:
+        if 0 in to_plot_v2:
+            to_plot_v2[0][mMed_h][rInv_h]["AK8"] = result_AKX_PL[mMed_h][mDark][rInv_h]
+            to_plot_v2[1][mMed_h][rInv_h]["AK8"] = result_AKX_current[mMed_h][mDark][rInv_h]
+            to_plot_v2[2][mMed_h][rInv_h]["AK8"] = result_AKX_GL[mMed_h][mDark][rInv_h]
         if mMed_h not in jet_properties["AK8"]:
             jet_properties["AK8"][mMed_h] = {}
         if rInv_h not in jet_properties["AK8"][mMed_h]:
             jet_properties["AK8"][mMed_h][rInv_h] = {}
         jet_properties["AK8"][mMed_h][rInv_h] = {"scouting": {50000: result_AKX_jet_properties[mMed_h][mDark][rInv_h]}}
 
+for key in results_dict:
+    for level in range(3):
+        level_text = text_level[level]
+        labels = list(results_dict[key][0].keys())
+        if level in to_plot_v2:
+            f, a = multiple_matrix_plot(to_plot_v2[level], labels=labels, colors=[results_dict[key][0][l] for l in labels], rename_dict=results_dict[key][1])
+            if f is None:
+                print("No figure for", key, level)
+                continue
+            #f.suptitle(f"{level_text} $F_1$ score")
+            out_file = f"grid_stack_F1_{level_text}_{key}.pdf"
+            out_file = os.path.join(get_path(args.input, "results"), out_file)
+            f.savefig(out_file)
+            print("Saved to", out_file)
 
 from matplotlib.lines import Line2D
 
@@ -561,11 +609,7 @@ if len(models):
     if len(m_Meds) == 1 and len(r_invs) == 1:
         ax_steps = np.array([[ax_steps]])
     histograms = {}
-    histograms_dict = {
-        "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
-        "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "AK8": "gray"}],
-        "LGATr_comparsion_DifferentTrainingDS": [{"base_LGATr": 50000, "LGATr_700_07": 50000, "LGATr_QCD": 50000, "LGATr_700_07+900_03": 50000, "LGATr_700_07+900_03+QCD": 50000, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"},]
-    }
+
     for key in histograms_dict:
         if key not in histograms:
             histograms[key] = {}

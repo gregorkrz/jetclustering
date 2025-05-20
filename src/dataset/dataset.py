@@ -516,8 +516,8 @@ class EventDataset(torch.utils.data.Dataset):
         pfcandsc.original_particle_mapping = torch.arange(len(pfcands))
         pfcandsc = concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
         if not add_original_particle_mapping:
-            pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # for now, ignore the soft particles
-        print("Original PM:", pfcandsc.original_particle_mapping)
+            pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # For now, ignore the soft particles
+        print("Original PM:", pfcandsc.original_particle_mapping.max())
         return pfcandsc
 
     @staticmethod
@@ -533,6 +533,12 @@ class EventDataset(torch.utils.data.Dataset):
         indices = highest_pt_idx[:n_to_split]
         pfcandsc = copy.deepcopy(pfcands)
         pfcandsc.original_particle_mapping = torch.arange(len(pfcands))
+        # assert that indices are all lower than len(pfcands)
+        if not torch.all(indices < len(pfcands)):
+            print("Indices:", indices)
+            print("PFCands:", pfcands.pt)
+            print("PFCands len:", len(pfcands.pt))
+            raise ValueError("Indices are out of bounds")
         for idx in indices:
             split_into = random_generator.randint(2, 5)
             # split the particle into
@@ -547,6 +553,9 @@ class EventDataset(torch.utils.data.Dataset):
             pfcandsc.pt[idx] = pt
             for _ in range(split_into-1):
                 pfcandsc = concat_event_collection([pfcandsc, colinear_pfcands], nobatch=1)
+        if pfcandsc.original_particle_mapping.max() >= len(pfcands):
+            print("Original PM:", pfcandsc.original_particle_mapping.max(), "len pfcands", len(pfcands))
+            raise ValueError("Original particle mapping is out of bounds")
         return pfcandsc
 
     def get_idx(self, i):
@@ -626,6 +635,7 @@ class EventDataset(torch.utils.data.Dataset):
         if "genjets" in result:
             result["genjets"] = EventDataset.mask_jets(result["genjets"])
         evt = Event(**result)
+        assert evt.pfcands.original_particle_mapping.max() < len(evt.pfcands.pt), "Original particle mapping is out of bounds: " + str(evt.original_particle_mapping.max()) + " >= " + str(len(evt.pfcands.pt))
         return evt
 
     @staticmethod

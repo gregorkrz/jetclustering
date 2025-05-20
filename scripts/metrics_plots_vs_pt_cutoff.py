@@ -19,6 +19,17 @@ inputs = {
     90: "Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_pt_90.0",
     100: "Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset"
 }
+print("PLOTTING QCD")
+inputs = {
+    30: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_30.0",
+    40: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_40.0",
+    50: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_50.0",
+    60: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_60.0",
+    70: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_70.0",
+    80: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_80.0",
+    90: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_90.0",
+    100: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD"
+}
 
 
 files = {
@@ -36,6 +47,18 @@ titles_to_plot = {
     "GT_R=0.8 base_LGATr_s50000, sc.": ["LGATr", "orange"]
 }
 
+print("QCD") # colors=   [{"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}, {"base_LGATr": "LGATr_900_03"}],
+titles_to_plot = {
+    "AK, R=0.8": ["AK8", "gray"],
+
+    "GT_R=0.8 base_LGATr_s50000, sc.": ["LGATr_900_03", "orange"],
+    "GT_R=0.8 LGATr_QCD_s50000, sc.": ["LGATr_QCD", "purple"],
+    "GT_R=0.8 LGATr_700_07_s50000, sc.": ["LGATr_700_07", "red"],
+    "GT_R=0.8 LGATr_700_07+900_03_s50000, sc.": ["LGATr_700_07+900_03", "blue"],
+    "GT_R=0.8 LGATr_700_07+900_03+QCD_s50000, sc.": ["LGATr_700_07+900_03+QCD", "green"],
+}
+
+
 intersections = sorted(list(titles_to_plot.keys()))
 
 output_dirs = []
@@ -52,6 +75,10 @@ fig, ax = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs
 figp, axp = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), sz*len(mediator_masses)))
 figr, axr = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), sz*len(mediator_masses)))
 
+if len(r_invs) == 1 and len(mediator_masses) == 1:
+    ax = np.array([[ax]])
+    axp = np.array([[axp]])
+    axr = np.array([[axr]])
 grids = set()
 
 for i, mMed in enumerate(mediator_masses):
@@ -63,7 +90,7 @@ for i, mMed in enumerate(mediator_masses):
             recalls = []
             f1_scores = []
             for pt in pts:
-                precision, recall = files[pt][title][mMed][20][rInv]
+                precision, recall = files[pt][title][mMed][0][rInv]
                 precisions.append(precision)
                 recalls.append(recall)
                 f1_score = 2 * precision * recall / (precision + recall)

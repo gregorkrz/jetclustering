@@ -60,6 +60,7 @@ def train_epoch(
         batch, y = get_batch(event_batch, batch_config, y)
         if train_loader_aug is not None:
             event_batch_aug = next(train_loader_aug)
+            assert event_batch_aug.pfcands.original_particle_mapping.max() < len(event_batch.pfcands), f"The original particle mapping out of bounds: {event_batch_aug.pfcands_original_particle_mapping.max()} >= {len(event_batch.pfcands)}"
             if len(batch.dropped_batches):
                 print("Dropped batches:", batch.dropped_batches, " - skipping this iteration")
                 # Quicker this than to implement all the indexing complications from dropped batches

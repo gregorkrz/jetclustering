@@ -186,6 +186,12 @@ models = {
 models = {
     "L-GATr": "train/Eval_DelphesPFfix_FullDataset_QCD_2025_05_15_17_42_39_541"
 }
+
+models = {
+    "QCD": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_QCD_2025_05_18_21_54_43_705",
+    "700_07+900_03+QCD": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_QCD_2025_05_18_22_18_36_991"
+}
+
 print(models)
 
 # R = 2.0 models
@@ -195,12 +201,12 @@ print(models)
 #    "scouting PFCands": "train/Eval_eval_19March2025_2025_03_19_23_4x3_07"
 #}
 
-output_path = get_path("QCD_plots", "results")
 
+output_path = get_path("QCD_plots_20052025_eval_QCD_train_s_vs_sb", "results")
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
 sz = 3
-n_events_per_file = 25
+n_events_per_file = 50
 # len(models) columns, n_events_per_file rows
 from src.layers.object_cond import calc_eta_phi
 

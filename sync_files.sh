@@ -33,4 +33,3 @@ rsync -avz -e "ssh"  /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/
 
 # T3 -> Vega code
 rsync -avz -e "ssh" t3:/work/gkrzmanc/jetclustering/code /ceph/hpc/home/krzmancg/jetclustering/ --exclude "wandb" --exclude ".env" --exclude "env.sh" --exclude "__pycache__" --exclude ".git" --exclude "*.log" --exclude "*.txt"
-
