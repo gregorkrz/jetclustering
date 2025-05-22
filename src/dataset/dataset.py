@@ -307,7 +307,7 @@ class _SimpleIter(object):
         return create_jets_outputs_new(X), False
 
 class EventDatasetCollection(torch.utils.data.Dataset):
-    def __init__(self, dir_list, args, aug_soft=False, aug_collinear=False):
+    def __init__(self, dir_list, args, aug_soft=False, aug_collinear=False, shuffle_seed=10):
         self.event_collections_dict = OrderedDict()
         if args:
             aug_soft = args.augment_soft_particles
@@ -316,6 +316,10 @@ class EventDatasetCollection(torch.utils.data.Dataset):
         for dir in dir_list:
             self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=aug_soft or aug_soft, seed=0, aug_collinear=aug_collinear)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
+        evt_idx = np.arange(0, self.n_events) # now shuffle this using the shuffle_seed and a separate random generator
+        rng = np.random.default_rng(shuffle_seed)
+        rng.shuffle(evt_idx)
+        self.old_to_new_idx = evt_idx
         self.event_thresholds = [x.n_events for x in self.event_collections_dict.values()]
         self.event_thresholds = np.cumsum([0] + self.event_thresholds)
         self.dir_list = dir_list
@@ -332,10 +336,10 @@ class EventDatasetCollection(torch.utils.data.Dataset):
         return self.get_idx(i)
     def __iter__(self):
         for i in range(self.n_events):
-            yield self.get_idx(i)
+            yield self.get_idx(self.old_to_new_idx[i])
     def __getitem__(self, i):
         assert i < self.n_events, "Index out of bounds: %d >= %d" % (i, self.n_events)
-        return self.get_idx(i)
+        return self.get_idx(self.old_to_new_idx[i])
     # A collection of EventDatasets.
     # You should use a sampler together with this, as by default it just concatenates the EventDatasets together!
 

@@ -60,8 +60,9 @@ def train_load(args, aug_soft=False, aug_collinear=False):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=True
+        shuffle=False
     )
+
     '''val_loaders = {}
     for filename in val_files:
         val_data = EventDataset.from_directory(filename, mmap=True)
@@ -85,7 +86,7 @@ def train_load(args, aug_soft=False, aug_collinear=False):
         num_workers=args.num_workers,
         collate_fn=concat_events,
         persistent_workers=args.num_workers > 0,
-        shuffle=True
+        shuffle=False
     )
     return train_loader, val_loader, val_data
 

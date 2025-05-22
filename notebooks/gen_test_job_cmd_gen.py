@@ -194,6 +194,24 @@ runs = [
     ["GATr_training_NoPID_Delphes_PU_CoordFix_SmallDS_10_16_64_0.8_2025_05_09_15_34_13_531", 1000]
 ]
 '''
+
+runs = [
+   # ["GP_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_19_21_29_06_946", 24000],
+    #["GP_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_19_21_38_20_376", 24000],
+    ["GP_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_20_13_12_54_359", 24000],
+    ["GP_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_10_16_64_0.8_2025_05_20_13_13_00_503", 24000],
+]
+
+
+runs =  [ #GP IRC S
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_10_16_64_0.8_2025_05_20_15_29_30_29", 24000],
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_20_15_29_28_959", 24000],
+    # The above two have been started, the below two not yet
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_20_15_11_35_476", 24000],
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_20_15_11_20_735", 24000]
+]
+
+
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000",
@@ -213,6 +231,7 @@ test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pyt
                 "PFNano_s-channel_mMed-900_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
                 "PFNano_s-channel_mMed-900_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000"
               ]
+
 
 test_files_smaller = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
 "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
@@ -238,9 +257,8 @@ test_files = ["Feb26_2025_E1000_N500_noPartonFilter_GluonFix_Small2K_F_part0/" +
 #test_files = ["Feb26_2025_E1000_N500_folders/" + x for x in test_files_smaller]
 test_files = ["Delphes_020425_test_PU_PFfix_part0/" + x for x in test_files_delphes] # Delphes test files
 
-print("QCD")
-test_files = ["QCD_test_part0/qcd_test"]
-
+#print("QCD")
+#test_files = ["QCD_test_part0/qcd_test"]
 
 
 print("------")
@@ -258,5 +276,6 @@ for run, step in runs:
             aug_suffixes = [""] # without ghosts for the base clustering
         #aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
-            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag QCD_reprod  {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
+            print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix_FullDataset_TrainDSstudy  {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
+
 print("-----")

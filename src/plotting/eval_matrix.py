@@ -30,6 +30,8 @@ def multiple_matrix_plot(result, labels, colors, custom_val_formula=lambda x: 2*
     sz = 3
     #fig, ax = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), 6*len(mediator_masses)))
     fig, ax = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), 0.65*sz*len(mediator_masses)))
+    if len(mediator_masses) == 1 and len(r_invs) == 1:
+        ax = np.array([[ax]])
     for i, mMed in enumerate(mediator_masses):
         for k, rinv in enumerate(r_invs):
             if mMed not in result:
