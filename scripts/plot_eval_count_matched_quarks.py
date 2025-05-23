@@ -2,7 +2,7 @@ import os
 from tqdm import tqdm
 import argparse
 import pickle
-from src.plotting.eval_matrix import matrix_plot, scatter_plot, multiple_matrix_plot
+from src.plotting.eval_matrix import matrix_plot, scatter_plot, multiple_matrix_plot, ax_tiny_histogram
 from src.utils.paths import get_path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +13,7 @@ histograms_dict = {
         "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
         "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "AK8": "gray"}],
         "LGATr_comparsion_DifferentTrainingDS": [{"base_LGATr": 50000, "LGATr_700_07": 50000, "LGATr_QCD": 50000, "LGATr_700_07+900_03": 50000, "LGATr_700_07+900_03+QCD": 50000, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}]
-    }
+}
 
 
 results_dict = {
@@ -515,6 +515,7 @@ if "qcd" in path.lower():
 to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
 to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
 to_plot_v2 = {} # level -> rInv -> mMed -> {"model": [P,R]}
+quark_to_jet = {} # level -> rInv -> mMed -> model -> quark to jet assignment list
 results_all = {}
 results_all_ak = {}
 jet_properties = {} # training dataset -> rInv -> mMed -> level -> step -> jet property dict
@@ -534,6 +535,7 @@ for j, model in enumerate(models):
     if not os.path.exists(os.path.join(output_path, "result_PR.pkl")):
         continue
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
+    result_QJ = pickle.load(open(os.path.join(output_path, "result_quark_to_jet.pkl"), "rb"))
     result_jet_props = pickle.load(open(os.path.join(output_path, "result_jet_properties.pkl"), "rb"))
     print(level)
     if td not in to_plot:
@@ -545,9 +547,11 @@ for j, model in enumerate(models):
     level_idx = ["PL", "scouting", "GL"].index(level)
     if level_idx not in to_plot_v2:
         to_plot_v2[level_idx] = {}
+        quark_to_jet[level_idx] = {}
     for mMed_h in result_PR:
         if mMed_h not in to_plot_v2[level_idx]:
             to_plot_v2[level_idx][mMed_h] = {}
+            quark_to_jet[level_idx][mMed_h] = {}
         if mMed_h not in to_plot_steps[td_raw]:
             to_plot_steps[td_raw][mMed_h] = {}
             jet_properties[td_raw][mMed_h] = {}
@@ -556,6 +560,7 @@ for j, model in enumerate(models):
         for rInv_h in result_PR[mMed_h][mDark]:
             if rInv_h not in to_plot_v2[level_idx][mMed_h]:
                 to_plot_v2[level_idx][mMed_h][rInv_h] = {}
+                quark_to_jet[level_idx][mMed_h][rInv_h] = {}
             if rInv_h not in to_plot_steps[td_raw][mMed_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h] = {}
                 jet_properties[td_raw][mMed_h][rInv_h] = {}
@@ -571,6 +576,8 @@ for j, model in enumerate(models):
             recall = result_PR[mMed_h][mDark][rInv_h][1]
             f1score = 2 * precision * recall / (precision + recall)
             to_plot_v2[level_idx][mMed_h][rInv_h][td_raw] = [precision, recall]
+            quark_to_jet[level_idx][mMed_h][rInv_h][td_raw] = result_QJ[mMed_h][mDark][rInv_h]
+            print("qj", quark_to_jet[:5])
             if r not in results_all[td][mMed_h][mDark][rInv_h][level]:
                 results_all[td][mMed_h][mDark][rInv_h][level][r] = f1score
             ckpt_step = rc["ckpt_step"]
@@ -604,6 +611,44 @@ for mMed_h in result_AKX_jet_properties:
         if rInv_h not in jet_properties["AK8"][mMed_h]:
             jet_properties["AK8"][mMed_h][rInv_h] = {}
         jet_properties["AK8"][mMed_h][rInv_h] = {"scouting": {50000: result_AKX_jet_properties[mMed_h][mDark][rInv_h]}}
+
+
+rename_results_dict = {
+    "LGATr_comparison_DifferentTrainingDS": "base",
+    #"LGATr_comparison_GP_training": "GP",
+    "LGATr_comparison_GP_IRC_S_training": "GP_IRC_S",
+}
+
+hypotheses_to_plot = [[0,0],[700,0.7],[700,0.5],[700,0.3]]
+
+for hyp_m, hyp_rinv in hypotheses_to_plot:
+    if hyp_m not in to_plot_v2[0] or hyp_rinv not in to_plot_v2[0][hyp_m]:
+        continue
+    for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=f1
+        sz_small1 = 2.5
+        fig, ax = plt.subplots(len(rename_results_dict), 3, figsize=(sz_small1 * 3, sz_small1 * len(rename_results_dict)))
+        for i1, key in enumerate(list(rename_results_dict.keys())):
+            for level in range(3):
+                level_text = text_level[level]
+                labels = list(results_dict[key][0].keys())
+                colors = [results_dict[key][0][l] for l in labels]
+                res_precision = np.array([to_plot_v2[level][hyp_m][hyp_rinv][l][0] for l in labels])
+                res_recall = np.array([to_plot_v2[level][hyp_m][hyp_rinv][l][1] for l in labels])
+                res_f1 = 2 * res_precision * res_recall / (res_precision + res_recall)
+                if i == 0:
+                    values = res_precision
+                elif i == 1:
+                    values = res_recall
+                else:
+                    values = res_f1
+                rename_dict = results_dict[key][1]
+                labels_renamed = [rename_dict.get(l,l) for l in labels]
+                print(i1, level)
+                ax_tiny_histogram(ax[i1, level], labels_renamed, colors, values)
+                ax[i1, level].set_title(f"{rename_results_dict[key]} {level_text}")
+        fig.tight_layout()
+        fig.savefig(os.path.join(get_path(args.input, "results"), f"{lbl}_results_by_level_{hyp_m}_{hyp_rinv}_{key}.pdf"))
+
 
 for key in results_dict:
     for level in range(3):
