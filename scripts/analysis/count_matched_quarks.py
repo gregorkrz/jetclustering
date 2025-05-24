@@ -105,6 +105,23 @@ thresholds = np.linspace(0.1, 1, 20)
 # also add 100 points between 0 and 0.1 at the beginning
 thresholds = np.concatenate([np.linspace(0, 0.1, 100), thresholds])
 
+def get_mc_gt_per_event(event):
+    # get the monte carlo GT pt for the event. This is pt of the particles closer than 0.8 to each of the dark quarks
+    result = []
+    dq = [event.matrix_element_gen_particles.eta, event.matrix_element_gen_particles.phi]
+    for i in range(len(dq[0])):
+        dq_coords = [dq[0][i], dq[1][i]]
+        cone_filter = torch.sqrt((event.pfcands.eta - dq_coords[0])**2 + (event.pfcands.phi - dq_coords[1])**2) < 0.8
+        #cone_filter_special = torch.sqrt(
+        #    (event.special_pfcands.eta - dq_coords[0]) ** 2 + (event.special_pfcands.phi - dq_coords[1]) ** 2) < R
+        eta_cone, phi_cone, pt_cone = event.pfcands.eta[cone_filter], event.pfcands.phi[cone_filter], event.pfcands.pt[cone_filter]
+        px_cone = torch.sum(pt_cone * np.cos(phi_cone))
+        py_cone = torch.sum(pt_cone * np.sin(phi_cone))
+        pz_cone = torch.sum(pt_cone * np.sinh(eta_cone))
+        pt_cone = torch.sqrt(px_cone**2 + py_cone**2)
+        result.append(pt_cone.item())
+    return result
+
 if not args.plot_only:
     n_matched_quarks = {}
     unmatched_quarks = {}
@@ -118,6 +135,8 @@ if not args.plot_only:
     matched_jet_properties = {} # contains {'pt_gen_particle': [], 'pt_mc_truth': [], 'pt_pred': [], 'eta_gen_particle': [], 'eta_mc_truth': [], 'eta_pred': [], 'phi_gen_particle': [], 'phi_mc_truth': [], 'phi_pred': []}
     matched_jet_properties_fastjets = {}
     is_dq_matched_per_event = {}
+    dq_pt_per_event = {}
+    gt_pt_per_event = {}
     print("LISTING DIRECTORY", path, ":", os.listdir(path))
     for subdataset in os.listdir(path):
         print("-----", subdataset, "-----")
@@ -129,8 +148,12 @@ if not args.plot_only:
             precision_and_recall_fastjets[subdataset] = {}
             matched_jet_properties_fastjets[subdataset] = {}
             is_dq_matched_per_event[subdataset] = []
+            dq_pt_per_event[subdataset] = []
+            gt_pt_per_event[subdataset] = []
             if args.jets_object == "fastjet_jets":
                 is_dq_matched_per_event[subdataset] = {}
+                dq_pt_per_event[subdataset] = {}
+                gt_pt_per_event[subdataset] = {}
             pr_obj_score_thresholds[subdataset] = {}
             for i in range(len(thresholds)):
                 pr_obj_score_thresholds[subdataset][i] = [0, 0, 0]
@@ -147,7 +170,7 @@ if not args.plot_only:
         #                   include_model_jets_unfiltered=True)
         fastjet_R = None
         if args.jets_object == "fastjet_jets":
-            fastjet_R = np.array([0.8, 2.0])
+            fastjet_R = np.array([0.8])
             config = {"parton_level": args.parton_level, "gen_level": args.gen_level}
         print("Config:", config)
         dataset = EventDataset.from_directory(current_path, model_clusters_file=model_clusters_file,
@@ -242,6 +265,8 @@ if not args.plot_only:
                     filt = torch.ones(len(data.matrix_element_gen_particles)).bool()
                     quark_to_jet = torch.ones(len(data.matrix_element_gen_particles)).long() * -1
                 is_dq_matched_per_event[subdataset].append(quark_to_jet.tolist())
+                dq_pt_per_event[subdataset].append(data.matrix_element_gen_particles.pt.tolist())
+                gt_pt_per_event[subdataset].append(get_mc_gt_per_event(data))
                 if subdataset not in unmatched_quarks:
                     unmatched_quarks[subdataset] = {"pt": [], "eta": [], "phi": [], "pt_all": [], "frac_evt_E_matched": [], "frac_evt_E_unmatched": []}
                 unmatched_quarks[subdataset]["pt"] += data.matrix_element_gen_particles.pt[filt].tolist()
@@ -280,6 +305,8 @@ if not args.plot_only:
                         precision_and_recall_fastjets[subdataset][key] = [0, 0, 0]
                     if key not in matched_jet_properties_fastjets[subdataset]:
                         is_dq_matched_per_event[subdataset][key] = []
+                        dq_pt_per_event[subdataset][key] = []
+                        gt_pt_per_event[subdataset][key] = []
                         matched_jet_properties_fastjets[subdataset][key] = {"pt_gen_particle": [], "pt_pred": [],
                                                                             "eta_gen_particle": [], "eta_pred": [],
                                                                             "phi_gen_particle": [], "phi_pred": []}
@@ -300,6 +327,8 @@ if not args.plot_only:
                     else:
                         quark_to_jet = torch.ones(len(data.matrix_element_gen_particles)).long() * -1
                     is_dq_matched_per_event[subdataset][key].append(quark_to_jet.tolist())
+                    dq_pt_per_event[subdataset][key].append(data.matrix_element_gen_particles.pt.tolist())
+                    gt_pt_per_event[subdataset][key].append(get_mc_gt_per_event(data))
     avg_n_matched_quarks = {}
     avg_n_fake_jets = {}
     for key in n_matched_quarks:
@@ -332,6 +361,8 @@ if not args.plot_only:
     result_jet_properties = {}
     result_jet_properties_AKX = {}
     result_quark_to_jet ={}
+    result_pt_mc_gt = {}
+    result_pt_dq = {}
     if args.jets_object != "fastjet_jets":
         for key in avg_n_matched_quarks:
             mMed, mDark, rinv = get_properties(key)
@@ -347,6 +378,8 @@ if not args.plot_only:
                 result_jet_properties[mMed] = {}
                 result_jet_properties_AKX[mMed] = {}
                 result_quark_to_jet[mMed] = {}
+                result_pt_mc_gt[mMed] = {}
+                result_pt_dq[mMed] = {}
             if mDark not in result[mMed]:
                 result[mMed][mDark] = {}
                 result_unmatched[mMed][mDark] = {}
@@ -359,11 +392,15 @@ if not args.plot_only:
                 result_jet_properties[mMed][mDark] = {}
                 result_jet_properties_AKX[mMed][mDark] = {}
                 result_quark_to_jet[mMed][mDark] = {}
+                result_pt_mc_gt[mMed][mDark] = {}
+                result_pt_dq[mMed][mDark] = {}
             result[mMed][mDark][rinv] = avg_n_matched_quarks[key]
             result_unmatched[mMed][mDark][rinv] = unmatched_quarks[key]
             result_fakes[mMed][mDark][rinv] = avg_n_fake_jets[key]
             result_jet_properties[mMed][mDark][rinv] = matched_jet_properties[key]
             result_quark_to_jet[mMed][mDark][rinv] = is_dq_matched_per_event[key]
+            result_pt_mc_gt[mMed][mDark][rinv] = gt_pt_per_event[key]
+            result_pt_dq[mMed][mDark][rinv] = dq_pt_per_event[key]
             #result_bc[mMed][mDark][rinv] = {
             #    "matched": bc_scores_matched[key],
             #    "unmatched": bc_scores_unmatched[key]
@@ -392,23 +429,33 @@ if not args.plot_only:
                 result_PR_AKX[mMed] = {}
                 result_jet_properties_AKX[mMed] = {}
                 result_quark_to_jet[mMed] = {}
+                result_pt_mc_gt[mMed] = {}
+                result_pt_dq[mMed] = {}
             if mDark not in result_PR_AKX[mMed]:
                 result_PR_AKX[mMed][mDark] = {}
                 result_jet_properties_AKX[mMed][mDark] = {}
                 result_quark_to_jet[mMed][mDark] = {}
+                result_pt_mc_gt[mMed][mDark] = {}
+                result_pt_dq[mMed][mDark] = {}
             r = precision_and_recall_fastjets[key]
             if rinv not in result_PR_AKX[mMed][mDark]:
                 result_PR_AKX[mMed][mDark][rinv] = {}
                 result_jet_properties_AKX[mMed][mDark][rinv] = {}
                 result_quark_to_jet[mMed][mDark][rinv] = {}
+                result_pt_mc_gt[mMed][mDark][rinv] = {}
+                result_pt_dq[mMed][mDark][rinv] = {}
             for k in r:
                 result_quark_to_jet[mMed][mDark][rinv][k] = is_dq_matched_per_event[key][k]
+                result_pt_mc_gt[mMed][mDark][rinv][k] = gt_pt_per_event[key][k]
+                result_pt_dq[mMed][mDark][rinv][k] = dq_pt_per_event[key][k]
                 result_jet_properties_AKX[mMed][mDark][rinv][k] = matched_jet_properties_fastjets[key][k]
                 if r[k][1] == 0 or r[k][2] == 0:
                     result_PR_AKX[mMed][mDark][rinv][k] = [0, 0]
                 else:
                     result_PR_AKX[mMed][mDark][rinv][k] = [r[k][0] / r[k][1], r[k][0] / r[k][2]]
     pickle.dump(result_quark_to_jet, open(os.path.join(output_path, "result_quark_to_jet.pkl"), "wb"))
+    pickle.dump(result_pt_mc_gt, open(os.path.join(output_path, "result_pt_mc_gt.pkl"), "wb"))
+    pickle.dump(result_pt_dq, open(os.path.join(output_path, "result_pt_dq.pkl"), "wb"))
     pickle.dump(result, open(os.path.join(output_path, "result.pkl"), "wb"))
     pickle.dump(result_unmatched, open(os.path.join(output_path, "result_unmatched.pkl"), "wb"))
     pickle.dump(result_fakes, open(os.path.join(output_path, "result_fakes.pkl"), "wb"))
@@ -425,6 +472,7 @@ if not args.plot_only:
     # Write the number of events to n_events.txt
     with open(os.path.join(output_path, "n_events.txt"), "w") as f:
         f.write(str(n))
+
 if args.plot_only:
     result = pickle.load(open(os.path.join(output_path, "result.pkl"), "rb"))
     result_unmatched = pickle.load(open(os.path.join(output_path, "result_unmatched.pkl"), "rb"))

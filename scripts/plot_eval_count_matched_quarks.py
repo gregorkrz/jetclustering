@@ -342,13 +342,17 @@ ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
 result_jet_props_akx = pickle.load(open(os.path.join(ak_path, "result_jet_properties_AKX.pkl"), "rb"))
+result_qj_akx = pickle.load(open(os.path.join(ak_path, "result_quark_to_jet.pkl"), "rb"))
+
 try:
     result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+    result_qj_akx_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_quark_to_jet.pkl"), "rb"))
 except FileNotFoundError:
     print("FileNotFoundError")
     result_PR_AKX_PL = result_PR_AKX
 try:
     result_PR_AKX_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
+    result_qj_akx_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_quark_to_jet.pkl"), "rb"))
 
 except FileNotFoundError:
     print("FileNotFoundError")
@@ -577,7 +581,7 @@ for j, model in enumerate(models):
             f1score = 2 * precision * recall / (precision + recall)
             to_plot_v2[level_idx][mMed_h][rInv_h][td_raw] = [precision, recall]
             quark_to_jet[level_idx][mMed_h][rInv_h][td_raw] = result_QJ[mMed_h][mDark][rInv_h]
-            print("qj", quark_to_jet[:5])
+            #print("qj", quark_to_jet[level_idx][mMed_h][rInv_h][td_raw])
             if r not in results_all[td][mMed_h][mDark][rInv_h][level]:
                 results_all[td][mMed_h][mDark][rInv_h][level][r] = f1score
             ckpt_step = rc["ckpt_step"]
@@ -599,6 +603,9 @@ result_AKX_GL = select_radius(result_PR_AKX_GL, 0.8)
 result_AKX_jet_properties = select_radius(result_jet_props_akx, 0.8)
 
 jet_properties["AK8"] = {}
+result_AKX_current_QJ = select_radius(result_qj_akx, 0.8)
+result_AKX_PL_QJ = select_radius(result_qj_akx_PL, 0.8)
+result_AKX_GL_QJ = select_radius(result_qj_akx_GL, 0.8)
 
 for mMed_h in result_AKX_jet_properties:
     for rInv_h in result_AKX_jet_properties[mMed_h][mDark]:
@@ -606,12 +613,15 @@ for mMed_h in result_AKX_jet_properties:
             to_plot_v2[0][mMed_h][rInv_h]["AK8"] = result_AKX_PL[mMed_h][mDark][rInv_h]
             to_plot_v2[1][mMed_h][rInv_h]["AK8"] = result_AKX_current[mMed_h][mDark][rInv_h]
             to_plot_v2[2][mMed_h][rInv_h]["AK8"] = result_AKX_GL[mMed_h][mDark][rInv_h]
+            quark_to_jet[0][mMed_h][rInv_h]["AK8"] = result_AKX_PL_QJ[mMed_h][mDark][rInv_h]
+            quark_to_jet[1][mMed_h][rInv_h]["AK8"] = result_AKX_current_QJ[mMed_h][mDark][rInv_h]
+            quark_to_jet[2][mMed_h][rInv_h]["AK8"] = result_AKX_GL_QJ[mMed_h][mDark][rInv_h]
+
         if mMed_h not in jet_properties["AK8"]:
             jet_properties["AK8"][mMed_h] = {}
         if rInv_h not in jet_properties["AK8"][mMed_h]:
             jet_properties["AK8"][mMed_h][rInv_h] = {}
         jet_properties["AK8"][mMed_h][rInv_h] = {"scouting": {50000: result_AKX_jet_properties[mMed_h][mDark][rInv_h]}}
-
 
 rename_results_dict = {
     "LGATr_comparison_DifferentTrainingDS": "base",
@@ -619,11 +629,49 @@ rename_results_dict = {
     "LGATr_comparison_GP_IRC_S_training": "GP_IRC_S",
 }
 
+
 hypotheses_to_plot = [[0,0],[700,0.7],[700,0.5],[700,0.3]]
+
+def flatten_list(lst):# lst is like [[0,0],[1,1]...]
+    #return [item for sublist in lst for item in sublist]
+    return list(chain.from_iterable(lst))
+
+import torch
+from itertools import chain, combinations
+
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 for hyp_m, hyp_rinv in hypotheses_to_plot:
     if hyp_m not in to_plot_v2[0] or hyp_rinv not in to_plot_v2[0][hyp_m]:
         continue
+    # plot here the venn diagrams
+    for level in range(3):
+        #labels = list(results_dict["LGATr_comparison_GP_IRC_S_training"][0].keys())
+        labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
+        label_combination_to_number = {} # fill it with all possible label combinations e.g. if there are 3 labels: "NA", "0", "1", "2", "01", "012", "12", "02"
+        powerset_str = ["".join([str(x) for x in sorted(list(a))]) for a in powerset(range(len(labels)))]
+        set_to_count = {key: 0 for key in powerset_str}
+        label_to_result = {}
+        n_dq = 20000
+        for j, label in enumerate(labels):
+            r = torch.tensor(flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label]))
+            r = (r != -1) # Whether quark no. X is caught or not
+            label_to_result[j] = r.tolist()[:n_dq]
+            assert len(label_to_result[j]) == n_dq, f"Label {label} has different number of quarks than others {n_dq} != {len(label_to_result[j])}"
+            #n_dq = min(n_dq, len(r))
+        #for j, label in enumerate(labels):
+        #    assert len(label_to_result[j]) == n_dq, f"Label {label} has different number of quarks than others {n_dq} != {len(label_to_result[j])}"
+        for c in tqdm(range(n_dq)):
+            belonging_to_set = ""
+            for j, label in enumerate(labels):
+                if label_to_result[j][c] == 1:
+                    belonging_to_set += str(j)
+            set_to_count[belonging_to_set] += 1
+        print("set_to_count for level", level, ":", set_to_count, "labels:", labels)
     for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=f1
         sz_small1 = 2.5
         fig, ax = plt.subplots(len(rename_results_dict), 3, figsize=(sz_small1 * 3, sz_small1 * len(rename_results_dict)))
