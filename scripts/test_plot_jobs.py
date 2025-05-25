@@ -66,10 +66,10 @@ def get_slurm_file_text_AKX(tag, log_number):
 #SBATCH --account={account}                  # Specify the account
 #SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=06:00:00               # Set the time limit to 1 hour
-#SBATCH --job-name=SVJan_AKX{pl_folder}{gl_folder}  # Name the job
+#SBATCH --job-name=SVJan_AKX{pl_folder}{gl_folder}_{str(log_number)}  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
@@ -125,10 +125,10 @@ def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
 #SBATCH --account={account}               # Specify the account
 #SBATCH --mem=25000                   # Request 10GB of memory
 #SBATCH --time=02:00:00               # Set the time limit to 1 hour
-#SBATCH --job-name=SVJ_CPU_{eval_job_name}  # Name the job
+#SBATCH --job-name=SVJ_CPU_{eval_job_name}_{str(log_number)}  # Name the job
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
 export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
@@ -196,7 +196,6 @@ for i, run in enumerate(runs):
         print("Skipping run", run, "because it is parton level or gen level and pt cutoff is not 100.0")
         continue
     aug_soft_p = conf.get("augment_soft_particles", False)
-
     if aug_soft_p:
         aug_suffix = "-aug-soft"
     else:

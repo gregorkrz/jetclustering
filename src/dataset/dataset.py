@@ -521,7 +521,7 @@ class EventDataset(torch.utils.data.Dataset):
         pfcandsc = concat_event_collection([pfcandsc, soft_pfcands], nobatch=1)
         if not add_original_particle_mapping:
             pfcandsc.original_particle_mapping = torch.arange(len(pfcandsc)) # For now, ignore the soft particles
-        print("Original PM:", pfcandsc.original_particle_mapping.max())
+        #print("Original PM:", pfcandsc.original_particle_mapping.max())
         return pfcandsc
 
     @staticmethod
@@ -558,7 +558,7 @@ class EventDataset(torch.utils.data.Dataset):
             for _ in range(split_into-1):
                 pfcandsc = concat_event_collection([pfcandsc, colinear_pfcands], nobatch=1)
         if pfcandsc.original_particle_mapping.max() >= len(pfcands):
-            print("Original PM:", pfcandsc.original_particle_mapping.max(), "len pfcands", len(pfcands))
+            #print("Original PM:", pfcandsc.original_particle_mapping.max(), "len pfcands", len(pfcands))
             raise ValueError("Original particle mapping is out of bounds")
         return pfcandsc
 
@@ -593,7 +593,7 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            if i % 2 or True: # Every second one:
+            if i % 2: # Every second one:
                 result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
                 if "final_parton_level_particles" in result:
                     result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(

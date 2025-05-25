@@ -1,3 +1,8 @@
+
+
+import torch
+from itertools import chain, combinations
+
 import os
 from tqdm import tqdm
 import argparse
@@ -8,14 +13,66 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
 
-### Change this to make custom plots highlighting differences between different models
+#### Plotting functions
+
+from matplotlib_venn import venn3
+import matplotlib.pyplot as plt
+from copy import copy
+
+
+def plot_venn3_from_index_dict(ax, data_dict, set_labels=('Set 0', 'Set 1', 'Set 2'), set_colors=("orange", "purple", "gray"), remove_max=True):
+    """
+    Generate a 3-set Venn diagram from a dictionary where keys are strings of '0', '1', and '2'
+    indicating set membership, and values are counts.
+
+    Parameters:
+    - data_dict (dict): Dictionary with keys like '0', '01', '012', etc.
+    - set_labels (tuple): Labels for the three sets.
+    - remove_max: if true, it will remove
+    """
+    # Mapping of set index combinations to venn3 region codes
+    index_to_region = {
+        '100': '100',  # Only in Set 0
+        '010': '010',  # Only in Set 1
+        '001': '001',  # Only in Set 2
+        '110': '110',  # In Set 0 and Set 1
+        '101': '101',  # In Set 0 and Set 2
+        '011': '011',  # In Set 1 and Set 2
+        '111': '111',  # In all three
+    }
+
+    # Initialize region counts
+    venn_counts = {region: 0 for region in index_to_region.values()}
+    max_value = 0
+    for key in data_dict:
+        if data_dict[key] > max_value and key != "":
+            max_value = data_dict[key]
+    print("Max val", max_value)
+    data_dict = copy(data_dict)
+    for key in data_dict:
+        if remove_max and data_dict[key] == max_value:
+            data_dict[key] = 0
+    # Convert data_dict keys to binary keys for region mapping
+    for k, v in data_dict.items():
+        binary_key = ''.join(['1' if str(i) in k else '0' for i in range(3)])
+        if binary_key in index_to_region:
+            venn_counts[index_to_region[binary_key]] += v
+
+    # Plotting
+    #plt.figure(figsize=(8, 8))
+    venn3(subsets=venn_counts, set_labels=set_labels, set_colors=set_colors, alpha=0.5, ax=ax)
+    #plt.title("3-Set Venn Diagram from Index Dictionary")
+    #plt.show()
+
+
+### Change this to make custom plots highlighting differences between different models (the histograms of pt_pred/pt_true, eta_pred-eta_true, and phi_pred-phi_true)
 histograms_dict = {
         "": [{"base_LGATr": 50000, "base_Tr": 50000 , "base_GATr": 50000, "AK8": 50000}, {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"}],
         "LGATr_comparison": [{"base_LGATr": 50000, "LGATr_GP_IRC_S_50k": 9960, "LGATr_GP_50k": 9960, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "AK8": "gray"}],
         "LGATr_comparsion_DifferentTrainingDS": [{"base_LGATr": 50000, "LGATr_700_07": 50000, "LGATr_QCD": 50000, "LGATr_700_07+900_03": 50000, "LGATr_700_07+900_03+QCD": 50000, "AK8": 50000}, {"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}]
 }
 
-
+# This is a dictionary that contains the models and their colors for plotting - to plot the F1 scores etc. of the models
 results_dict = {
     "LGATr_comparison_DifferentTrainingDS":
         [{"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue",
@@ -337,22 +394,38 @@ def get_run_config(run_name):
     return f"GT_R={gt_r} {training_dataset}, {prefix}", result
 
 
+def flatten_list(lst):# lst is like [[0,0],[1,1]...]
+    #return [item for sublist in lst for item in sublist]
+    return list(chain.from_iterable(lst))
+
 sz = 5
 ak_path = os.path.join(path, "AKX", "count_matched_quarks")
 
 result_PR_AKX = pickle.load(open(os.path.join(ak_path, "result_PR_AKX.pkl"), "rb"))
 result_jet_props_akx = pickle.load(open(os.path.join(ak_path, "result_jet_properties_AKX.pkl"), "rb"))
 result_qj_akx = pickle.load(open(os.path.join(ak_path, "result_quark_to_jet.pkl"), "rb"))
+result_dq_pt_akx = pickle.load(open(os.path.join(ak_path, "result_pt_dq.pkl"), "rb"))
+result_dq_mc_pt_akx = pickle.load(open(os.path.join(ak_path, "result_pt_mc_gt.pkl"), "rb"))
+result_dq_props_akx = pickle.load(open(os.path.join(ak_path, "result_props_dq.pkl"), "rb"))
 
 try:
     result_PR_AKX_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
     result_qj_akx_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_quark_to_jet.pkl"), "rb"))
+    result_dq_mc_pt_akx_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_pt_mc_gt.pkl"), "rb"))
+    result_dq_pt_akx_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_pt_dq.pkl"), "rb"))
+    result_dq_props_akx_PL = pickle.load(open(os.path.join(os.path.join(path, "AKX_PL", "count_matched_quarks"), "result_props_dq.pkl"), "rb"))
 except FileNotFoundError:
     print("FileNotFoundError")
     result_PR_AKX_PL = result_PR_AKX
 try:
     result_PR_AKX_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_PR_AKX.pkl"), "rb"))
     result_qj_akx_GL = pickle.load(open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_quark_to_jet.pkl"), "rb"))
+    result_dq_mc_pt_akx_GL = pickle.load(
+        open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_pt_mc_gt.pkl"), "rb"))
+    result_dq_pt_akx_GL = pickle.load(
+        open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_pt_dq.pkl"), "rb"))
+    result_dq_props_akx_GL = pickle.load(
+        open(os.path.join(os.path.join(path, "AKX_GL", "count_matched_quarks"), "result_props_dq.pkl"), "rb"))
 
 except FileNotFoundError:
     print("FileNotFoundError")
@@ -361,7 +434,7 @@ except FileNotFoundError:
 #plot_only = ["LGATr_GP", "LGATr_GP_IRC_S", "LGATr_GP_IRC_SN", "LGATr_GP_50k", "LGATr_GP_IRC_S_50k"]
 plot_only = []
 
-radius = [0.8, 2.0]
+radius = [0.8]
 def select_radius(d, radius, depth=3):
     # from the dictionary, select radius at the level
     if depth == 0:
@@ -520,6 +593,11 @@ to_plot = {} # training dataset -> rInv -> mMed -> level -> "f1score" -> value
 to_plot_steps = {} # training dataset -> rInv -> mMed -> level -> step -> value
 to_plot_v2 = {} # level -> rInv -> mMed -> {"model": [P,R]}
 quark_to_jet = {} # level -> rInv -> mMed -> model -> quark to jet assignment list
+
+mc_gt_pt_of_dq = {}
+pt_of_dq = {}
+props_of_dq = {"eta": {}, "phi": {}} # Properties of dark quarks: eta and phi
+
 results_all = {}
 results_all_ak = {}
 jet_properties = {} # training dataset -> rInv -> mMed -> level -> step -> jet property dict
@@ -541,6 +619,9 @@ for j, model in enumerate(models):
     result_PR = pickle.load(open(os.path.join(output_path, "result_PR.pkl"), "rb"))
     result_QJ = pickle.load(open(os.path.join(output_path, "result_quark_to_jet.pkl"), "rb"))
     result_jet_props = pickle.load(open(os.path.join(output_path, "result_jet_properties.pkl"), "rb"))
+    result_MC_PT = pickle.load(open(os.path.join(output_path, "result_pt_mc_gt.pkl"), "rb"))
+    result_PT_DQ = pickle.load(open(os.path.join(output_path, "result_pt_dq.pkl"), "rb"))
+    result_DQ_props = pickle.load(open(os.path.join(output_path, "result_props_dq.pkl"), "rb"))
     print(level)
     if td not in to_plot:
         to_plot[td] = {}
@@ -552,10 +633,18 @@ for j, model in enumerate(models):
     if level_idx not in to_plot_v2:
         to_plot_v2[level_idx] = {}
         quark_to_jet[level_idx] = {}
+        pt_of_dq[level_idx] = {}
+        mc_gt_pt_of_dq[level_idx] = {}
+        for prop in props_of_dq:
+            props_of_dq[prop][level_idx] = {}
     for mMed_h in result_PR:
         if mMed_h not in to_plot_v2[level_idx]:
             to_plot_v2[level_idx][mMed_h] = {}
             quark_to_jet[level_idx][mMed_h] = {}
+            pt_of_dq[level_idx][mMed_h] = {}
+            mc_gt_pt_of_dq[level_idx][mMed_h] = {}
+            for prop in props_of_dq:
+                props_of_dq[prop][level_idx][mMed_h] = {}
         if mMed_h not in to_plot_steps[td_raw]:
             to_plot_steps[td_raw][mMed_h] = {}
             jet_properties[td_raw][mMed_h] = {}
@@ -565,6 +654,10 @@ for j, model in enumerate(models):
             if rInv_h not in to_plot_v2[level_idx][mMed_h]:
                 to_plot_v2[level_idx][mMed_h][rInv_h] = {}
                 quark_to_jet[level_idx][mMed_h][rInv_h] = {}
+                pt_of_dq[level_idx][mMed_h][rInv_h] = {}
+                mc_gt_pt_of_dq[level_idx][mMed_h][rInv_h] = {}
+                for prop in props_of_dq:
+                    props_of_dq[prop][level_idx][mMed_h][rInv_h] = {}
             if rInv_h not in to_plot_steps[td_raw][mMed_h]:
                 to_plot_steps[td_raw][mMed_h][rInv_h] = {}
                 jet_properties[td_raw][mMed_h][rInv_h] = {}
@@ -581,6 +674,10 @@ for j, model in enumerate(models):
             f1score = 2 * precision * recall / (precision + recall)
             to_plot_v2[level_idx][mMed_h][rInv_h][td_raw] = [precision, recall]
             quark_to_jet[level_idx][mMed_h][rInv_h][td_raw] = result_QJ[mMed_h][mDark][rInv_h]
+            pt_of_dq[level_idx][mMed_h][rInv_h][td_raw] = flatten_list(result_PT_DQ[mMed_h][mDark][rInv_h])
+            mc_gt_pt_of_dq[level_idx][mMed_h][rInv_h][td_raw] = flatten_list(result_MC_PT[mMed_h][mDark][rInv_h])
+            for prop in props_of_dq:
+                props_of_dq[prop][level_idx][mMed_h][rInv_h][td_raw] = flatten_list(result_DQ_props[prop][mMed_h][mDark][rInv_h])
             #print("qj", quark_to_jet[level_idx][mMed_h][rInv_h][td_raw])
             if r not in results_all[td][mMed_h][mDark][rInv_h][level]:
                 results_all[td][mMed_h][mDark][rInv_h][level][r] = f1score
@@ -607,6 +704,20 @@ result_AKX_current_QJ = select_radius(result_qj_akx, 0.8)
 result_AKX_PL_QJ = select_radius(result_qj_akx_PL, 0.8)
 result_AKX_GL_QJ = select_radius(result_qj_akx_GL, 0.8)
 
+result_AKX_current_pt_dq = select_radius(result_dq_pt_akx, 0.8)
+result_AKX_PL_pt_dq = select_radius(result_dq_pt_akx_PL, 0.8)
+result_AKX_GL_pt_dq = select_radius(result_dq_pt_akx_GL, 0.8)
+
+result_AKX_current_MCpt_dq = select_radius(result_dq_mc_pt_akx, 0.8)
+result_AKX_PL_MCpt_dq = select_radius(result_dq_mc_pt_akx_PL, 0.8)
+result_AKX_GL_MCpt_dq = select_radius(result_dq_mc_pt_akx_GL, 0.8)
+
+result_AKX_current_props_dq = select_radius(result_dq_props_akx, 0.8, depth=4)
+result_AKX_PL_props_dq = select_radius(result_dq_props_akx_PL, 0.8, depth=4)
+result_AKX_GL_props_dq = select_radius(result_dq_props_akx_GL, 0.8, depth=4)
+
+from tqdm import tqdm
+
 for mMed_h in result_AKX_jet_properties:
     for rInv_h in result_AKX_jet_properties[mMed_h][mDark]:
         if 0 in to_plot_v2:
@@ -616,7 +727,16 @@ for mMed_h in result_AKX_jet_properties:
             quark_to_jet[0][mMed_h][rInv_h]["AK8"] = result_AKX_PL_QJ[mMed_h][mDark][rInv_h]
             quark_to_jet[1][mMed_h][rInv_h]["AK8"] = result_AKX_current_QJ[mMed_h][mDark][rInv_h]
             quark_to_jet[2][mMed_h][rInv_h]["AK8"] = result_AKX_GL_QJ[mMed_h][mDark][rInv_h]
-
+            pt_of_dq[0][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_PL_pt_dq[mMed_h][mDark][rInv_h])
+            pt_of_dq[1][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_current_pt_dq[mMed_h][mDark][rInv_h])
+            pt_of_dq[2][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_GL_pt_dq[mMed_h][mDark][rInv_h])
+            mc_gt_pt_of_dq[0][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_PL_MCpt_dq[mMed_h][mDark][rInv_h])
+            mc_gt_pt_of_dq[1][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_current_MCpt_dq[mMed_h][mDark][rInv_h])
+            mc_gt_pt_of_dq[2][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_GL_MCpt_dq[mMed_h][mDark][rInv_h])
+            for k in props_of_dq:
+                props_of_dq[k][0][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_PL_props_dq[k][mMed_h][mDark][rInv_h])
+                props_of_dq[k][1][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_current_props_dq[k][mMed_h][mDark][rInv_h])
+                props_of_dq[k][2][mMed_h][rInv_h]["AK8"] = flatten_list(result_AKX_GL_props_dq[k][mMed_h][mDark][rInv_h])
         if mMed_h not in jet_properties["AK8"]:
             jet_properties["AK8"][mMed_h] = {}
         if rInv_h not in jet_properties["AK8"][mMed_h]:
@@ -632,12 +752,6 @@ rename_results_dict = {
 
 hypotheses_to_plot = [[0,0],[700,0.7],[700,0.5],[700,0.3]]
 
-def flatten_list(lst):# lst is like [[0,0],[1,1]...]
-    #return [item for sublist in lst for item in sublist]
-    return list(chain.from_iterable(lst))
-
-import torch
-from itertools import chain, combinations
 
 
 def powerset(iterable):
@@ -649,18 +763,36 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
     if hyp_m not in to_plot_v2[0] or hyp_rinv not in to_plot_v2[0][hyp_m]:
         continue
     # plot here the venn diagrams
+    labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
+    fig_venn, ax_venn = plt.subplots(6, len(labels), figsize=(6 * len(labels), 6 * 6)) # the bottom ones are for pt of the DQ, pt of the MC GT, pt of MC GT / pt of DQ, eta, and phi distributions
     for level in range(3):
         #labels = list(results_dict["LGATr_comparison_GP_IRC_S_training"][0].keys())
-        labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
         label_combination_to_number = {} # fill it with all possible label combinations e.g. if there are 3 labels: "NA", "0", "1", "2", "01", "012", "12", "02"
         powerset_str = ["".join([str(x) for x in sorted(list(a))]) for a in powerset(range(len(labels)))]
         set_to_count = {key: 0 for key in powerset_str}
+        set_to_stats = {key: {"pt_dq": [], "pt_mc_t": [], "pt_mc_t_dq_ratio": [], "eta": [], "phi": []} for key in powerset_str}
         label_to_result = {}
-        n_dq = 20000
+        #label_to_stats = {"pt_dq": , "pt_mc_t": [], "pt_mc_t_dq_ratio": [], "eta": [], "phi": []}
+        n_dq = 19500
         for j, label in enumerate(labels):
             r = torch.tensor(flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label]))
             r = (r != -1) # Whether quark no. X is caught or not
             label_to_result[j] = r.tolist()[:n_dq]
+            #r = torch.tensor(flatten_list(pt_of_dq[level][hyp_m][hyp_rinv][label]))
+            #r = r[:n_dq]
+            #label_to_stats["pt_dq"].append(r.tolist())
+            #r1 = torch.tensor(flatten_list(mc_gt_pt_of_dq[level][hyp_m][hyp_rinv][label]))
+            #r1 = r1[:n_dq]
+            #label_to_stats["pt_mc_t"].append(r1.tolist())
+            #r2 = r1 / r
+            #r2 = r2[:n_dq]
+            #label_to_stats["pt_mc_t_dq_ratio"].append(r2.tolist())
+            #r_eta = torch.tensor(flatten_list(props_of_dq["eta"][level][hyp_m][hyp_rinv][label]))
+            #r_eta = r_eta[:n_dq]
+            #label_to_stats["eta"].append(r_eta.tolist())
+            ##r_phi = torch.tensor(flatten_list(props_of_dq["phi"][level][hyp_m][hyp_rinv][label]))
+            #r_phi = r_phi[:n_dq]
+            #label_to_stats["phi"].append(r_phi.tolist())
             assert len(label_to_result[j]) == n_dq, f"Label {label} has different number of quarks than others {n_dq} != {len(label_to_result[j])}"
             #n_dq = min(n_dq, len(r))
         #for j, label in enumerate(labels):
@@ -671,7 +803,54 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 if label_to_result[j][c] == 1:
                     belonging_to_set += str(j)
             set_to_count[belonging_to_set] += 1
-        print("set_to_count for level", level, ":", set_to_count, "labels:", labels)
+            #for key in label_to_stats:
+            #    for idx in belonging_to_set:
+            #        idx_int = int(idx) # e.g. "0", "1" etc.
+            #        set_to_stats[belonging_to_set]
+            for j, label in enumerate(labels):
+                current_dq_pt = pt_of_dq[level][hyp_m][hyp_rinv][label][c]
+                current_mc_gt_pt = mc_gt_pt_of_dq[level][hyp_m][hyp_rinv][label][c]
+                current_dq_eta = props_of_dq["eta"][level][hyp_m][hyp_rinv][label][c]
+                current_dq_phi = props_of_dq["phi"][level][hyp_m][hyp_rinv][label][c]
+                set_to_stats[belonging_to_set]["pt_dq"].append(current_dq_pt)
+                set_to_stats[belonging_to_set]["pt_mc_t"].append(current_mc_gt_pt)
+                set_to_stats[belonging_to_set]["pt_mc_t_dq_ratio"].append(current_mc_gt_pt/current_dq_pt)
+                set_to_stats[belonging_to_set]["eta"].append(current_dq_eta)
+                set_to_stats[belonging_to_set]["phi"].append(current_dq_phi)
+        #print("set_to_count for level", level, ":", set_to_count, "labels:", labels)
+        title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {text_level[level]} (miss: {set_to_count['']}) "
+        ax_venn[0, level].set_title(title)
+        plot_venn3_from_index_dict(ax_venn[0, level], set_to_count, set_labels=labels, set_colors=["orange", "gray", "red"])
+        bins = {
+            "pt_dq": np.linspace(0, 300, 100),
+            "pt_mc_t": np.linspace(0, 200, 50),
+            "pt_mc_t_dq_ratio": np.linspace(0, 1, 50),
+            "eta": np.linspace(-4, 4, 50),
+            "phi": np.linspace(-np.pi, np.pi, 50)
+        }
+        # 10 random colors
+        clrs = ["green", "red", "orange", "pink", "blue", "purple", "cyan", "magenta"]
+        for k, key in enumerate(["pt_dq", "pt_mc_t", "pt_mc_t_dq_ratio", "eta", "phi"]):
+            for s_idx, s in enumerate(sorted(set_to_stats.keys())):
+                if len(set_to_stats[s][key]) == 0:
+                    continue
+                lbl = s
+                if s == "":
+                    lbl = "none"
+                if lbl not in ["none", "012"]:
+                    # We are only interested in the differences...
+                    ax_venn[k+1, level].hist(set_to_stats[s][key], bins=50, histtype="step", label=lbl, color=clrs[s_idx])
+                    ax_venn[k+1, level].set_title(f"{key} {text_level[level]}")
+                #ax_venn[k+1, level].set_xlabel(key)
+                #ax_venn[k+1, level].set_ylabel("Count")
+        for k in range(5):
+            ax_venn[k+1, level].legend()
+
+
+    fig_venn.tight_layout()
+    f = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}.pdf")
+    fig_venn.savefig(f)
+
     for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=f1
         sz_small1 = 2.5
         fig, ax = plt.subplots(len(rename_results_dict), 3, figsize=(sz_small1 * 3, sz_small1 * len(rename_results_dict)))
@@ -974,7 +1153,6 @@ fig.tight_layout()
 fig.savefig(out_file_PG)
 
 print("Saved to", out_file_PG)
-
 1/0
 
 
