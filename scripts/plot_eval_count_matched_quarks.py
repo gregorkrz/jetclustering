@@ -1,5 +1,3 @@
-
-
 import torch
 from itertools import chain, combinations
 
@@ -745,7 +743,7 @@ for mMed_h in result_AKX_jet_properties:
 
 rename_results_dict = {
     "LGATr_comparison_DifferentTrainingDS": "base",
-    #"LGATr_comparison_GP_training": "GP",
+    "LGATr_comparison_GP_training": "GP",
     "LGATr_comparison_GP_IRC_S_training": "GP_IRC_S",
 }
 
@@ -759,12 +757,27 @@ def powerset(iterable):
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
+
+def get_label_from_superset(lbl, labels_rename, labels):
+    if lbl == '':
+        return "none"
+    r = [labels[int(i)] for i in lbl]
+    r = [labels_rename.get(l,l) for l in r]
+    return ", ".join(r)
+
+
 for hyp_m, hyp_rinv in hypotheses_to_plot:
+    if 0 not in to_plot_v2:
+        continue # Not for the lower-pt thresholds, where only GL and PL are available
     if hyp_m not in to_plot_v2[0] or hyp_rinv not in to_plot_v2[0][hyp_m]:
         continue
     # plot here the venn diagrams
     labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
-    fig_venn, ax_venn = plt.subplots(6, len(labels), figsize=(6 * len(labels), 6 * 6)) # the bottom ones are for pt of the DQ, pt of the MC GT, pt of MC GT / pt of DQ, eta, and phi distributions
+    labels_global = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
+
+    labels_rename = {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_50k": "900_03"}
+    fig_venn, ax_venn = plt.subplots(6, 3, figsize=(5 * 3, 5 * 6)) # the bottom ones are for pt of the DQ, pt of the MC GT, pt of MC GT / pt of DQ, eta, and phi distributions
+    fig_venn1, ax_venn1 = plt.subplots(6, 2, figsize=(5*2, 5*6)) # Only the PFCands-level, with full histogram on the left and density on the right
     for level in range(3):
         #labels = list(results_dict["LGATr_comparison_GP_IRC_S_training"][0].keys())
         label_combination_to_number = {} # fill it with all possible label combinations e.g. if there are 3 labels: "NA", "0", "1", "2", "01", "012", "12", "02"
@@ -820,11 +833,15 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
         #print("set_to_count for level", level, ":", set_to_count, "labels:", labels)
         title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {text_level[level]} (miss: {set_to_count['']}) "
         ax_venn[0, level].set_title(title)
-        plot_venn3_from_index_dict(ax_venn[0, level], set_to_count, set_labels=labels, set_colors=["orange", "gray", "red"])
+        plot_venn3_from_index_dict(ax_venn[0, level], set_to_count, set_labels=[labels_rename.get(l,l) for l in labels], set_colors=["orange", "gray", "red"])
+        if level == 1: #reco-level
+            plot_venn3_from_index_dict(ax_venn1[0, 1], set_to_count,
+                                   set_labels=[labels_rename.get(l,l) for l in labels],
+                                   set_colors=["orange", "gray", "red"])
         bins = {
-            "pt_dq": np.linspace(0, 300, 100),
+            "pt_dq": np.linspace(0, 500, 100),
             "pt_mc_t": np.linspace(0, 200, 50),
-            "pt_mc_t_dq_ratio": np.linspace(0, 1, 50),
+            "pt_mc_t_dq_ratio": np.linspace(0, 1.3, 50),
             "eta": np.linspace(-4, 4, 50),
             "phi": np.linspace(-np.pi, np.pi, 50)
         }
@@ -835,23 +852,38 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 if len(set_to_stats[s][key]) == 0:
                     continue
                 lbl = s
-                if s == "":
-                    lbl = "none"
-                if lbl not in ["none", "012"]:
+                #if s == "":
+                #    lbl = "none"
+                if level == 1:
+
+                    ax_venn1[k + 1, 1].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
+                                           label=get_label_from_superset(lbl, labels_rename, labels), color=clrs[s_idx], density=True)
+                    ax_venn1[k + 1, 0].set_title(f"{key} {text_level[level]}")
+                    ax_venn1[k+1, 1].set_title(f"{key} {text_level[level]}")
+                    ax_venn1[k + 1, 1].set_ylabel("Density")
+                if lbl not in ["", "012"]:
                     # We are only interested in the differences...
-                    ax_venn[k+1, level].hist(set_to_stats[s][key], bins=50, histtype="step", label=lbl, color=clrs[s_idx])
+                    ax_venn[k+1, level].hist(set_to_stats[s][key], bins=bins[key], histtype="step", label=get_label_from_superset(lbl, labels_rename, labels), color=clrs[s_idx])
                     ax_venn[k+1, level].set_title(f"{key} {text_level[level]}")
+                    if level == 1:
+                        ax_venn1[k + 1, 0].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
+                                            label=get_label_from_superset(lbl, labels_rename, labels),
+                                            color=clrs[s_idx])
                 #ax_venn[k+1, level].set_xlabel(key)
                 #ax_venn[k+1, level].set_ylabel("Count")
         for k in range(5):
             ax_venn[k+1, level].legend()
-
-
     fig_venn.tight_layout()
+    for k in range(5):
+        ax_venn1[k+1, 0].legend()
+        ax_venn1[k+1, 1].legend()
+    fig_venn1.tight_layout()
     f = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}.pdf")
     fig_venn.savefig(f)
+    f1 = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}_reco_level_only.pdf")
+    fig_venn1.savefig(f1)
 
-    for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=f1
+    for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=F1
         sz_small1 = 2.5
         fig, ax = plt.subplots(len(rename_results_dict), 3, figsize=(sz_small1 * 3, sz_small1 * len(rename_results_dict)))
         for i1, key in enumerate(list(rename_results_dict.keys())):
