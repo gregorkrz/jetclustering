@@ -185,12 +185,17 @@ models = {
 
 models = {
     "L-GATr": "train/Eval_DelphesPFfix_FullDataset_QCD_2025_05_15_17_42_39_541"
-}
+}#
 
 models = {
-    "QCD": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_QCD_2025_05_18_21_54_43_705",
-    "700_07+900_03+QCD": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_QCD_2025_05_18_22_18_36_991"
+    "LGATrGP": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_2025_05_29_09_11_46_534",
+    #"LGATr": ""
 }
+
+#models = {
+#    "QCD": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_QCD_2025_05_18_21_54_43_705",
+#    "700_07+900_03+QCD": "train/Eval_DelphesPFfix_FullDataset_TrainDSstudy_QCD_2025_05_18_22_18_36_991"
+#}
 
 print(models)
 
@@ -202,7 +207,8 @@ print(models)
 #}
 
 
-output_path = get_path("QCD_plots_20052025_eval_QCD_train_s_vs_sb", "results")
+output_path = get_path("LGATr_model_out_examples_GP", "results")
+#output_path=get_path("LGATr_model_output_examples", "results")
 Path(output_path).mkdir(parents=1, exist_ok=1)
 
 sz = 3
@@ -278,7 +284,7 @@ for ds in range(25):
             # print the pt of the jet in the middle of each cluster with font size 12
             for j in range(len(fj_jets)):
                 if fj_jets.pt[j].item() >= 30:
-                    ax[e, 3*mn].text(fj_jets.eta[j].item()+0.1, fj_jets.phi[j].item()+0.1, "AK pt="+str(round(fj_jets.pt[j].item(), 1)), color="blue", fontsize=6, alpha=0.5)
+                    ax[e, 3*mn+1].text(fj_jets.eta[j].item()+0.1, fj_jets.phi[j].item()+0.1, "AK pt="+str(round(fj_jets.pt[j].item(), 1)), color="blue", fontsize=6, alpha=0.5)
             for i in range(len(uj.pt)):
                 if uj.pt[i].item() >= 30:
                     ax[e, 3*mn].text(uj.eta[i], uj.phi[i], "M pt=" + str(round(uj.pt[i].item(), 1)), color="black", fontsize=6, alpha=0.5)

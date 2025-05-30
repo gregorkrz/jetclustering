@@ -47,18 +47,26 @@ def plot_venn3_from_index_dict(ax, data_dict, set_labels=('Set 0', 'Set 1', 'Set
             max_value = data_dict[key]
     print("Max val", max_value)
     data_dict = copy(data_dict)
+    new_data_dict = {}
     for key in data_dict:
         if remove_max and data_dict[key] == max_value:
-            data_dict[key] = 0
+        #    #data_dict[key] = 0
+        #    del data_dict[key]
+            continue
+        else:
+            new_data_dict[key] = data_dict[key]
+    data_dict = new_data_dict
+    print("data dict", data_dict)
     # Convert data_dict keys to binary keys for region mapping
     for k, v in data_dict.items():
         binary_key = ''.join(['1' if str(i) in k else '0' for i in range(3)])
         if binary_key in index_to_region:
             venn_counts[index_to_region[binary_key]] += v
-
     # Plotting
     #plt.figure(figsize=(8, 8))
-    venn3(subsets=venn_counts, set_labels=set_labels, set_colors=set_colors, alpha=0.5, ax=ax)
+    del venn_counts['111']
+    venn = venn3(subsets=venn_counts, set_labels=set_labels, set_colors=set_colors, alpha=0.5, ax=ax)
+    venn.get_label_by_id("111").set_text(max_value)
     #plt.title("3-Set Venn Diagram from Index Dictionary")
     #plt.show()
 
@@ -83,9 +91,14 @@ results_dict = {
     ],
     "LGATr_comparison_GP_IRC_S_training": [
         {"LGATr_GP_IRC_S_QCD": "purple", "LGATr_GP_IRC_S_700_07": "red", "LGATr_GP_IRC_S_700_07+900_03": "blue", "LGATr_GP_IRC_S_700_07+900_03+QCD": "green", "LGATr_GP_IRC_S_50k": "orange", "AK8": "gray"},
-        {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_700_07": "700_07", "LGATr_GP_IRC_S_700_07+900_03": "700_07+900_03",  "LGATr_GP_IRC_S_50k": "900_03", "LGATr_GP_IRC_S_700_07+900_03+QCD": "700_07+900_03+QCD"} # 2nd dict in list is rename dict
+        {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_700_07": "700_07", "LGATr_GP_IRC_S_700_07+900_03": "700_07+900_03",  "LGATr_GP_IRC_S_50k": "900_03",  "LGATr_GP_IRC_S_700_07+900_03+QCD": "700_07+900_03+QCD"} # 2nd dict in list is rename dict
+    ],
+    "LGATr_comparison_GP_IRC_SN_training": [
+        {"LGATr_GP_IRC_SN_QCD": "purple", "LGATr_GP_IRC_SN_700_07": "red", "LGATr_GP_IRC_SN_700_07+900_03": "blue", "LGATr_GP_IRC_SN_700_07+900_03+QCD": "green", "LGATr_GP_IRC_SN_50k": "orange", "AK8": "gray"},
+        {"LGATr_GP_IRC_SN_QCD": "QCD", "LGATr_GP_IRC_SN_700_07": "700_07", "LGATr_GP_IRC_SN_700_07+900_03": "700_07+900_03",  "LGATr_GP_IRC_SN_50k": "900_03",  "LGATr_GP_IRC_SN_700_07+900_03+QCD": "700_07+900_03+QCD"} # 2nd dict in list is rename dict
     ]
 }
+
 
 '''
         "GP_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_19_21_29_06_946": "LGATr_GP_QCD",
@@ -369,6 +382,10 @@ def get_run_config(run_name):
         "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_20_15_29_28_959": "LGATr_GP_IRC_S_700_07+900_03+QCD",
         "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_20_15_11_35_476": "LGATr_GP_IRC_S_700_07",
         "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_20_15_11_20_735": "LGATr_GP_IRC_S_QCD",
+        "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_24_23_00_54_948": "LGATr_GP_IRC_SN_QCD",
+        "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_24_23_00_56_910": "LGATr_GP_IRC_SN_700_07+900_03+QCD",
+        "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_10_16_64_0.8_2025_05_24_23_01_01_212": "LGATr_GP_IRC_SN_700_07+900_03",
+        "GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_24_23_01_07_703": "LGATr_GP_IRC_SN_700_07",
     }
 
     train_name = config["load_from_run"]
@@ -601,6 +618,8 @@ results_all_ak = {}
 jet_properties = {} # training dataset -> rInv -> mMed -> level -> step -> jet property dict
 jet_properties_ak = {} # rInv -> mMed -> level -> radius
 plotting_hypotheses = [[700, 0.7], [700, 0.5], [700, 0.3], [900, 0.3], [900, 0.7]]
+if "qcd" in path.lower():
+    plotting_hypotheses = [[0,0]]
 sz_small = 5
 for j, model in enumerate(models):
     _, rc = get_run_config(model)
@@ -745,6 +764,7 @@ rename_results_dict = {
     "LGATr_comparison_DifferentTrainingDS": "base",
     "LGATr_comparison_GP_training": "GP",
     "LGATr_comparison_GP_IRC_S_training": "GP_IRC_S",
+    "LGATr_comparison_GP_IRC_SN_training": "GP_IRC_SN"
 }
 
 
@@ -760,9 +780,13 @@ def powerset(iterable):
 
 def get_label_from_superset(lbl, labels_rename, labels):
     if lbl == '':
-        return "none"
+        return "Missed by all"
     r = [labels[int(i)] for i in lbl]
     r = [labels_rename.get(l,l) for l in r]
+    if len(r) == 2 and "QCD" in r and "900_03" in r:
+        return "Found by both models but not AK"
+    if len(r) == 3:
+        return "Found by all"
     return ", ".join(r)
 
 
@@ -774,7 +798,6 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
     # plot here the venn diagrams
     labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
     labels_global = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
-
     labels_rename = {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_50k": "900_03"}
     fig_venn, ax_venn = plt.subplots(6, 3, figsize=(5 * 3, 5 * 6)) # the bottom ones are for pt of the DQ, pt of the MC GT, pt of MC GT / pt of DQ, eta, and phi distributions
     fig_venn1, ax_venn1 = plt.subplots(6, 2, figsize=(5*2, 5*6)) # Only the PFCands-level, with full histogram on the left and density on the right
@@ -831,7 +854,9 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 set_to_stats[belonging_to_set]["eta"].append(current_dq_eta)
                 set_to_stats[belonging_to_set]["phi"].append(current_dq_phi)
         #print("set_to_count for level", level, ":", set_to_count, "labels:", labels)
-        title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {text_level[level]} (miss: {set_to_count['']}) "
+        title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {text_level[level]} (missed by all: {set_to_count['']}) "
+        if hyp_m == 0 and hyp_rinv == 0:
+            title = f"QCD, {text_level[level]} (missed by all: {set_to_count['']})"
         ax_venn[0, level].set_title(title)
         plot_venn3_from_index_dict(ax_venn[0, level], set_to_count, set_labels=[labels_rename.get(l,l) for l in labels], set_colors=["orange", "gray", "red"])
         if level == 1: #reco-level
@@ -839,14 +864,15 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                                    set_labels=[labels_rename.get(l,l) for l in labels],
                                    set_colors=["orange", "gray", "red"])
         bins = {
-            "pt_dq": np.linspace(0, 500, 100),
+            "pt_dq": np.linspace(90, 250, 50),
             "pt_mc_t": np.linspace(0, 200, 50),
-            "pt_mc_t_dq_ratio": np.linspace(0, 1.3, 50),
-            "eta": np.linspace(-4, 4, 50),
-            "phi": np.linspace(-np.pi, np.pi, 50)
+            "pt_mc_t_dq_ratio": np.linspace(0, 1.3, 30),
+            "eta": np.linspace(-4, 4, 20),
+            "phi": np.linspace(-np.pi, np.pi, 20)
         }
         # 10 random colors
         clrs = ["green", "red", "orange", "pink", "blue", "purple", "cyan", "magenta"]
+        key_rename_dict = {"pt_dq": "$p_T$ of quark", "pt_mc_t": "$p_T$ of particles within radius of R=0.8 of quark", "pt_mc_t_dq_ratio": "$p_T$ (part. within R=0.8 of quark) / $p_T$ (quark) ", "eta": "$\eta$ of quark", "phi": "$\phi$ of quark" }
         for k, key in enumerate(["pt_dq", "pt_mc_t", "pt_mc_t_dq_ratio", "eta", "phi"]):
             for s_idx, s in enumerate(sorted(set_to_stats.keys())):
                 if len(set_to_stats[s][key]) == 0:
@@ -854,20 +880,23 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 lbl = s
                 #if s == "":
                 #    lbl = "none"
-                if level == 1:
+                lbl1 = get_label_from_superset(lbl, labels_rename, labels)
 
+                if lbl1 not in ["Missed by all", "Found by both models but not AK", "AK8", "Found by all"]:
+                    continue
+                if level == 1:
                     ax_venn1[k + 1, 1].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
-                                           label=get_label_from_superset(lbl, labels_rename, labels), color=clrs[s_idx], density=True)
-                    ax_venn1[k + 1, 0].set_title(f"{key} {text_level[level]}")
-                    ax_venn1[k+1, 1].set_title(f"{key} {text_level[level]}")
+                                           label=lbl1, color=clrs[s_idx], density=True)
+                    ax_venn1[k + 1, 0].set_title(f"{key_rename_dict[key]}")
+                    ax_venn1[k+1, 1].set_title(f"{key_rename_dict[key]}")
                     ax_venn1[k + 1, 1].set_ylabel("Density")
                 if lbl not in ["", "012"]:
                     # We are only interested in the differences...
-                    ax_venn[k+1, level].hist(set_to_stats[s][key], bins=bins[key], histtype="step", label=get_label_from_superset(lbl, labels_rename, labels), color=clrs[s_idx])
-                    ax_venn[k+1, level].set_title(f"{key} {text_level[level]}")
+                    ax_venn[k+1, level].hist(set_to_stats[s][key], bins=bins[key], histtype="step", label=lbl1, color=clrs[s_idx])
+                    ax_venn[k+1, level].set_title(f"{key_rename_dict[key]}")
                     if level == 1:
                         ax_venn1[k + 1, 0].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
-                                            label=get_label_from_superset(lbl, labels_rename, labels),
+                                            label=lbl1,
                                             color=clrs[s_idx])
                 #ax_venn[k+1, level].set_xlabel(key)
                 #ax_venn[k+1, level].set_ylabel("Count")
@@ -907,6 +936,45 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 ax[i1, level].set_title(f"{rename_results_dict[key]} {level_text}")
         fig.tight_layout()
         fig.savefig(os.path.join(get_path(args.input, "results"), f"{lbl}_results_by_level_{hyp_m}_{hyp_rinv}_{key}.pdf"))
+
+
+for hyp_m, hyp_rinv in hypotheses_to_plot:
+    if 0 not in to_plot_v2:
+        continue # Not for the lower-pt thresholds, where only GL and PL are available
+    if hyp_m not in to_plot_v2[0] or hyp_rinv not in to_plot_v2[0][hyp_m]:
+        continue
+    # plot here the venn diagrams
+    labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
+    labels_global = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
+    labels_rename = {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_50k": "900_03"}
+    fig_venn2, ax_venn2 = plt.subplots(1, len(labels), figsize=(4*len(labels), 4)) # the bottom ones are for pt of the DQ, pt of the MC GT, pt of MC GT / pt of DQ, eta, and phi distributions
+    for j, label in enumerate(labels):
+        #labels = list(results_dict["LGATr_comparison_GP_IRC_S_training"][0].keys())
+        label_combination_to_number = {} # fill it with all possible label combinations e.g. if there are 3 labels: "NA", "0", "1", "2", "01", "012", "12", "02"
+        powerset_str = ["".join([str(x) for x in sorted(list(a))]) for a in powerset(range(3))]
+        set_to_count = {key: 0 for key in powerset_str}
+        label_to_result = {}
+        n_dq = 19500 # Sometimes, the last batch gets cut off etc. ...
+        for level in range(3):
+            r = torch.tensor(flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label]))
+            r = (r != -1)
+            label_to_result[level] = r.tolist()[:n_dq]
+            assert len(label_to_result[level]) == n_dq, f"Label {label} has different number of quarks than others {n_dq} != {len(label_to_result[level])}"
+        for c in tqdm(range(n_dq)):
+            belonging_to_set = ""
+            for lvl in range(3):
+                if label_to_result[lvl][c] == 1:
+                    belonging_to_set += str(lvl)
+            set_to_count[belonging_to_set] += 1
+        if hyp_m == 0 and hyp_rinv == 0:
+            title = f"QCD, {label} (missed by all: {set_to_count['']}) "
+        else:
+            title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {label} (miss: {set_to_count['']}) "
+        ax_venn2[j].set_title(title)
+        plot_venn3_from_index_dict(ax_venn2[j], set_to_count, set_labels=text_level, set_colors=["orange", "gray", "red"], remove_max=1)
+    fig_venn2.tight_layout()
+    f = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}_Agreement_between_levels.pdf")
+    fig_venn2.savefig(f)
 
 
 for key in results_dict:
@@ -1112,9 +1180,9 @@ for j, model in enumerate(["AKX", "AKX_PL", "AKX_GL"]):
         if rInv_h not in to_plot_ak[level]:
             to_plot_ak[level][rInv_h] = {}
         print("Model", model)
-        rs = sorted(result_PR_AKX[mMed_h][mDark][rInv_h].keys())
         if mMed_h not in to_plot_ak[level][rInv_h]:
             to_plot_ak[level][rInv_h][mMed_h] = {"precision": [], "recall": [], "f1score": [], "R": []}
+        rs = sorted(result_PR_AKX[mMed_h][mDark][rInv_h].keys())
         precision = np.array([result_PR_AKX[mMed_h][mDark][rInv_h][i][0] for i in rs])
         recall = np.array([result_PR_AKX[mMed_h][mDark][rInv_h][i][1] for i in rs])
         f1score = 2 * precision * recall / (precision + recall)

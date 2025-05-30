@@ -30,8 +30,8 @@ inputs = {
     90: "Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_pt_90.0",
     100: "Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy",
 }
-
-'''print("PLOTTING QCD")
+'''
+print("PLOTTING QCD")
 inputs = {
     30: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_30.0",
     40: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_40.0",
@@ -41,8 +41,8 @@ inputs = {
     80: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_80.0",
     90: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_90.0",
     100: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD"
-}'''
-
+}
+'''
 files = {
     key: pickle.load(open(os.path.join(get_path(value, "results"), "precision_recall.pkl"), "rb")) for key, value in inputs.items()
 }
@@ -119,15 +119,16 @@ for i, mMed in enumerate(mediator_masses):
             ax[i, j].plot(pts, f1_scores, ".-", label=label, color=color)
             axp[i, j].plot(pts, precisions, ".-", label=label, color=color)
             axr[i, j].plot(pts, recalls, ".-", label=label, color=color)
-            ax[i, j].set_title(f"mMed = {mMed}, rInv = {rInv}")
+            ax[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
             ax[i, j].set_xlabel("$p_T^{cutoff}$")
-            axp[i, j].set_title(f"mMed = {mMed}, rInv = {rInv}")
+            axp[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
             axp[i, j].set_xlabel("$p_T^{cutoff}$")
-            axr[i, j].set_title(f"mMed = {mMed}, rInv = {rInv}")
+            axr[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
             axr[i, j].set_xlabel("$p_T^{cutoff}$")
             ax[i, j].set_ylabel("$F_1$ score")
             axp[i, j].set_ylabel("Precision")
             axr[i, j].set_ylabel("Recall")
+
             ax[i, j].legend()
             axp[i, j].legend()
             axr[i, j].legend()

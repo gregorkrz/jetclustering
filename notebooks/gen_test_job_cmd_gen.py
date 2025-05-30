@@ -211,6 +211,13 @@ runs =  [ #GP IRC S
     ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_20_15_11_20_735", 24000]
 ]'''
 
+runs = [ # GP_IRC_SN TRAININGS
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_QCD_events_10_16_64_0.8_2025_05_24_23_00_54_948", 24000],
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_AND_QCD_10_16_64_0.8_2025_05_24_23_00_56_910", 24000],
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_AND_900_03_10_16_64_0.8_2025_05_24_23_01_01_212", 24000],
+    ["GP_IRC_S_LGATr_training_NoPID_Delphes_PU_PFfix_700_07_10_16_64_0.8_2025_05_24_23_01_07_703", 24000]
+]
+runs =[["Delphes_Aug_IRCSplit_50k_SN_from3kFT_2025_05_16_14_07_29_474", 21060]] #This SN starts from 3k
 
 test_files = ["PFNano_s-channel_mMed-1000_mDark-20_rinv-0.3_alpha-peak_13TeV-pythia8_n-1000",
               "PFNano_s-channel_mMed-1000_mDark-20_rinv-0.5_alpha-peak_13TeV-pythia8_n-1000",
@@ -259,8 +266,6 @@ test_files = ["Delphes_020425_test_PU_PFfix_part0/" + x for x in test_files_delp
 
 #print("QCD")
 #test_files = ["QCD_test_part0/qcd_test"]
-
-
 print("------")
 
 for run, step in runs:
@@ -277,5 +282,4 @@ for run, step in runs:
         #aug_suffixes = [""]
         for aug_suffix in aug_suffixes:
             print("python -m scripts.generate_test_jobs -run {} -step {} --steps-from-zero -template t3 -tag DelphesPFfix_FullDataset_TrainDSstudy  {} --custom-test-files \"{}\" {} ".format(run, step, level, " ".join(test_files), aug_suffix))
-
 print("-----")
