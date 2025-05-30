@@ -59,7 +59,7 @@ class LGATrModel(torch.nn.Module):
         else:
             self.beta = None
 
-    def forward(self, data, data_events=None, data_events_clusters=None):
+    def forward(self, data, data_events=None, data_events_clusters=None, cpu_demo=False):
         # data: instance of EventBatch
         if self.global_features_copy:
             assert data_events is not None and data_events_clusters is not None
@@ -106,6 +106,8 @@ class LGATrModel(torch.nn.Module):
         spurions = spurions[None, None, ...].repeat(1, num_points, 1, 1)  # (batchsize, num_points, 2, 16)
         multivectors = torch.cat((multivectors, spurions), dim=-2)  # (batchsize, num_points, 3, 16) - Just embed the spurions as two extra multivector channels
         mask = self.build_attention_mask(data.batch_idx)
+        if cpu_demo:
+            mask = None
         embedded_outputs, output_scalars = self.gatr(
             multivectors, scalars=inputs_scalar, attention_mask=mask
         )

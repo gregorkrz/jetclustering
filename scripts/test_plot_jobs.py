@@ -128,6 +128,12 @@ def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
     pt_cutoff_suffix = ""
     if args.pt_cutoff_jet != 100.0:
         pt_cutoff_suffix = f"_pt_{args.pt_cutoff_jet}"
+    if args.high_eta_only:
+        pt_cutoff_suffix += "_high_eta"
+        #aug_suffix += " --high-eta-only"
+    elif args.low_eta_only:
+        pt_cutoff_suffix += "_low_eta"
+        #aug_suffix += " --low-eta-only"
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}               # Specify the account
