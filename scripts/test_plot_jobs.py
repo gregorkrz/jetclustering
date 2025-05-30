@@ -20,6 +20,8 @@ parser.add_argument("--parton-level", "-pl", action="store_true") # To be used t
 parser.add_argument("--gen-level", "-gl", action="store_true")
 parser.add_argument("--overwrite", "-ow", action="store_true") # overwrite the slurm job if it exists
 parser.add_argument("--pt-cutoff-jet", "-pt", type=float, default=100.0, help="pt cutoff for what is considered a jet")
+parser.add_argument("--high-eta-only", "-he", action="store_true", help="Only evaluate high eta jets (eta > 1.5)")
+parser.add_argument("--low-eta-only", "-le",  action="store_true", help="Only evaluate low eta jets (eta < 1.5)")
 parser.add_argument("--ds-cap", "-ds", type=int, default=10000, help="dataset cap ")
 
 args = parser.parse_args()
@@ -61,6 +63,12 @@ def get_slurm_file_text_AKX(tag, log_number):
     else:
         pt_cutoff_suffix = ""
         pt_cutoff_suffix_cmd = ""
+    if args.high_eta_only:
+        pt_cutoff_suffix += "_high_eta"
+        pt_cutoff_suffix_cmd += " --high-eta-only"
+    elif args.low_eta_only:
+        pt_cutoff_suffix += "_low_eta"
+        pt_cutoff_suffix_cmd += " --low-eta-only"
     file = f"""#!/bin/bash
 #SBATCH --partition={partition}           # Specify the partition
 #SBATCH --account={account}                  # Specify the account
@@ -208,6 +216,12 @@ for i, run in enumerate(runs):
     pt_cutoff_suffix = ""
     if args.pt_cutoff_jet != 100.0:
         pt_cutoff_suffix = f"_pt_{args.pt_cutoff_jet}"
+    if args.high_eta_only:
+        pt_cutoff_suffix += "_high_eta"
+        aug_suffix += " --high-eta-only"
+    elif args.low_eta_only:
+        pt_cutoff_suffix += "_low_eta"
+        aug_suffix += " --low-eta-only"
     slurm_file_text = get_slurm_file_text(args.tag, run, log_number, aug_suffix)
     rel_path_save = f"{args.input}/batch_eval_2k/{args.tag}{pt_cutoff_suffix}/{run}{args.clustering_suffix}"
     rel_path_save = get_path(rel_path_save, "results")

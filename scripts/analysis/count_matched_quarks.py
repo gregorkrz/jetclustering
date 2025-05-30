@@ -29,6 +29,11 @@ parser.add_argument("--eval-dir", type=str, default="")
 parser.add_argument("--clustering-suffix", type=str, default="") # default: 1020, also want to try 1010 or others...?
 parser.add_argument("--pt-jet-cutoff", type=float, default=100.0)
 
+parser.add_argument("--high-eta-only", action="store_true") # eta > 1.5 quarks only
+parser.add_argument("--low-eta-only", action="store_true") # eta < 1.5 quarks only
+
+
+
 parser.add_argument("--parton-level", "-pl", action="store_true") # To be used together with 'fastjet_jets'
 parser.add_argument("--gen-level", "-gl", action="store_true")
 
@@ -201,6 +206,10 @@ if not args.plot_only:
             n += 1
             if args.dataset_cap != -1 and n > args.dataset_cap:
                 break
+            if args.high_eta_only and torch.max(torch.abs(data.matrix_element_gen_particles.eta)) < 1.5:
+                continue
+            if args.low_eta_only and torch.max(torch.abs(data.matrix_element_gen_particles.eta)) > 1.5:
+                continue
             if not args.jets_object == "fastjet_jets":
                 jets = [jets_object.eta, jets_object.phi]
                 dq = [data.matrix_element_gen_particles.eta, data.matrix_element_gen_particles.phi]
