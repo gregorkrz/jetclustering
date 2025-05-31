@@ -31,16 +31,16 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip
 RUN python3 -m pip install numba==0.58.1
 # packages without conda
 # RUN python3 -m pip install --no-cache-dir torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117
-RUN python3 -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN python3 -m pip install torch torchvision torchaudio
 RUN python3 -m pip install torch_geometric
-RUN python3 -m pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.5.1+cu118.html
+RUN python3 -m pip install  torch_scatter torch_sparse torch_cluster torch_spline_conv
 RUN python3 -m pip install pytorch-lightning yacs torchmetrics
 RUN python3 -m pip install performer-pytorch
 RUN python3 -m pip install tensorboardX
 RUN python3 -m pip install ogb
 RUN python3 -m pip install wandb
 RUN python3 -m pip install seaborn
-RUN python3 -m pip install  dgl -f https://data.dgl.ai/wheels/cu118/repo.html
+RUN python3 -m pip install  dgl
 RUN python3 -m pip install numpy
 RUN python3 -m pip install scipy
 RUN python3 -m pip install pandas
@@ -57,11 +57,16 @@ RUN python3 -m pip install xxhash
 RUN python3 -m pip install tables
 RUN python3 -m pip install tensorboard
 RUN python3 -m pip install plotly
-RUN python3 -m pip install xformers --index-url https://download.pytorch.org/whl/cu118
+RUN python3 -m pip install xformers
 RUN python3 -m pip install fastjet
 RUN python3 -m pip install gradio
 RUN python3 -m pip install huggingface_hub
+RUN python3 -m pip install hdbscan
 
+RUN python3 -c "\
+from huggingface_hub import snapshot_download; \
+snapshot_download(repo_id='gregorkrzmanc/jetclustering', local_dir='models/'); \
+snapshot_download(repo_id='gregorkrzmanc/jetclustering_demo', local_dir='demo_datasets/', repo_type='dataset')"
 # remove pip cache
 RUN python3 -m pip cache purge
 
@@ -85,3 +90,4 @@ RUN cd /root
 RUN ls
 # entrypoint run app.py with python
 ENTRYPOINT ["python", "app.py"]
+

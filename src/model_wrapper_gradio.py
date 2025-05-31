@@ -97,7 +97,7 @@ def inference(loss_str, train_dataset_str, input_text, input_text_quarks):
     if "GP" in loss_str:
         n_soft = 500
     if n_soft > 0:
-        pfcands = EventDataset.pfcands_add_soft_particles(pfcands, n_soft, random_generator=np.random)
+        pfcands = EventDataset.pfcands_add_soft_particles(pfcands, n_soft, random_generator=np.random.RandomState(seed=0))
     event = Event(pfcands=pfcands)
     event_batch = concat_events([event])
     batch, _ = get_batch(event_batch, batch_config, torch.zeros(len(pfcands)), test=True)

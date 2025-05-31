@@ -23,10 +23,9 @@ def prefill_event(subdataset, event_idx):
     return particles_data, quarks_data
 
 
-from huggingface_hub import snapshot_download
-
-snapshot_download(repo_id="gregorkrzmanc/jetclustering", local_dir="src/models/")
-snapshot_download(repo_id="gregorkrzmanc/jetclustering_demo", local_dir="demo_datasets/", repo_type="dataset")
+#from huggingface_hub import snapshot_download
+#snapshot_download(repo_id="gregorkrzmanc/jetclustering", local_dir="models/")
+#snapshot_download(repo_id="gregorkrzmanc/jetclustering_demo", local_dir="demo_datasets/", repo_type="dataset")
 
 # === Interface layout ===
 def gradio_ui():
