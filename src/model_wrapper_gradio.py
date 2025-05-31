@@ -147,7 +147,7 @@ def inference(loss_str, train_dataset_str, input_text, input_text_quarks):
     fig, ax = plt.subplots(1, 3, figsize=(10, 3.33)) # with AK colors, with model colors, with model colors in clustering space
     ax[0].set_title("Colors: AK clusters")
     ax[1].set_title("Colors: Model clusters")
-    ax[2].set_title("Colors: Model clusters in clustering space")
+    ax[2].set_title("Colors: Model clusters in cl. space")
     plot_event(event, colors=c_ak, ax=ax[0], jets=0)
     plot_event(event, colors=c, ax=ax[1], jets=0)
     plot_event(event, colors=c, ax=ax[2], custom_coords=model_coords, jets=0)

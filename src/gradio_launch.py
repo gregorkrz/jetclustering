@@ -37,21 +37,21 @@ def gradio_ui():
         with gr.Row():
             subdataset_dropdown = gr.Dropdown(choices=os.listdir("demo_datasets"), label="Subdataset")
             event_idx_dropdown = gr.Dropdown(choices=list(range(50)), label="Event Index")
+        prefill_btn = gr.Button("Load Event from Dataset")
 
         particles_text = gr.Textbox(label="Particles CSV (pt eta phi mass charge)", lines=6, interactive=True)
         quarks_text = gr.Textbox(label="Quarks CSV (pt eta phi)", lines=3, interactive=True)
 
-        prefill_btn = gr.Button("Load Event from Dataset")
+        process_btn = gr.Button("Run Jet Clustering")
 
+        image_output = gr.Plot(label="Output")
         model_jets_output = gr.JSON(label="Model Jets")
         antikt_jets_output = gr.JSON(label="Anti-kt Jets")
-        image_output = gr.Plot(label="Output")
 
         prefill_btn.click(fn=prefill_event,
                           inputs=[subdataset_dropdown, event_idx_dropdown],
                           outputs=[particles_text, quarks_text])
 
-        process_btn = gr.Button("Run Jet Clustering")
 
         process_btn.click(fn=inference,
                           inputs=[loss_dropdown, train_dataset_dropdown, particles_text, quarks_text],
