@@ -2,10 +2,6 @@
 # docker build -t gkrz/lgatr:v4 .
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
-WORKDIR /app
-
-COPY . /app
-
 SHELL ["/bin/bash", "-c"]
 
 USER root
@@ -59,8 +55,6 @@ RUN python3 -m pip install tensorboard
 RUN python3 -m pip install plotly
 RUN python3 -m pip install xformers --index-url https://download.pytorch.org/whl/cu118
 RUN python3 -m pip install fastjet
-RUN python3 -m pip install gradio
-RUN python3 -m pip install huggingface_hub
 
 # remove pip cache
 RUN python3 -m pip cache purge
@@ -70,18 +64,14 @@ RUN python3 -m pip cache purge
 RUN mkdir -p /opt/pepr
 
 # Install GATr
-#RUN cd /opt/pepr && git clone https://github.com/Qualcomm-AI-research/geometric-algebra-transformer.git geometric-algebra-transformer1
-#RUN cd /opt/pepr/geometric-algebra-transformer1/ && python3 -m pip install .
+RUN cd /opt/pepr && git clone https://github.com/Qualcomm-AI-research/geometric-algebra-transformer.git geometric-algebra-transformer1
+RUN cd /opt/pepr/geometric-algebra-transformer1/ && python3 -m pip install .
 
 # Install L-GATr - for some reason this only works if executed from the already-built container
-RUN cd /opt/pepr && git clone https://github.com/gregorkrz/lorentz-gatr lgatr
-RUN cd /opt/pepr/lgatr/ && python3 -m pip install .
+#RUN cd /opt/pepr && git clone https://github.com/gregorkrz/lorentz-gatr lgatr
+#RUN cd /opt/pepr/lgatr/ && python3 -m pip install .
 
 # Install torch_cmspepr
 
 RUN cd /opt/pepr && git clone https://github.com/cms-pepr/pytorch_cmspepr
 RUN cd /opt/pepr/pytorch_cmspepr/ && python3 -m pip install .
-RUN cd /root
-RUN ls
-# entrypoint run app.py with python
-ENTRYPOINT ["python", "app.py"]
