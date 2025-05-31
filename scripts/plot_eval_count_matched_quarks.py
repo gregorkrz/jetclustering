@@ -85,6 +85,8 @@ results_dict = {
          "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}, {"base_LGATr": "LGATr_900_03"}], # 2nd dict in list is rename dict
     "LGATr_comparison": [{"base_LGATr": "orange", "LGATr_GP_IRC_S_50k": "red", "LGATr_GP_50k": "purple", "LGATr_GP_IRC_SN_50k": "pink", "AK8": "gray"},
                          {"base_LGATr": "LGATr", "LGATr_GP_IRC_S_50k": "LGATr_GP_IRC_S", "LGATr_GP_50k": "LGATr_GP", "LGATr_GP_IRC_SN_50k": "LGATr_GP_IRC_SN"}], # 2nd dict in list is rename dict
+    "LGATr_comparison_QCDtrain": [{"LGATr_QCD": "orange", "LGATr_GP_IRC_S_QCD": "red", "LGATr_GP_QCD": "purple", "LGATr_GP_IRC_SN_QCD": "pink", "AK8": "gray"},
+                         {"LGATr_QCD": "LGATr", "LGATr_GP_IRC_S_QCD": "LGATr_GP_IRC_S", "LGATr_GP_QCD": "LGATr_GP", "LGATr_GP_IRC_SN_QCD": "LGATr_GP_IRC_SN"}], # 2nd dict in list is rename dict
     "LGATr_comparison_GP_training": [
         {"LGATr_GP_QCD": "purple", "LGATr_GP_700_07": "red", "LGATr_GP_700_07+900_03": "blue", "LGATr_GP_700_07+900_03+QCD": "green",  "LGATr_GP_50k": "orange", "AK8": "gray"},
         {"LGATr_GP_QCD": "QCD", "LGATr_GP_700_07": "700_07", "LGATr_GP_700_07+900_03": "700_07+900_03" ,  "LGATr_GP_50k": "900_03", "LGATr_GP_700_07+900_03+QCD": "700_07+900_03+QCD"} # 2nd dict in list is rename dict
@@ -809,7 +811,10 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
         set_to_stats = {key: {"pt_dq": [], "pt_mc_t": [], "pt_mc_t_dq_ratio": [], "eta": [], "phi": []} for key in powerset_str}
         label_to_result = {}
         #label_to_stats = {"pt_dq": , "pt_mc_t": [], "pt_mc_t_dq_ratio": [], "eta": [], "phi": []}
-        n_dq = 19500
+        n_dq = 999999999
+        for j, label in enumerate(labels):
+            r = flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label])
+            n_dq = min(n_dq, len(r)) # Find the minimum number of dark quarks in all labels
         for j, label in enumerate(labels):
             r = torch.tensor(flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label]))
             r = (r != -1) # Whether quark no. X is caught or not
@@ -954,7 +959,10 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
         powerset_str = ["".join([str(x) for x in sorted(list(a))]) for a in powerset(range(3))]
         set_to_count = {key: 0 for key in powerset_str}
         label_to_result = {}
-        n_dq = 19500 # Sometimes, the last batch gets cut off etc. ...
+        n_dq = 99999999 # Sometimes, the last batch gets cut off etc. ...
+        for level in range(3):
+            r = flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label])
+            n_dq = min(n_dq, len(r))
         for level in range(3):
             r = torch.tensor(flatten_list(quark_to_jet[level][hyp_m][hyp_rinv][label]))
             r = (r != -1)

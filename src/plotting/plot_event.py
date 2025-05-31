@@ -91,9 +91,7 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True, pfc
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
-    eta_dq = event.matrix_element_gen_particles.eta
-    phi_dq = event.matrix_element_gen_particles.phi
-    pt_dq = event.matrix_element_gen_particles.pt
+
 
     eta = getattr(event, pfcands).eta
     phi = getattr(event, pfcands).phi
@@ -120,7 +118,11 @@ def plot_event(event, colors="gray", custom_coords=None, ax=None, jets=True, pfc
     #    assert len(colors) == len(phi)
     #    assert len(colors_special) == len(eta_special)
     ax.scatter(eta, phi, s=pt, c=colors, alpha=0.7)
-    ax.scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=0.5) # Dark quarks
+    if hasattr(event, "matrix_element_gen_particles") and event.matrix_element_gen_particles is not None:
+        eta_dq = event.matrix_element_gen_particles.eta
+        phi_dq = event.matrix_element_gen_particles.phi
+        pt_dq = event.matrix_element_gen_particles.pt
+        ax.scatter(eta_dq, phi_dq, s=pt_dq, c="red", marker="^", alpha=0.5) # Dark quarks
     #ax.scatter(genjet_eta, genjet_phi, marker="*", s=genjet_pt, c="blue", alpha=0.5)
     #if len(eta_special):
     #    ax.scatter(eta_special, phi_special, s=pt_special, c=colors_special, marker="v")

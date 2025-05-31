@@ -250,7 +250,7 @@ for ds in range(25):
             print("            ----- event:", e)
             uj = dataset[e].model_jets_unfiltered
             fj_jets, assignment = EventDataset.get_fastjet_jets_with_assignment(dataset[e], fastjet.JetDefinition(fastjet.antikt_algorithm, 0.8),
-                                                                "pfcands", pt_cutoff=30)
+                                                                                "pfcands", pt_cutoff=30)
             cl = clusters[result["event_idx"] == e]
             large_pt_clusters = []
             for i in np.unique(cl):
