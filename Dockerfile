@@ -2,13 +2,20 @@
 # docker build -t gkrz/lgatr:v4 .
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
-WORKDIR /app
 
+# Set up a new user named "user" with user ID 1000
+RUN useradd -m -u 1000 user
+
+
+# Set home to the user's home directory
+ENV HOME=/home/user \
+	PATH=/home/user/.local/bin:$PATH
+
+# Set the working directory to the user's home directory
+WORKDIR $HOME/app
 
 
 SHELL ["/bin/bash", "-c"]
-
-USER root
 
 RUN apt update && \
     DEBIAN_FRONTEND=noninteractive apt install --yes --no-install-recommends \
@@ -76,7 +83,7 @@ RUN python3 -m pip cache purge
 
 # COPY docker/ext_packages /docker/ext_packages
 # RUN python3 /docker/ext_packages/install_upstream_python_packages.py
-RUN mkdir -p /opt/pepr
+RUN mkdir -p $HOME/opt/pepr
 
 # Install GATr
 #RUN cd /opt/pepr && git clone https://github.com/Qualcomm-AI-research/geometric-algebra-transformer.git geometric-algebra-transformer1
@@ -84,16 +91,20 @@ RUN mkdir -p /opt/pepr
 
 
 # Install L-GATr - for some reason this only works if executed from the already-built container
-RUN cd /opt/pepr && git clone https://github.com/gregorkrz/lorentz-gatr lgatr
-RUN cd /opt/pepr/lgatr/ && python3 -m pip install .
+RUN cd $HOME/opt/pepr && git clone https://github.com/gregorkrz/lorentz-gatr lgatr
+RUN cd $HOME/opt/pepr/lgatr/ && python3 -m pip install .
 RUN ls /usr/local/lib/python3.10/dist-packages/lgatr
 RUN ls /usr/local/lib/python3.10/dist-packages/lgatr/layers
 # Install torch_cmspepr
 
-RUN cd /opt/pepr && git clone https://github.com/cms-pepr/pytorch_cmspepr
-RUN cd /opt/pepr/pytorch_cmspepr/ && python3 -m pip install .
+RUN cd $HOME/opt/pepr && git clone https://github.com/cms-pepr/pytorch_cmspepr
+RUN cd $HOME/opt/pepr/pytorch_cmspepr/ && python3 -m pip install .
 
-COPY . /app
+COPY --chown=user .  $HOME/app
+
+USER root
+RUN chmod -R 777 $HOME
+USER user
 
 # entrypoint run app.py with python
 EXPOSE 7860

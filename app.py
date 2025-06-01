@@ -38,7 +38,7 @@ def gradio_ui():
 
         with gr.Row():
             subdataset_dropdown = gr.Dropdown(choices=[x for x in os.listdir("demo_datasets") if not x.startswith(".")], label="Subdataset")
-            event_idx_dropdown = gr.Dropdown(choices=list(range(50)), label="Event Index")
+            event_idx_dropdown = gr.Dropdown(choices=list(range(20)), label="Event Index")
         prefill_btn = gr.Button("Load Event from Dataset")
 
         particles_text = gr.Textbox(label="Particles CSV (pt eta phi mass charge)", lines=6, interactive=True)

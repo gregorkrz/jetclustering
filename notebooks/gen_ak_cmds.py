@@ -26,6 +26,12 @@ for ti in [ ["DelphesPFfix_FullDataset_TrainDSstudy_QCD", "QCD_test_part0"] , ["
             #for level in ["", "-pl", "-gl"]:
             #    cmd = f"python -m scripts.test_plot_jobs --tag {tag} --input {inp} --submit-AKX {low_high_eta} {level}"
             #    print(cmd)
-            cmd = f"/work/gkrzmanc/1gatr/bin/python -m scripts.test_plot_jobs --tag {tag} --input {inp}  {low_high_eta} -ow -pt {pt}"
+            cmd = f"/work/gkrzmanc/1gatr/bin/python -m scripts.test_plot_jobs --tag {tag} --input {inp}  {low_high_eta} -ow -pt {pt} --submit-AKX"
             print(cmd)
+
+
+#for pt in [30, 40, 50, 60, 70, 80, 90]:
+#    for eta in ["_high_eta", "_low_eta"]:
+#        inp = "--input Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_high_eta"
+
 
