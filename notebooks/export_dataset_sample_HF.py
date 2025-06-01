@@ -5,7 +5,7 @@ from src.dataset.dataset import EventDatasetCollection, EventDataset
 
 from src.utils.paths import get_path
 
-n_events_per_dataset = 50
+n_events_per_dataset = 20
 
 inputs = {
     "QCD": "QCD_test_part0/qcd_test"
