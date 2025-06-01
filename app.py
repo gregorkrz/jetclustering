@@ -31,14 +31,22 @@ def prefill_event(subdataset, event_idx):
 def gradio_ui():
     with gr.Blocks() as demo:
         gr.Markdown("## Jet Clustering Demo")
-
+        # now put a short text explaining that the demo is very slow and if you want to run it on your machine, you can use the following docker-compose file:
+        # version: '3.8'
+        #
+        # services:
+        #   jetclustering_demo:
+        #     image: gkrz/jetclustering_demo_cpu:v0
+        #     ports:
+        #       - "7860:7860"
+        gr.Markdown("The live demo is very slow (usually takes 1-5 minutes for a single event). If you want to run it on your machine, you can use the following docker-compose file:\n\n```yaml\nversion: '3.8'\n\nservices:\n  jetclustering_demo:\n    image: gkrz/jetclustering_demo_cpu:v0\n    ports:\n      - '7860:7860'\n```")
         with gr.Row():
             loss_dropdown = gr.Dropdown(choices=["GP_IRC_SN", "GP_IRC_S", "GP", "base"], label="Loss Function", value="GP_IRC_SN")
             train_dataset_dropdown = gr.Dropdown(choices=["QCD", "900_03", "900_03+700_07", "700_07", "900_03+700_07+QCD"], label="Training Dataset", value="QCD")
 
         with gr.Row():
-            subdataset_dropdown = gr.Dropdown(choices=[x for x in os.listdir("demo_datasets") if not x.startswith(".")], label="Subdataset")
-            event_idx_dropdown = gr.Dropdown(choices=list(range(20)), label="Event Index")
+            subdataset_dropdown = gr.Dropdown(choices=[x for x in os.listdir("demo_datasets") if not x.startswith(".")], label="Subdataset", value="QCD")
+            event_idx_dropdown = gr.Dropdown(choices=list(range(20)), label="Event Index", value=15)
         prefill_btn = gr.Button("Load Event from Dataset")
 
         particles_text = gr.Textbox(label="Particles CSV (pt eta phi mass charge)", lines=6, interactive=True)

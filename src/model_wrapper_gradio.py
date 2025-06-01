@@ -167,7 +167,7 @@ def inference(loss_str, train_dataset_str, input_text, input_text_quarks):
     for j in range(len(jets_pt)):
         if jets_pt[j] >= 30:
             ax[1].text(jets_eta[j] + 0.1, jets_phi[j] + 0.1,
-                                   "pt=" + str(round(jets_pt[j].item(), 1)), color="gray", fontsize=6, alpha=0.5)
+                                   "pt=" + str(round(jets_pt[j].item(), 1)), color="blue", fontsize=6, alpha=0.5)
             model_jets.append({"pt": jets_pt[j].item(), "eta": jets_eta[j].item(), "phi": jets_phi[j].item()})
 
         if jets_pt[j] >= 100:
