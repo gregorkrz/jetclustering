@@ -66,7 +66,8 @@ RUN python3 -m pip install hdbscan
 RUN python3 -c "\
 from huggingface_hub import snapshot_download; \
 snapshot_download(repo_id='gregorkrzmanc/jetclustering', local_dir='models/'); \
-snapshot_download(repo_id='gregorkrzmanc/jetclustering_demo', local_dir='demo_datasets/', repo_type='dataset')"
+snapshot_download(repo_id='gregorkrzmanc/jetclustering_demo', local_dir='demo_datasets/',  \
+    ='dataset')"
 # remove pip cache
 RUN python3 -m pip cache purge
 
@@ -86,8 +87,9 @@ RUN cd /opt/pepr/lgatr/ && python3 -m pip install .
 
 RUN cd /opt/pepr && git clone https://github.com/cms-pepr/pytorch_cmspepr
 RUN cd /opt/pepr/pytorch_cmspepr/ && python3 -m pip install .
-RUN cd /root
-RUN ls
+
 # entrypoint run app.py with python
-ENTRYPOINT ["python", "app.py"]
+EXPOSE 7860
+ENV GRADIO_SERVER_NAME="0.0.0.0"
+CMD ["python", "app.py"]
 

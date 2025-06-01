@@ -1,3 +1,13 @@
+---
+title: JetClustering
+emoji: ⚛️
+colorFrom: "red"
+colorTo: "blue"
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # SVJ clustering
 The repo has evolved from [here](https://github.com/selvaggi/mlpf) - mainly, we use the dataloader and code for reading  the root files for the previous MLPF project. The preprocessing part is not really needed but it does help with performance when we are doing a lot of experiments with the same dataset.
 
