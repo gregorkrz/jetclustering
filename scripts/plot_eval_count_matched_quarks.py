@@ -776,14 +776,13 @@ rename_results_dict = {
 
 
 hypotheses_to_plot = [[0,0],[700,0.7],[700,0.5],[700,0.3]]
-
-
+# TEMPORARY - uncomment for SmallDataset and similar runs
+#hypotheses_to_plot = []
 
 def powerset(iterable):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
-
 
 def get_label_from_superset(lbl, labels_rename, labels):
     if lbl == '':
@@ -796,7 +795,6 @@ def get_label_from_superset(lbl, labels_rename, labels):
         return "Found by all"
     return ", ".join(r)
 
-
 for hyp_m, hyp_rinv in hypotheses_to_plot:
     if 0 not in to_plot_v2:
         continue # Not for the lower-pt thresholds, where only GL and PL are available
@@ -805,9 +803,15 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
     # plot here the venn diagrams
     labels = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
     labels_global = ["LGATr_GP_IRC_S_QCD", "AK8", "LGATr_GP_IRC_S_50k"]
-    labels_rename = {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_50k": "900_03"}
+    labels_rename = {"LGATr_GP_IRC_S_QCD": "QCD", "LGATr_GP_IRC_S_50k": "900_03", "AK8": "AK8 only"}
+
+    # TEMPORARILY - uncomment for SmallDataset and similar runs, where these labels don't exist
+    #labels = []
+    #labels_global = []
+
     fig_venn, ax_venn = plt.subplots(6, 3, figsize=(5 * 3, 5 * 6)) # the bottom ones are for pt of the DQ, pt of the MC GT, pt of MC GT / pt of DQ, eta, and phi distributions
     fig_venn1, ax_venn1 = plt.subplots(6, 2, figsize=(5*2, 5*6)) # Only the PFCands-level, with full histogram on the left and density on the right
+    fig_venn3, ax_venn3 = plt.subplots(1, 1, figsize=(4, 4)) # clean Venn diagram
     for level in range(3):
         #labels = list(results_dict["LGATr_comparison_GP_IRC_S_training"][0].keys())
         label_combination_to_number = {} # fill it with all possible label combinations e.g. if there are 3 labels: "NA", "0", "1", "2", "01", "012", "12", "02"
@@ -843,6 +847,7 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
             #n_dq = min(n_dq, len(r))
         #for j, label in enumerate(labels):
         #    assert len(label_to_result[j]) == n_dq, f"Label {label} has different number of quarks than others {n_dq} != {len(label_to_result[j])}"
+        if n_dq > 999999: continue
         for c in tqdm(range(n_dq)):
             belonging_to_set = ""
             for j, label in enumerate(labels):
@@ -864,15 +869,22 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 set_to_stats[belonging_to_set]["eta"].append(current_dq_eta)
                 set_to_stats[belonging_to_set]["phi"].append(current_dq_phi)
         #print("set_to_count for level", level, ":", set_to_count, "labels:", labels)
-        title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {text_level[level]} (missed by all: {set_to_count['']}) "
+        title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {text_level[level]} (miss: {set_to_count['']}) "
+        title1 = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, (miss: {set_to_count['']}) "
         if hyp_m == 0 and hyp_rinv == 0:
-            title = f"QCD, {text_level[level]} (missed by all: {set_to_count['']})"
+            title = f"QCD, {text_level[level]} (miss: {set_to_count['']})"
+            title1 = f"QCD (miss: {set_to_count['']})"
         ax_venn[0, level].set_title(title)
         plot_venn3_from_index_dict(ax_venn[0, level], set_to_count, set_labels=[labels_rename.get(l,l) for l in labels], set_colors=["orange", "gray", "red"])
         if level == 1: #reco-level
             plot_venn3_from_index_dict(ax_venn1[0, 1], set_to_count,
                                    set_labels=[labels_rename.get(l,l) for l in labels],
                                    set_colors=["orange", "gray", "red"])
+            plot_venn3_from_index_dict(ax_venn3, set_to_count,
+                                       set_labels=[labels_rename.get(l, l) for l in labels],
+                                       set_colors=["orange", "gray", "red"])
+            ax_venn3.set_title(title1)
+
         bins = {
             "pt_dq": np.linspace(90, 250, 50),
             "pt_mc_t": np.linspace(0, 200, 50),
@@ -884,6 +896,7 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
         clrs = ["green", "red", "orange", "pink", "blue", "purple", "cyan", "magenta"]
         key_rename_dict = {"pt_dq": "$p_T$ of quark", "pt_mc_t": "$p_T$ of particles within radius of R=0.8 of quark", "pt_mc_t_dq_ratio": "$p_T$ (part. within R=0.8 of quark) / $p_T$ (quark) ", "eta": "$\eta$ of quark", "phi": "$\phi$ of quark" }
         for k, key in enumerate(["pt_dq", "pt_mc_t", "pt_mc_t_dq_ratio", "eta", "phi"]):
+            fig_hist2, ax_hist2 = plt.subplots(1, 2, figsize=(8, 4))
             for s_idx, s in enumerate(sorted(set_to_stats.keys())):
                 if len(set_to_stats[s][key]) == 0:
                     continue
@@ -891,23 +904,52 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                 #if s == "":
                 #    lbl = "none"
                 lbl1 = get_label_from_superset(lbl, labels_rename, labels)
-
-                if lbl1 not in ["Missed by all", "Found by both models but not AK", "AK8", "Found by all"]:
+                if lbl1 not in ["Missed by all", "Found by both models but not AK", "AK8 only", "Found by all"]:
                     continue
                 if level == 1:
                     ax_venn1[k + 1, 1].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
                                            label=lbl1, color=clrs[s_idx], density=True)
-                    ax_venn1[k + 1, 0].set_title(f"{key_rename_dict[key]}")
-                    ax_venn1[k+1, 1].set_title(f"{key_rename_dict[key]}")
+                    ax_venn1[k + 1, 0].set_xlabel(f"{key_rename_dict[key]}")
+                    ax_venn1[k+1, 1].set_xlabel(f"{key_rename_dict[key]}")
                     ax_venn1[k + 1, 1].set_ylabel("Density")
+                    ax_venn1[k+1, 0].set_ylabel("Count")
+                    if k in [2, 3]:
+                        ax_hist2[1].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
+                                                label=lbl1, color=clrs[s_idx], density=True)
+                        ax_hist2[0].set_xlabel(f"{key_rename_dict[key]}")
+                        ax_hist2[1].set_xlabel(f"{key_rename_dict[key]}")
+                        ax_hist2[1].set_ylabel("Density")
+                        ax_hist2[0].set_ylabel("Count")
                 if lbl not in ["", "012"]:
                     # We are only interested in the differences...
                     ax_venn[k+1, level].hist(set_to_stats[s][key], bins=bins[key], histtype="step", label=lbl1, color=clrs[s_idx])
-                    ax_venn[k+1, level].set_title(f"{key_rename_dict[key]}")
+                    ax_venn[k+1, level].set_xlabel(f"{key_rename_dict[key]}")
                     if level == 1:
-                        ax_venn1[k + 1, 0].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
-                                            label=lbl1,
-                                            color=clrs[s_idx])
+                        ax_venn1[k + 1, 0].hist(
+                            set_to_stats[s][key],
+                            bins=bins[key],
+                            histtype="step",
+                            label=lbl1,
+                            color=clrs[s_idx]
+                        )
+                        if k in [2, 3]:
+                            ax_hist2[0].hist(set_to_stats[s][key], bins=bins[key], histtype="step",
+                                                label=lbl1, color=clrs[s_idx])
+            if k in [2, 3] and level == 1:
+                f_hist = os.path.join(get_path(args.input, "results"), f"venn_histogram_{hyp_m}_{hyp_rinv}_{key}_level_{level}.pdf")
+                if hyp_m == 0:
+                    ttl = "QCD"
+                else:
+                    ttl = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$"
+                ax_hist2[0].set_title(ttl)
+                ax_hist2[0].grid()
+                ax_hist2[1].grid()
+                ax_hist2[0].legend()
+                ax_hist2[1].legend()
+                fig_hist2.tight_layout()
+                fig_hist2.savefig(f_hist)
+                print("saved to", f_hist)
+
                 #ax_venn[k+1, level].set_xlabel(key)
                 #ax_venn[k+1, level].set_ylabel("Count")
         for k in range(5):
@@ -918,35 +960,39 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
         ax_venn1[k+1, 1].legend()
     fig_venn1.tight_layout()
     f = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}.pdf")
+    f2 = os.path.join(get_path(args.input, "results"), f"venn_diagram_clean_{hyp_m}_{hyp_rinv}.pdf")
     fig_venn.savefig(f)
     f1 = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}_reco_level_only.pdf")
     fig_venn1.savefig(f1)
+    fig_venn3.savefig(f2)
 
-    for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=F1
-        sz_small1 = 2.5
-        fig, ax = plt.subplots(len(rename_results_dict), 3, figsize=(sz_small1 * 3, sz_small1 * len(rename_results_dict)))
-        for i1, key in enumerate(list(rename_results_dict.keys())):
-            for level in range(3):
-                level_text = text_level[level]
-                labels = list(results_dict[key][0].keys())
-                colors = [results_dict[key][0][l] for l in labels]
-                res_precision = np.array([to_plot_v2[level][hyp_m][hyp_rinv][l][0] for l in labels])
-                res_recall = np.array([to_plot_v2[level][hyp_m][hyp_rinv][l][1] for l in labels])
-                res_f1 = 2 * res_precision * res_recall / (res_precision + res_recall)
-                if i == 0:
-                    values = res_precision
-                elif i == 1:
-                    values = res_recall
-                else:
-                    values = res_f1
-                rename_dict = results_dict[key][1]
-                labels_renamed = [rename_dict.get(l,l) for l in labels]
-                print(i1, level)
-                ax_tiny_histogram(ax[i1, level], labels_renamed, colors, values)
-                ax[i1, level].set_title(f"{rename_results_dict[key]} {level_text}")
-        fig.tight_layout()
-        fig.savefig(os.path.join(get_path(args.input, "results"), f"{lbl}_results_by_level_{hyp_m}_{hyp_rinv}_{key}.pdf"))
-
+    try:
+        for i, lbl in enumerate(["precision", "recall", "F1"]): # 0=precision, 1=recall, 2=F1
+            sz_small1 = 2.5
+            fig, ax = plt.subplots(len(rename_results_dict), 3, figsize=(sz_small1 * 3, sz_small1 * len(rename_results_dict)))
+            for i1, key in enumerate(list(rename_results_dict.keys())):
+                for level in range(3):
+                    level_text = text_level[level]
+                    labels = list(results_dict[key][0].keys())
+                    colors = [results_dict[key][0][l] for l in labels]
+                    res_precision = np.array([to_plot_v2[level][hyp_m][hyp_rinv][l][0] for l in labels])
+                    res_recall = np.array([to_plot_v2[level][hyp_m][hyp_rinv][l][1] for l in labels])
+                    res_f1 = 2 * res_precision * res_recall / (res_precision + res_recall)
+                    if i == 0:
+                        values = res_precision
+                    elif i == 1:
+                        values = res_recall
+                    else:
+                        values = res_f1
+                    rename_dict = results_dict[key][1]
+                    labels_renamed = [rename_dict.get(l,l) for l in labels]
+                    print(i1, level)
+                    ax_tiny_histogram(ax[i1, level], labels_renamed, colors, values)
+                    ax[i1, level].set_title(f"{rename_results_dict[key]} {level_text}")
+            fig.tight_layout()
+            fig.savefig(os.path.join(get_path(args.input, "results"), f"{lbl}_results_by_level_{hyp_m}_{hyp_rinv}_{key}.pdf"))
+    except:
+        print("Err")
 
 for hyp_m, hyp_rinv in hypotheses_to_plot:
     if 0 not in to_plot_v2:
@@ -980,12 +1026,21 @@ for hyp_m, hyp_rinv in hypotheses_to_plot:
                     belonging_to_set += str(lvl)
             set_to_count[belonging_to_set] += 1
         if hyp_m == 0 and hyp_rinv == 0:
-            title = f"QCD, {label} (missed by all: {set_to_count['']}) "
+            title = f"QCD, {label} (miss: {set_to_count['']}) "
+            title1 = f"QCD (miss: {set_to_count['']}) "
         else:
             title = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$, {label} (miss: {set_to_count['']}) "
+            title1 = f"$m_{{Z'}}={hyp_m}$ GeV, $r_{{inv.}}={hyp_rinv}$ (miss: {set_to_count['']}) "
         ax_venn2[j].set_title(title)
         plot_venn3_from_index_dict(ax_venn2[j], set_to_count, set_labels=text_level, set_colors=["orange", "gray", "red"], remove_max=1)
+        #if j == 1:
+        #    # title1 - for PFcands
+        #    ax_venn3.set_title(title1)
+
     fig_venn2.tight_layout()
+    #fig_venn3.tight_layout()
+    #f1 = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}_clean.pdf")
+    #fig_venn3.savefig(f1)
     f = os.path.join(get_path(args.input, "results"), f"venn_diagram_{hyp_m}_{hyp_rinv}_Agreement_between_levels.pdf")
     fig_venn2.savefig(f)
 
@@ -1023,15 +1078,18 @@ if len(models):
     if len(m_Meds) == 1 and len(r_invs) == 1:
         ax_steps = np.array([[ax_steps]])
     histograms = {}
+    histograms_single = {} # for 700_07 only!
 
     for key in histograms_dict:
         if key not in histograms:
             histograms[key] = {}
+            histograms_single[key] = {}
         for i in ["pt", "eta", "phi"]:
             f, a = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
             if len(r_invs) == 1 and len(m_Meds) == 1:
                 a = np.array([[a]])
             histograms[key][i] = f, a
+            histograms_single[key][i] = fig, ax = plt.subplots(figsize=(sz_small, sz_small))
     colors = {"base_LGATr": "orange", "base_Tr": "blue", "base_GATr": "green", "AK8": "gray"} # THE COLORS FOR THE STEP VS. F1 SCORE
     #colors_small_dataset = {"base_LGATr_SD": "orange", "base_Tr_SD": "blue", "base_GATr_SD": "green", "AK8": "gray"}
     #colors = colors_small_dataset
@@ -1045,6 +1103,7 @@ if len(models):
             ax_steps[i, j].set_title("$m_{{Z'}} = {}$ GeV, $r_{{inv.}} = {}$".format(mMed_h, rInv_h))
             ax_steps[i, j].set_xlabel("Training step")
             ax_steps[i, j].set_ylabel("Test $F_1$ score")
+            ax_steps[i, j].set_xlim([0, 50000])
             #if j == 0:
                 #ax_steps[i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
                 #for subset in histograms:
@@ -1052,9 +1111,10 @@ if len(models):
                         #histograms[subset][key][1][i, j].set_ylabel("$m_{{Z'}} = {}$".format(mMed_h))
             if i == len(m_Meds)-1:
                 ax_steps[i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
-                for subset in histograms:
-                    for key in histograms[subset]:
-                        histograms[subset][key][1][i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
+
+                #for subset in histograms:
+                #    for key in histograms[subset]:
+                #        histograms[subset][key][1][i, j].set_xlabel("$r_{{inv.}} = {}$".format(rInv_h))
             for model in jet_properties:
                 if level_to_plot_histograms not in jet_properties[model][mMed_h][rInv_h]:
                     print("Skipping", model, level_to_plot_histograms, " - levels:", jet_properties[model][mMed_h][rInv_h].keys())
@@ -1092,12 +1152,21 @@ if len(models):
                                   "AK8": "AK8",
                                   "LGATr_GP_50k": "LGATr_GP"}
                         histograms[subset][key][1][i, j].hist(q, histtype="step", color=histograms_dict[subset][1][model], label=rename.get(model, model), bins=bins, density=True)
+                        if mMed_h == 700 and rInv_h==0.7:
+                            histograms_single[subset][key][1].hist(q, histtype="step", color=histograms_dict[subset][1][model], label=rename.get(model, model), bins=bins, density=True)
+                            histograms_single[subset][key][1].set_xlabel(f"${quantity}$")
+                            histograms_single[subset][key][1].set_title(
+                                f"$m_{{Z'}}={mMed_h}$ GeV, $r_{{inv.}}={rInv_h}$")
+                            histograms_single[subset][key][1].legend()
+                            histograms_single[subset][key][1].grid(True)
                         if mMed_h > 0:
-                            histograms[subset][key][1][i, j].set_title(f"${quantity}$ $m_{{Z'}}={mMed_h}$ GeV, $r_{{inv.}}={rInv_h}$")
+                                histograms[subset][key][1][i, j].set_title(f"$m_{{Z'}}={mMed_h}$ GeV, $r_{{inv.}}={rInv_h}$")
                         else:
-                            histograms[subset][key][1][i, j].set_title(f"${quantity}$")
+                            histograms[subset][key][1][i, j].set_title("QCD")
+                        histograms[subset][key][1][i, j].set_xlabel(f"${quantity}$")
                         histograms[subset][key][1][i, j].legend()
                         histograms[subset][key][1][i, j].grid(True)
+
             for model in to_plot_steps:
                 for lvl in to_plot_steps[model][mMed_h][rInv_h]:
                     if model not in colors:
@@ -1136,6 +1205,9 @@ if len(models):
             fig = histograms[subset][key][0]
             fig.tight_layout()
             fig.savefig(os.path.join(get_path(args.input, "results"), "histogram_{}_{}.pdf".format(key, subset)))
+            fig_single =  histograms_single[subset][key][0]
+            fig_single.tight_layout()
+            fig_single.savefig(os.path.join(get_path(args.input, "results"), "700_07_histogram_{}_{}.pdf".format(key, subset)))
     print("Saved to", path_steps_fig)
 
 
@@ -1266,8 +1338,8 @@ fig.tight_layout()
 fig.savefig(out_file_PG)
 
 print("Saved to", out_file_PG)
-1/0
 
+1/0
 
 #print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK.pdf"))
 #print("Saved to", os.path.join(get_path(args.input, "results"), "score_vs_GT_R_plots_AK_ratio.pdf"))

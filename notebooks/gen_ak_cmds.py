@@ -34,10 +34,10 @@ for ti in [ ["DelphesPFfix_FullDataset_TrainDSstudy_QCD", "QCD_test_part0"] , ["
 #    for eta in ["_high_eta", "_low_eta"]:
 #        inp = "--input Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_high_eta"
 
-
 for pt in [30, 40, 50, 60, 70, 80, 90]:
-    for eta in ["_high_eta", "_low_eta"]:
+    for eta in [""]:
         inp = f"--input Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_pt_{str(int(pt))}.0{eta}"
-        inp = f"--input QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_{str(int(pt))}.0{eta}"
+        #inp = f"--input QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_{str(int(pt))}.0{eta}"
         cmd = f"/work/gkrzmanc/1gatr/bin/python -m scripts.plot_eval_count_matched_quarks {inp} "
         print(cmd)
+

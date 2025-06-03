@@ -53,6 +53,8 @@ def gradio_ui():
         quarks_text = gr.Textbox(label="Quarks CSV (pt eta phi) - optional", lines=3, interactive=True)
 
         process_btn = gr.Button("Run Jet Clustering")
+        gr.Markdown("### Outputs")
+        gr.Markdown("The jets with transverse momentum above 100 GeV are circled (green for AK8, blue for the model). The dark quarks are marked with red triangles. The particles are colored based on their jet (only jets with pT > 30 GeV are colored). The json objects contain the jets with pT > 30 GeV.")
 
         image_output = gr.Plot(label="Output")
         model_jets_output = gr.JSON(label="Model Jets")

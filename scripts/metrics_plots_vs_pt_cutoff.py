@@ -9,7 +9,7 @@ import numpy as np
 
 # This script produces the pt cutoff vs. f1 score
 
-eta_suffix = "_low_eta"
+eta_suffix = ""
 
 inputs = {
     30: "Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_pt_30.0" + eta_suffix,
@@ -33,8 +33,8 @@ inputs = {
     100: "Delphes_020425_test_PU_PFfix_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy"+ eta_suffix,
 }
 
-'''
-print("PLOTTING QCD")
+
+'''print("PLOTTING QCD")
 inputs = {
     30: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_30.0",
     40: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_40.0",
@@ -44,8 +44,8 @@ inputs = {
     80: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_80.0",
     90: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD_pt_90.0",
     100: "QCD_test_part0/batch_eval_2k/DelphesPFfix_FullDataset_TrainDSstudy_QCD"
-}
-'''
+}'''
+
 files = {
     key: pickle.load(open(os.path.join(get_path(value, "results"), "precision_recall.pkl"), "rb")) for key, value in inputs.items()
 }
@@ -55,24 +55,39 @@ titles = {key: set(value.keys()) for key, value in files.items()}
 intersections = sorted(list(set.intersection(*titles.values())))
 
 
-titles_to_plot = {
+'''titles_to_plot = {
     "AK, R=0.8": ["AK8", "gray"],
     "GT_R=0.8 LGATr_GP_IRC_S_50k_s12900, sc. (aug)": ["LGATr_GP_IRC_S", "red"],
     "GT_R=0.8 LGATr_GP_50k_s25020, sc. (aug)": ["LGATr_GP", "purple"],
     "GT_R=0.8 base_LGATr_s50000, sc.": ["LGATr", "orange"]
-} # To plot different variations of the model
+} # To plot different variations of the model trained on the background'''
 
+
+
+'''titles_to_plot = {
+    "AK, R=0.8": ["AK8", "gray"],
+    "GT_R=0.8 LGATr_GP_IRC_SN_QCD_s24000, sc. (aug)": ["LGATr_GP_IRC_S", "pink"],
+    "GT_R=0.8 LGATr_GP_IRC_S_QCD_s24000, sc. (aug)": ["LGATr_GP_IRC_S", "red"],
+    "GT_R=0.8 LGATr_GP_QCD_s24000, sc. (aug)": ["LGATr_GP", "purple"],
+    "GT_R=0.8 LGATr_QCD_s50000, sc.": ["LGATr", "orange"]
+} # To plot different variations of the model trained on the background!
+suffix = "QCDtrain"
+'''
+
+'''
 print("QCD") # colors=   [{"base_LGATr": "orange", "LGATr_700_07": "red", "LGATr_QCD": "purple", "LGATr_700_07+900_03": "blue", "LGATr_700_07+900_03+QCD": "green", "AK8": "gray"}, {"base_LGATr": "LGATr_900_03"}],
 titles_to_plot = {
     "AK, R=0.8": ["AK8", "gray"],
-
     "GT_R=0.8 base_LGATr_s50000, sc.": ["LGATr_900_03", "orange"],
     "GT_R=0.8 LGATr_QCD_s50000, sc.": ["LGATr_QCD", "purple"],
     "GT_R=0.8 LGATr_700_07_s50000, sc.": ["LGATr_700_07", "red"],
     "GT_R=0.8 LGATr_700_07+900_03_s50000, sc.": ["LGATr_700_07+900_03", "blue"],
     "GT_R=0.8 LGATr_700_07+900_03+QCD_s50000, sc.": ["LGATr_700_07+900_03+QCD", "green"],
-}
+}'''
 
+
+
+suffix = "IRC_S_train"
 titles_to_plot = {
     "AK, R=0.8": ["AK8", "gray"],
     "GT_R=0.8 LGATr_GP_IRC_S_50k_s12900, sc. (aug)": ["LGATr_900_03", "orange"],
@@ -99,6 +114,8 @@ fig, ax = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs
 figp, axp = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), sz*len(mediator_masses)))
 figr, axr = plt.subplots(len(mediator_masses), len(r_invs), figsize=(sz*len(r_invs), sz*len(mediator_masses)))
 
+fig_all, ax_all = plt.subplots(1, 3, figsize=(3*sz, sz)) # for precision, recall, f1 score all in one pic
+
 if len(r_invs) == 1 and len(mediator_masses) == 1:
     ax = np.array([[ax]])
     axp = np.array([[axp]])
@@ -114,7 +131,7 @@ for i, mMed in enumerate(mediator_masses):
             recalls = []
             f1_scores = []
             for pt in pts:
-                precision, recall = files[pt][title][mMed][20][rInv]
+                precision, recall = files[pt][title][mMed][20][rInv] #change 20 to 0 for QCD
                 precisions.append(precision)
                 recalls.append(recall)
                 f1_score = 2 * precision * recall / (precision + recall)
@@ -122,16 +139,30 @@ for i, mMed in enumerate(mediator_masses):
             ax[i, j].plot(pts, f1_scores, ".-", label=label, color=color)
             axp[i, j].plot(pts, precisions, ".-", label=label, color=color)
             axr[i, j].plot(pts, recalls, ".-", label=label, color=color)
-            ax[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
+            if mMed > 0:
+                ax[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
+                if mMed == 700 and rInv == 0.7:
+                    ax_all[2].plot(pts, f1_scores, ".-", label=label, color=color)
+            else:
+                ax[i, j].set_title("QCD")
             ax[i, j].set_xlabel("$p_T^{cutoff}$")
-            axp[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
+            if mMed > 0:
+                axp[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
+                if mMed == 700 and rInv == 0.7:
+                    ax_all[0].plot(pts, precisions, ".-", label=label, color=color)
+            else:
+                axp[i, j].set_title("QCD")
             axp[i, j].set_xlabel("$p_T^{cutoff}$")
-            axr[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
+            if mMed > 0:
+                axr[i, j].set_title(f"$m_{{Z'}} = {mMed}$ GeV, $r_{{inv.}}$ = {rInv}")
+                if mMed == 700 and rInv == 0.7:
+                    ax_all[1].plot(pts, recalls, ".-", label=label, color=color)
+            else:
+                axr[i, j].set_title("QCD")
             axr[i, j].set_xlabel("$p_T^{cutoff}$")
             ax[i, j].set_ylabel("$F_1$ score")
             axp[i, j].set_ylabel("Precision")
             axr[i, j].set_ylabel("Recall")
-
             ax[i, j].legend()
             axp[i, j].legend()
             axr[i, j].legend()
@@ -140,19 +171,34 @@ for i, mMed in enumerate(mediator_masses):
                 axp[i, j].grid()
                 axr[i, j].grid()
             grids.add((i, j))
-
+ax_all[0].set_xlabel("$p_T^{cutoff}$")
+ax_all[1].set_xlabel("$p_T^{cutoff}$")
+ax_all[2].set_xlabel("$p_T^{cutoff}$")
+ax_all[0].set_ylabel("Precision")
+ax_all[1].set_ylabel("Recall")
+ax_all[2].set_ylabel("$F_1$ score")
+ax_all[0].legend()
+ax_all[1].legend()
+ax_all[2].legend()
+ax_all[0].grid()
+ax_all[1].grid()
+ax_all[2].grid()
+#suffix = ""
 
 for f in output_dirs:
     fig.tight_layout()
-    fname = os.path.join(f, "pt_cutoff_vs_f1_score.pdf")
+    fname = os.path.join(f, f"pt_cutoff_vs_f1_score_{suffix}.pdf")
     fig.tight_layout()
     fig.savefig(fname)
     print("saved to", fname)
 
-    fname = os.path.join(f, "pt_cutoff_vs_precision.pdf")
+    fname = os.path.join(f, f"pt_cutoff_vs_precision_{suffix}.pdf")
     figp.tight_layout()
     figp.savefig(fname)
-    fname = os.path.join(f, "pt_cutoff_vs_recall.pdf")
+    fname = os.path.join(f, f"pt_cutoff_vs_recall_{suffix}.pdf")
     figr.tight_layout()
     figr.savefig(fname)
 
+    fname = os.path.join(f, f"pt_cutoff_all_700_07_{suffix}.pdf")
+    fig_all.tight_layout()
+    fig_all.savefig(fname)
