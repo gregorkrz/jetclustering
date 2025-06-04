@@ -1085,7 +1085,7 @@ if len(models):
             histograms[key] = {}
             histograms_single[key] = {}
         for i in ["pt", "eta", "phi"]:
-            f, a = plt.subplots(len(m_Meds), len(r_invs), figsize=(sz_small * len(r_invs), sz_small * len(m_Meds)))
+            f, a = plt.subplots(len(m_Meds), len(r_invs), figsize=(4 * len(r_invs), 4 * len(m_Meds)))
             if len(r_invs) == 1 and len(m_Meds) == 1:
                 a = np.array([[a]])
             histograms[key][i] = f, a
