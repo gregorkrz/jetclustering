@@ -8,8 +8,8 @@ from src.utils.wandb_utils import get_run_initial_steps, get_run_step_direct, ge
 parser = argparse.ArgumentParser()
 parser.add_argument("--train-run-name", "-run", type=str, required=True)
 parser.add_argument("--steps", "-step", type=int, required=True)
-parser.add_argument("--template", "-template", type=str, required=True) # 'Vega' or 'T3'
-parser.add_argument("--tag", "-tag", type=str, required=False, default="") # 'Vega' or 'T3'
+parser.add_argument("--template", "-template", type=str, required=True)
+parser.add_argument("--tag", "-tag", type=str, required=False, default="")
 parser.add_argument("--no-submit", "-ns", action="store_true") # do not submit the slurm job
 parser.add_argument("--os-weights", "-os", default=None, type=str)  # train/scatter_mean_Obj_Score_LGATr_8_16_64_2025_02_07_16_31_26/OS_step_47000_epoch_70.ckpt # objectness score weights
 parser.add_argument("--global-features-obj-score", "-glob-f", action="store_true") # use global features for objectness score (setting of the OS run, not of the clustering run)
