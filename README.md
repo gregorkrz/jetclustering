@@ -86,7 +86,10 @@ Afterwards, for the plots of the metrics vs. the pt cutoff, use the script in `s
 
 Use the scripts in `scripts/` to produce the joint plots of F1 score, precision, recall etc.
 
+### Producing plots
 
+Run the script `pythpn -m scripts.plot_eval_count_matched_quarks --input <input>` where input points to the directory produced by the `test_plot_jobs` (with the name the same as the tag). You need to modify the dictionary around line 320 that maps the training run IDs to 'standardized' names (e.g. LGATr_GP_IRC_SN).
+The whole script has developed in a series of tiny additions of new plots, so itšs not the most efficient and it might benefit from restructuring.
 
 ### Download trained models
 
