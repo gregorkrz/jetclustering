@@ -1,8 +1,0 @@
-export SVJ_CODE_ROOT="/work/USER/jetclustering/code"
-#export SVJ_DATA_ROOT="/work/USER/jetclustering/data"
-export SVJ_DATA_ROOT="/pnfs/psi.ch/cms/trivcat/store/user/USER/jetclustering/data"
-export SVJ_RESULTS_ROOT="/work/USER/jetclustering/results"
-export SVJ_PREPROCESSED_DATA_ROOT="/work/USER/jetclustering/preprocessed_data"
-#export SVJ_PREPROCESSED_DATA_ROOT="/pnfs/psi.ch/cms/trivcat/store/user/USER/jetclustering/preprocessed_data"
-export SVJ_WANDB_ENTITY="fcc_ml"
-export SVJ_RESULTS_ROOT_FALLBACK="/pnfs/psi.ch/cms/trivcat/store/user/USER/jetclustering/results"
