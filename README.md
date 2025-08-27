@@ -1,5 +1,5 @@
 
-# Jet clustering
+# Jet clustering with L-GATr
 
 ## Setup
 **Important**: To make it easier and less time-consuming to move the commands across different machines, we use relative paths. However, all commands can also be supplied absolute paths starting with `/`. **In case you use relative paths, make sure to modify the `env.sh` file with your paths!**
@@ -16,8 +16,8 @@ singularity shell  -B ... --nv docker://<CONTAINER_NAME>
 
 ### Training
 `python -m src.train -train <DATASET(S)> -net src/models/LGATr/lgatr.py -bs 20 --gpus 0 --run-name <WANDB_RUN_NAME> --val-dataset-size 1000 --num-steps 200000 --attr-loss-weight 0.1 --coord-loss-weight 0.1 --beta-type pt+bc --gt-radius 0.8 --num-blocks 10 -mv-ch 16 -s-ch 64 --spatial-part-only --validation-steps 2000 --no-pid`
-Add the following flags: `--augment-soft-particles` for GP, `-irc` for the IRC safety loss (IRC_S or IRC_SN)
 
+Add the following flags: `--augment-soft-particles` for GP, `-irc` for the IRC safety loss (IRC_S or IRC_SN).
 Important: you need to manually change from GP_IRC_SN to GP_IRC_S (line `if i % 2: # Every second one:` in `dataset/dataset.py`)!
 
 ### Automated evaluation

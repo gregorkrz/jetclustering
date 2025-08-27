@@ -27,6 +27,7 @@ parser.add_argument("--spatial-components-only", "-spatial-only", action="store_
 parser.add_argument("--lorentz-cos-sim", action="store_true")
 parser.add_argument("--cos-sim", action="store_true")
 parser.add_argument("--normalize", action="store_true")
+
 # --input train/  --dataset-cap 1000 --spatial-components-only
 args = parser.parse_args()
 path = get_path(args.input, "results")
