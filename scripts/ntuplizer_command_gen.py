@@ -7,16 +7,15 @@ import os
 # --output <where to store the root files>
 
 parser = argparse.ArgumentParser(description='Generate ntuples from MiniAOD')
-parser.add_argument('--input', type=str, help='Input directory with MiniAOD files') # /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/sim/Feb26_2025_E1000_N500/MINIAOD
+parser.add_argument('--input', type=str, help='Input directory with MiniAOD files')
 parser.add_argument("--local-prefix", type=str, default="/pnfs/psi.ch/cms/trivcat", help="Local prefix for the input files")
-parser.add_argument("--prod-prefix", type=str, default="/work/gkrzmanc/jetclustering", help="Prefix to use when running the script on CMS connect") # /work/gkrzmanc/jetclustering # root://t3se01.psi.ch:1094
+parser.add_argument("--prod-prefix", type=str, default="/work/USERNAME/jetclustering", help="Prefix to use when running the script on CMS connect")
 parser.add_argument('--output', type=str, default="data/26022025_E1000_N500", help='Output directory for root files') # data/26022025_E1000_N500
 parser.add_argument("--filelist", "-fl", action="store_true")
 args = parser.parse_args()
 
 filelists = {}
 
-# cmd example: cmsRun SVJScouting/test/ScoutingNanoAOD_fromMiniAOD_cfg.py inputFiles=file:root://t3se01.psi.ch:1094/store/user/gkrzmanc/jetclustering/sim/26feb/MINIAOD/step_MINIAOD_s-channel_mMed-700_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-10_part-9.root   outputFile=out_26Feb_1.root  maxEvents=-1 isMC=true era=2018 signal=True
 #print("------------------------------------------------------------------------------------------------")
 for file in os.listdir(args.local_prefix+args.input):
     # filename looks like this. "step_MINIAOD_s-channel_mMed-1200_mDark-20_rinv-0.7_alpha-peak_13TeV-pythia8_n-1000_part-440.root" extract the part with s-channel....n-1000

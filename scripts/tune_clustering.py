@@ -12,8 +12,8 @@ import torch
 import warnings
 warnings.filterwarnings("ignore")
 
-# filename = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
-# for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
+# filename = get_path("/work/USER/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
+# for rinv=0.7, see /work/USER/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
 # keeping the clustering script here for now, so that it's separated from the GPU-heavy tasks like inference (clustering may be changed frequently...)
 # parameters: min-cluster-size: [5, 30]
 #             min-samples: [2, 30]

@@ -5,8 +5,6 @@ from src.utils.utils import CPU_Unpickler
 import argparse
 from src.jetfinder.clustering import get_clustering_labels, get_clustering_labels_dbscan
 import torch
-# filename = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
-# for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
 # keeping the clustering script here for now, so that it's separated from the GPU-heavy tasks like inference (clustering may be changed frequently...)
 
 parser = argparse.ArgumentParser()
@@ -49,7 +47,6 @@ parser.add_argument("--pt-hdbscan", action="store_true", help="Use the special d
 args = parser.parse_args()
 path = get_path(args.input, "results", fallback=True)
 
-#dir_results = get_path("/work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_2025_01_03_15_07_14/eval_0.pkl", "results")
 # For DBSCAN tests
 """
 python -m scripts.compute_clustering --output-suffix dbscan_pt --min-cluster-size 4 --epsilon 0.1 --spatial-part-only --dbscan --input train/1

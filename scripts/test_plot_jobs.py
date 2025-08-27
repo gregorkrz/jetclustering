@@ -47,7 +47,7 @@ def get_log_number(tag):
     return max(list(numbers)) + 1
 
 def get_slurm_file_text_AKX(tag, log_number):
-    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/"
+    bindings = "-B /t3home/USER/ -B /work/USER/"
     partition = "standard"
     account = "t3"
     d = "jobs/logs/{}".format(tag)
@@ -78,17 +78,16 @@ def get_slurm_file_text_AKX(tag, log_number):
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
-export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
-export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
+export APPTAINER_TMPDIR=/work/USER/singularity_tmp
+export APPTAINER_CACHEDIR=/work/USER/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}{pt_cutoff_suffix}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap {DSCAP}  {pt_cutoff_suffix_cmd}
+srun singularity exec {bindings} docker://<CONTAINER_NAME> python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}{pt_cutoff_suffix}/AKX{pl_folder}{gl_folder} --jets-object fastjet_jets {suffix_pl} {suffix_gl} --dataset-cap {DSCAP}  {pt_cutoff_suffix_cmd}
     """
     return file
 
 def get_slurm_file_text_AK(tag, log_number):
-    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/"
+    bindings = "-B /t3home/USER/ -B /work/USER/"
     partition = "standard"
     account = "t3"
     d = "jobs/logs/{}".format(tag)
@@ -103,19 +102,18 @@ def get_slurm_file_text_AK(tag, log_number):
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
-export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
-export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
+export APPTAINER_TMPDIR=/work/USER/singularity_tmp
+export APPTAINER_CACHEDIR=/work/USER/singularity_cache
 
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8  --dataset-cap 1500  
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8_GenJets --jets-object genjets --dataset-cap {DSCAP}
+srun singularity exec {bindings} docker://<CONTAINER_NAME> python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8  --dataset-cap 1500  
+srun singularity exec {bindings} docker://<CONTAINER_NAME> python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}/AK8_GenJets --jets-object genjets --dataset-cap {DSCAP}
     """
     return file
 
 def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
-    bindings = "-B /t3home/gkrzmanc/ -B /work/gkrzmanc/  -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/ "
+    bindings = "-B /t3home/USER/ -B /work/USER/  -B /pnfs/psi.ch/cms/trivcat/store/user/USER/ "
     partition = "standard"
     account = "t3"
     d = "jobs/logs/{}".format(tag)
@@ -143,12 +141,11 @@ def get_slurm_file_text(tag, eval_job_name, log_number, aug_suffix = ""):
 #SBATCH --error={err}         # Redirect stderr to a log file
 #SBATCH --output={log}         # Redirect stderr to a log file
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=gkrzmanc@student.ethz.ch
 source env.sh
-export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
-export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
+export APPTAINER_TMPDIR=/work/USER/singularity_tmp
+export APPTAINER_CACHEDIR=/work/USER/singularity_cache
 nvidia-smi
-srun singularity exec {bindings} docker://gkrz/lgatr:v3 python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}{pt_cutoff_suffix}/{eval_job_name}{args.clustering_suffix} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix} {clust_suffix} {pt_cutoff_suffix_cmd}
+srun singularity exec {bindings} docker://<CONTAINER_NAME> python -m scripts.analysis.count_matched_quarks --input {args.input} --output {args.input}/batch_eval_2k/{tag}{pt_cutoff_suffix}/{eval_job_name}{args.clustering_suffix} --eval-dir train/{eval_job_name} --jets-object model_jets --dataset-cap {DSCAP} {aug_suffix} {clust_suffix} {pt_cutoff_suffix_cmd}
     """
     return file
 

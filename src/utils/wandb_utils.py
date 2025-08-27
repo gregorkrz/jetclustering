@@ -19,7 +19,6 @@ def get_run_by_name(name):
     return runs[0]
 
 def get_steps_from_file(fname):
-    # fname looks like "/work/gkrzmanc/jetclustering/results/train/lgatr_CONT_ds_cap_1000_2025_01_21_19_41_51/step_22000_epoch_1467.ckpt" -> extract 22000
     return int(fname.split("/")[-1].split("_")[1])
 
 def get_run_initial_steps(run):

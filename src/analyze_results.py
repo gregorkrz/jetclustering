@@ -14,9 +14,6 @@ args = parser.parse_args()
 
 input_dir = get_path(args.input, "results")
 
-# for rinv=0.7, see /work/gkrzmanc/jetclustering/results/train/Test_betaPt_BC_rinv07_2025_01_03_15_38_58
-# for L-GATr: /work/gkrzmanc/jetclustering/results/train/Test_LGATr_all_datasets_2025_01_08_19_27_54
-
 
 def plot_score_histograms(result, eval_path):
     pt = result["pt"]

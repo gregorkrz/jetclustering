@@ -1,4 +1,3 @@
-export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
-export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
-singularity shell  -B /work/gkrzmanc/ --nv docker://dologarcia/gatr:v0
-
+export APPTAINER_TMPDIR=/work/USER/singularity_tmp
+export APPTAINER_CACHEDIR=/work/USER/singularity_cache
+singularity shell  -B /work/USER/ --nv docker://<CONTAINER_NAME>

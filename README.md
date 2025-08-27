@@ -1,56 +1,22 @@
----
-title: JetClustering
-emoji: ⚛️
-colorFrom: "red"
-colorTo: "blue"
-sdk: docker
-app_file: app.py
-pinned: false
----
 
-# SVJ clustering
-The repo has evolved from [here](https://github.com/selvaggi/mlpf) - mainly, we use the dataloader and code for reading  the root files for the previous MLPF project. The preprocessing part is not really needed but it does help with performance when we are doing a lot of experiments with the same dataset.
+# Jet clustering
 
 ## Setup
-**Important**: To make it easier and less time-consuming to move the commands across different machines, i.e. lxplus, T3 work, and T3 SE, we use relative paths. However, all commands can also be supplied absolute paths starting with `/`. **In case you use relative paths, make sure to modify the `env.sh` file with your paths!**
+**Important**: To make it easier and less time-consuming to move the commands across different machines, we use relative paths. However, all commands can also be supplied absolute paths starting with `/`. **In case you use relative paths, make sure to modify the `env.sh` file with your paths!**
 
-0. Environment setup: We use the Python with packages compiled in the following container: `gkrz/lgatr:v3`. The container can be also built from scratch using the Dockerfile in this repo (`Dockerfile_training`). You will need to install some additional libraries (`fastjet`, `HDBSCAN` etc.), so make sure you always set the same `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR`.
+0. Environment setup: The container can be also built from scratch using the Dockerfile in this repo (`Dockerfile_training`). You will need to install some additional libraries (`fastjet`, `HDBSCAN` etc.), so make sure you always set the same `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR`.
 For example, you can use a script similar to this one to load the container and run commands in it interactively:
 ```bash
-export APPTAINER_TMPDIR=/work/gkrzmanc/singularity_tmp
-export APPTAINER_CACHEDIR=/work/gkrzmanc/singularity_cache
-singularity shell  -B /work/gkrzmanc/ -B /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc   -B /t3home -H /t3home/gkrzmanc --nv docker://gkrz/lgatr:v3
-```
-Note the SVJ_RESULTS_ROOT_FALLBACK environment variable: The /work partition was getting filed up quickly, so I copy everything to the Storage Element every now and then and then delete the model/evaluation checkpoints on the /work partition.
-New results are written to SVJ_RESULTS_ROOT, but in case something needs to be fetched and is not available on /work, the FALLBACK is used. In case the file is also not available there, an error is raised.
-To copy the files to SE, you can use, for example, this command:
-```bash
-rsync -avz -e "ssh" /work/gkrzmanc/jetclustering/results/ /pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/results
+export APPTAINER_TMPDIR=...
+export APPTAINER_CACHEDIR=...
+singularity shell  -B ... --nv docker://<CONTAINER_NAME>
 ```
 
 1. Set the environment variables `source env.sh` or use the `.env` file (e.g. when running code in PyCharm).
 
-### Generating Delphes data
-
-See instructions in the other repo: http://github.com/gregorkrz/LJP
-
-### Preprocessing Delphes data
-
-Run the slurm job: `sbatch jobs/preprocess_v3_Delphes_QCDtrain.slurm` (make sure to update your local `env.sh` file!).  
-Other jobs are located at `jobs/preprocess_v3_Delphes_QCDEval.slurm`, `jobs/preprocess_v3_Delphes_PU_PFfix_Train.slurm`, and `jobs/preprocess_v3_Delphes_PU_PFfix.slurm`.
-
-
-### Download preprocessed datasets
-
-Available at https://huggingface.co/datasets/gregorkrzmanc/jetclustering - put them in the preprocessed_data folder.
-
-
 ### Training
-
-See `jobs/base_training` for the scripts for base clustering model trained on m=900 GeV, r_inv.=0.3 (trained for 50k steps in the paper).
-See `jobs/base_training_different_datasets` for the scripts used for training.
-
-The jobs in `jobs/base_training_different_datasets/aug` and similar are the versions of the model that is trained for an extra 25k steps (GP, GP_IRC_S, and GP_IRC_SN). These jobs load the base clustering models using the `--load-model-weights` argument.
+`python -m src.train -train <DATASET(S)> -net src/models/LGATr/lgatr.py -bs 20 --gpus 0 --run-name <WANDB_RUN_NAME> --val-dataset-size 1000 --num-steps 200000 --attr-loss-weight 0.1 --coord-loss-weight 0.1 --beta-type pt+bc --gt-radius 0.8 --num-blocks 10 -mv-ch 16 -s-ch 64 --spatial-part-only --validation-steps 2000 --no-pid`
+Add the following flags: `--augment-soft-particles` for GP, `-irc` for the IRC safety loss (IRC_S or IRC_SN)
 
 Important: you need to manually change from GP_IRC_SN to GP_IRC_S (line `if i % 2: # Every second one:` in `dataset/dataset.py`)!
 
@@ -88,42 +54,12 @@ Use the scripts in `scripts/` to produce the joint plots of F1 score, precision,
 
 ### Producing plots
 
-Run the script `pythpn -m scripts.plot_eval_count_matched_quarks --input <input>` where input points to the directory produced by the `test_plot_jobs` (with the name the same as the tag). You need to modify the dictionary around line 320 that maps the training run IDs to 'standardized' names (e.g. LGATr_GP_IRC_SN).
+Run the script `python -m scripts.plot_eval_count_matched_quarks --input <input>` where input points to the directory produced by the `test_plot_jobs` (with the name the same as the tag). You need to modify the dictionary around line 320 that maps the training run IDs to 'standardized' names (e.g. LGATr_GP_IRC_SN).
 The whole script has developed in a series of tiny additions of new plots, so itšs not the most efficient and it might benefit from restructuring.
-
-### Download trained models
-
-The final model weights can be accessed at https://huggingface.co/gregorkrzmanc/jetclustering/tree/main.
 
 ### Live demo
 
-The live demo is available at https://huggingface.co/spaces/gregorkrzmanc/jetclustering.
-
-### WandB runs
-
-The WandB runs are at https://wandb.ai/fcc_ml/svj_clustering. You need to provide your own API key in env.sh.
-
-### Training (deprecated)
-
-See mainly `jobs/vega/lgatr_training.sh`, `jobs/vega/transformer_training.sh`, `jobs/vega/gatr_training_vega.sh` - you might need to modify the slurm file a bit to fit the system you are running on
-
-### Datasets (deprecated)
-
-`scouting_PFNano_signals1`: Contains special PFCands and PFCands in separate fields
-
-`scouting_PFNano_signals2`: Contains both special PFCands and PFCands in the same field, under PFCands.
-
-It was easier to just create this instead of always having special treatment for the special PFCands. As of January 2025, we are only using this version, accessible at `/pnfs/psi.ch/cms/trivcat/store/user/gkrzmanc/jetclustering/preprocessed_data/scouting_PFNano_signals2`.
-
-### Evaluation of clustering (deprecated)
-
-For AK8: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --dataset-cap 1000`
-
-
-For AK8 GenJets: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --dataset-cap 1000 --jets-object genjets`
-
-
-For any model: `python -m scripts.analysis.count_matched_quarks --input scouting_PFNano_signals/SVJ_hadronic_std --output scouting_PFNano_signals2/SVJ_hadronic_std/all_models_eval/GATr_rinv_03_m_900  --eval-dir train/Test_betaPt_BC_all_datasets_2025_01_07_17_50_45  --dataset-cap 1000 --jets-object model_jets` Add `--eval-dir` with the path to the eval run containing the coordinates and clustering labels. Optionally, add `--clustering-suffix` in case there are multiple clusterings saved in the same folder. (usually not unless you were fine-tuning the clustering)
+A live interactive demo will be provided.
 
 
 The script produces output in the `results` folder. The script goes over the events up to dataset-cap (optional). 

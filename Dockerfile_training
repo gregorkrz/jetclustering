@@ -1,5 +1,5 @@
-# gkrz/lgatr:v3
-# docker build -t gkrz/lgatr:v4 .
+# <MY_TAG>
+# docker build -t <MY_TAG> .
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
 SHELL ["/bin/bash", "-c"]
@@ -68,7 +68,6 @@ RUN cd /opt/pepr && git clone https://github.com/Qualcomm-AI-research/geometric-
 RUN cd /opt/pepr/geometric-algebra-transformer1/ && python3 -m pip install .
 
 # Install L-GATr - for some reason this only works if executed from the already-built container
-#RUN cd /opt/pepr && git clone https://github.com/gregorkrz/lorentz-gatr lgatr
 #RUN cd /opt/pepr/lgatr/ && python3 -m pip install .
 
 # Install torch_cmspepr

@@ -145,7 +145,7 @@ def create_and_store_graph_output(
         '''torch.save(
             dic,
             path_save
-            + "/graphs_all_comparing_Gregor/"
+            + "/graphs_all_comparing_1/"
             + str(local_rank)
             + "_"
             + str(step)

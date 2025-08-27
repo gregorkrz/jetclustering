@@ -1,7 +1,0 @@
-version: '3'
-
-services:
-  app:
-    image: gkrz/jetclustering_demo:v0
-    ports:
-      - "7860:7860"
