@@ -39,7 +39,6 @@ The demo allows you to:
 - [Visualization](#visualization)
 - [Pre-trained Models](#pre-trained-models)
 - [Project Structure](#project-structure)
-- [Contributing](#contributing)
 
 ## Overview
 
@@ -353,15 +352,3 @@ jetclustering/
     ├── train.py                # Training script
     └── utils/                  # Utility functions
 ```
-
-## Contributing
-
-This repository evolved from research work. For questions or contributions, please refer to the original paper or contact the maintainers.
-
-## Citation
-
-If you use this code, please cite the original MLPF work and any relevant publications.
-
----
-
-**Live Demo**: [https://huggingface.co/spaces/gregorkrzmanc/jetclustering](https://huggingface.co/spaces/gregorkrzmanc/jetclustering)
