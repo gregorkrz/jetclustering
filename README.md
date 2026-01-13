@@ -8,9 +8,12 @@ app_file: app.py
 pinned: false
 ---
 
-# Jet Clustering for SVJ Events
+# Learning IRC-Safe Jet Clustering with Geometric Algebra Transformers
 
-A machine learning framework for jet clustering in Stealth Vector Jet (SVJ) events using graph neural networks and transformers. This repository provides tools for preprocessing, training, and evaluating jet clustering models on Delphes simulation data.
+Paper at ML4PS Workshop at NeurIPS: https://ml4physicalsciences.github.io/2025/files/NeurIPS_ML4PS_2025_59.pdf
+
+
+A machine learning framework for jet clustering in CMS events using Geometric Algebra Transformers. This repository provides tools for preprocessing, training, and evaluating jet clustering models on Delphes simulation data.
 
 ## 🚀 Quick Start
 
