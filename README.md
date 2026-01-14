@@ -11,6 +11,7 @@ pinned: false
 # Learning IRC-Safe Jet Clustering with Geometric Algebra Transformers
 
 Authors: Gregor Kržmanc, Roberto Seidita, Annapaola de Cosa
+
 Paper at ML4PS Workshop at NeurIPS: https://ml4physicalsciences.github.io/2025/files/NeurIPS_ML4PS_2025_59.pdf
 
 
