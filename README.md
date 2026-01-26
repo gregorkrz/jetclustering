@@ -132,7 +132,7 @@ docker-compose up
 
 ### Generating Delphes Data
 
-See the [LJP repository](https://github.com/gregorkrz/LJP) for instructions on generating Delphes simulation data.
+See the [jetclustering_sim repository](https://github.com/gregorkrz/jetclustering_sim) for instructions on generating Delphes simulation data.
 
 ### Preprocessing Delphes Data
 
