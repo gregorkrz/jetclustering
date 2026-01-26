@@ -27,7 +27,7 @@ The demo allows you to:
 - Visualize clustering results compared to Anti-kt jets
 - View detailed jet information in JSON format
 
-> **Note**: The live demo runs on the free HuggingFace tier and it's extremely slow (1-5 minutes per event). For faster local execution, see the [Local Demo Setup](#local-demo-setup) section below.
+> **Note**: The live demo runs on the free HuggingFace tier, and it's extremely slow (1-5 minutes per event). For faster local execution, see the [Local Demo Setup](#local-demo-setup) section below.
 
 ## 📋 Table of Contents
 
@@ -43,10 +43,7 @@ The demo allows you to:
 
 ## Overview
 
-This project evolved from the [MLPF repository](https://github.com/selvaggi/mlpf) and focuses on jet clustering using:
-- **LGATr** (Lorentz Group Attention Transformer) models
-- **Transformer** architectures
-- **Graph Neural Networks** for particle clustering
+The repo has evolved from the [MLPF repository](https://github.com/selvaggi/mlpf) (we partially reuse the dataloader).
 
 The framework supports:
 - Multiple loss functions (GP, GP_IRC_S, GP_IRC_SN)
