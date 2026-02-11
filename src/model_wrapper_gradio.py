@@ -181,5 +181,5 @@ def inference(loss_str, train_dataset_str, input_text, input_text_quarks):
         ax[k].set_xlabel("$\eta$")
         ax[k].set_ylabel("$\phi$")
     fig.tight_layout()
-    return model_jets, ak_jets, fig
+    return model_jets, ak_jets, fig, model_coords.tolist()
 

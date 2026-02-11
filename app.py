@@ -59,7 +59,7 @@ def gradio_ui():
         image_output = gr.Plot(label="Output")
         model_jets_output = gr.JSON(label="Model Jets")
         antikt_jets_output = gr.JSON(label="Anti-kt Jets")
-
+        model_coords_output = gr.JSON(label="Model Coordinates")
         prefill_btn.click(fn=prefill_event,
                           inputs=[subdataset_dropdown, event_idx_dropdown],
                           outputs=[particles_text, quarks_text])
@@ -67,7 +67,7 @@ def gradio_ui():
 
         process_btn.click(fn=inference,
                           inputs=[loss_dropdown, train_dataset_dropdown, particles_text, quarks_text],
-                          outputs=[model_jets_output, antikt_jets_output, image_output])
+                          outputs=[model_jets_output, antikt_jets_output, image_output, model_coords_output])
 
     return demo
 
