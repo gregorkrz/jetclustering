@@ -166,8 +166,8 @@ parser.add_argument(
 parser.add_argument(
     "--num-workers",
     type=int,
-    default=1,
-    help="number of threads to load the dataset; memory consumption and disk access load increases (~linearly) with this numbers",
+    default=4,
+    help="number of workers to load the dataset; memory consumption and disk access load increases (~linearly) with this number",
 )
 
 

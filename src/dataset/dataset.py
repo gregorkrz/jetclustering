@@ -327,11 +327,8 @@ class EventDatasetCollection(torch.utils.data.Dataset):
         return self.n_events
     def get_idx(self, i):
         assert i < self.n_events, "Index out of bounds: %d >= %d" % (i, self.n_events)
-        for j in range(len(self.event_thresholds)-1):
-            threshold = self.event_thresholds[j]
-            if i >= threshold and i < self.event_thresholds[j+1]:
-                #print("-------------", i, threshold, self.event_thresholds, j, self.dir_list[j])
-                return self.event_collections_dict[self.dir_list[j]][i - threshold]
+        j = np.searchsorted(self.event_thresholds, i, side='right') - 1
+        return self.event_collections_dict[self.dir_list[j]][i - self.event_thresholds[j]]
     def getitem(self, i):
         return self.get_idx(i)
     def __iter__(self):

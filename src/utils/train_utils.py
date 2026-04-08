@@ -52,29 +52,20 @@ def train_load(args, aug_soft=False, aug_collinear=False):
     train_data = EventDatasetCollection(train_files, args, aug_soft=aug_soft, aug_collinear=aug_collinear)
     if args.train_dataset_size is not None:
         train_data = torch.utils.data.Subset(train_data, list(range(args.train_dataset_size)))
+    nw = args.num_workers
+    prefetch = max(2, args.batch_size // max(nw, 1)) if nw > 0 else None
     train_loader = DataLoader(
         train_data,
         batch_size=args.batch_size,
         drop_last=True,
         pin_memory=True,
-        num_workers=args.num_workers,
+        num_workers=nw,
         collate_fn=concat_events,
-        persistent_workers=args.num_workers > 0,
-        shuffle=False
+        persistent_workers=nw > 0,
+        prefetch_factor=prefetch,
+        shuffle=True,
     )
 
-    '''val_loaders = {}
-    for filename in val_files:
-        val_data = EventDataset.from_directory(filename, mmap=True)
-        val_loaders[filename] = DataLoader(
-            val_data,
-            batch_size=args.batch_size,
-            drop_last=True,
-            pin_memory=True,
-            collate_fn=concat_events,
-            num_workers=args.num_workers,
-            persistent_workers=args.num_workers > 0,
-        )'''
     val_data = EventDatasetCollection(val_files, args)
     if args.val_dataset_size is not None:
         val_data = torch.utils.data.Subset(val_data, list(range(args.val_dataset_size)))
@@ -83,16 +74,19 @@ def train_load(args, aug_soft=False, aug_collinear=False):
         batch_size=args.batch_size,
         drop_last=True,
         pin_memory=True,
-        num_workers=args.num_workers,
+        num_workers=nw,
         collate_fn=concat_events,
-        persistent_workers=args.num_workers > 0,
-        shuffle=False
+        persistent_workers=nw > 0,
+        prefetch_factor=prefetch,
+        shuffle=False,
     )
     return train_loader, val_loader, val_data
 
 def test_load(args):
     test_files = to_filelist(args, "test")
     test_loaders = {}
+    nw = args.num_workers
+    prefetch = max(2, args.batch_size // max(nw, 1)) if nw > 0 else None
     for filename in test_files:
         test_data = EventDataset.from_directory(filename, mmap=True, aug_soft=args.augment_soft_particles, seed=1000000)
         if args.test_dataset_max_size is not None:
@@ -104,8 +98,9 @@ def test_load(args):
             drop_last=True,
             pin_memory=True,
             collate_fn=concat_events,
-            num_workers=args.num_workers,
-            persistent_workers=args.num_workers > 0,
+            num_workers=nw,
+            persistent_workers=nw > 0,
+            prefetch_factor=prefetch,
         )
 
     return test_loaders

@@ -491,21 +491,23 @@ class EventCollection:
 def concat_event_collection(list_event_collection, nobatch=False):
     c = list_event_collection[0]
     list_of_attrs = c.init_attrs
-    #for k in c.__dict__:
-    #    if getattr(c, k) is not None:
-    #        if isinstance(getattr(c, k), torch.Tensor):
-    #            list_of_attrs.append(k)
+    n_collections = len(list_event_collection)
     result = {}
     for attr in list_of_attrs:
         if hasattr(c, attr):
-            result[attr] = torch.cat([getattr(c, attr) for c in list_event_collection], dim=0)
+            tensors = [getattr(ec, attr) for ec in list_event_collection]
+            if n_collections == 1:
+                result[attr] = tensors[0]
+            else:
+                result[attr] = torch.cat(tensors, dim=0)
     if hasattr(c, "original_particle_mapping") and c.original_particle_mapping is not None:
-        result["original_particle_mapping"] = torch.cat([c.original_particle_mapping for c in list_event_collection], dim=0)
+        opm_tensors = [ec.original_particle_mapping for ec in list_event_collection]
+        if n_collections == 1:
+            result["original_particle_mapping"] = opm_tensors[0]
+        else:
+            result["original_particle_mapping"] = torch.cat(opm_tensors, dim=0)
     if not nobatch:
         batch_number, to_add_idx = add_batch_number(list_event_collection, attr=list_of_attrs[0])
-        #if hasattr(c, "original_particle_mapping") and c.original_particle_mapping is not None:
-        #    #filt = result["original_particle_mapping"] != -1
-        #    #result["original_particle_mapping"][filt] += to_add_idx[filt]
         return type(c)(**result, batch_number=batch_number)
     else:
         return type(c)(**result)
@@ -519,11 +521,8 @@ def concat_events(list_events):
     return Event(**result, n_events=len(list_events))
 
 def renumber_clusters(tensor):
-    unique = tensor.unique()
-    mapping = torch.zeros(unique.max().int().item() + 1)
-    for i, u in enumerate(unique):
-        mapping[u] = i
-    return mapping[tensor]
+    unique, inverse = tensor.unique(return_inverse=True)
+    return inverse
 
 class TensorCollection:
     def __init__(self, **kwargs):
@@ -591,10 +590,9 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
         pfcands = event.final_parton_level_particles
     if batch_config.get("gen_level", False):
         pfcands = event.final_gen_particles
-    batch_idx_pfcands = torch.zeros(len(pfcands)).long()
-    #batch_idx_special_pfcands = torch.zeros(len(event.special_pfcands)).long()
-    for i in range(len(pfcands.batch_number) - 1):
-        batch_idx_pfcands[pfcands.batch_number[i]:pfcands.batch_number[i+1]] = i
+    bn = pfcands.batch_number
+    counts = bn[1:] - bn[:-1]
+    batch_idx_pfcands = torch.repeat_interleave(torch.arange(len(counts), dtype=torch.long), counts)
     batch_filter = []
     if batch_config.get("quark_dist_loss", False):
         lbl = y.labels
@@ -626,15 +624,16 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
         batch_scalars_pfcands = chg
     else:
         pids = batch_config.get("pids", [11, 13, 22, 130, 211, 0, 1, 2, 3])  # 0, 1, 2, 3 are the special PFcands
-        # onehot encode pids of event.pfcands.pid
-        pids_onehot = torch.zeros(len(pfcands), len(pids))
-        for i in pfcands.pid:
-            if abs(i).item() not in pids:
-                print(i, "not in", pids)
-                raise Exception
-        for i, pid in enumerate(pids):
-            pids_onehot[:, i] = (pfcands.pid.abs() == pid).float()
-        assert (pids_onehot.sum(dim=1) == 1).all()
+        pid_to_col = {pid: i for i, pid in enumerate(pids)}
+        abs_pids = pfcands.pid.abs().long()
+        n_particles = len(pfcands)
+        n_pids = len(pids)
+        pids_onehot = torch.zeros(n_particles, n_pids)
+        col_indices = torch.tensor([pid_to_col.get(p.item(), -1) for p in abs_pids], dtype=torch.long)
+        if (col_indices == -1).any():
+            bad = abs_pids[col_indices == -1]
+            raise Exception(f"PIDs not in allowed list: {bad.tolist()}")
+        pids_onehot[torch.arange(n_particles), col_indices] = 1.0
         batch_scalars_pfcands = torch.cat([chg, pids_onehot], dim=1)
     #if batch_config.get("use_p_xyz", False):
     #    # also add pt as a scalar
@@ -646,10 +645,10 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
     #batch_scalars_special_pfcands =event.special_pfcands.charge.unsqueeze(1) #torch.cat([event.special_pfcands.charge.unsqueeze(1), pids_onehot_special_pfcands], dim=1)
     batch_scalars = batch_scalars_pfcands # torch.cat([batch_scalars_pfcands, batch_scalars_special_pfcands], dim=0)
     if batch_idx.max() != event.n_events - 1:
-        print("Error!!")
-        print("Batch idx", batch_idx.max(), batch_idx.tolist())
-        print("N events", event.n_events)
-        print("Batch number:", pfcands.batch_number)
+        import logging
+        logging.getLogger(__name__).warning(
+            "Batch idx max (%d) != n_events-1 (%d)", batch_idx.max().item(), event.n_events - 1
+        )
     #assert batch_idx.max() == event.n_events - 1
     filt = ~torch.isin(batch_idx_pfcands, torch.tensor(batch_filter))
     if batch_config.get("obj_score", False):
@@ -670,7 +669,9 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
     else:
         y_filt = y[filt]
         #print("Filtering y!" , len(y[filt]), len(batch_vectors[filt]))
-    print("------- Dropped batches:", dropped_batches)
+    if len(dropped_batches) > 0:
+        import logging
+        logging.getLogger(__name__).debug("Dropped batches: %s", dropped_batches.tolist())
     if pfcands.original_particle_mapping is not None:
         opm = pfcands.original_particle_mapping[filt]
     else: opm = None
@@ -688,13 +689,12 @@ def get_batch(event, batch_config, y, test=False, external_batch_filter=None):
 
 def to_tensor(item):
     if isinstance(item, torch.Tensor):
-        # if it's float, change to double
-        if item.dtype == torch.float32:
-            return item.double()
+        if item.dtype == torch.float64:
+            return item.float()
         return item
     item = torch.tensor(item)
-    if item.dtype == torch.float32:
-        return item.double()
+    if item.dtype == torch.float64:
+        return item.float()
     return item
 
 class EventPFCands(EventCollection):
@@ -940,17 +940,11 @@ def concatenate_Particles_GT(list_of_Particles_GT):
     )
 
 def add_batch_number(list_event_collections, attr):
-    list_y = []
-    list_y_to_add = [] # Computes a list of numbers to add to the original_particle_idx or similar fields
-    idx = 0
-    list_y.append(idx)
-    for i, el in enumerate(list_event_collections):
-        num_in_batch = el.__dict__[attr].shape[0]
-        list_y.append(idx + num_in_batch)
-        list_y_to_add += [idx] * num_in_batch
-        idx += num_in_batch
-    list_y = torch.tensor(list_y)
-    return list_y, torch.tensor(list_y_to_add)
+    sizes = torch.tensor([el.__dict__[attr].shape[0] for el in list_event_collections], dtype=torch.long)
+    boundaries = torch.zeros(len(sizes) + 1, dtype=torch.long)
+    torch.cumsum(sizes, dim=0, out=boundaries[1:])
+    to_add_idx = torch.repeat_interleave(boundaries[:-1], sizes)
+    return boundaries, to_add_idx
 
 def create_noise_label(hit_energies, hit_particle_link, y, cluster_id):
     unique_p_numbers = torch.unique(cluster_id)
