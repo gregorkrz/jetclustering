@@ -987,11 +987,16 @@ class EventBatch:
             self.fake_nodes_idx = fake_nodes_idx
         if batch_idx_events is not None:
             self.batch_idx_events = batch_idx_events # Used for 
-    def to(self, device):
-        self.input_vectors = self.input_vectors.to(device)
-        self.input_scalars = self.input_scalars.to(device)
+    def to(self, device, half_precision=True):
+        if half_precision and device != torch.device("cpu"):
+            self.input_vectors = self.input_vectors.half().to(device)
+            self.input_scalars = self.input_scalars.half().to(device)
+            self.pt = self.pt.half().to(device)
+        else:
+            self.input_vectors = self.input_vectors.to(device)
+            self.input_scalars = self.input_scalars.to(device)
+            self.pt = self.pt.to(device)
         self.batch_idx = self.batch_idx.to(device)
-        self.pt = self.pt.to(device)
         if self.filter is not None:
             self.filter = self.filter.to(device)
         if self.original_particle_mapping is not None:

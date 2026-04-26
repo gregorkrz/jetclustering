@@ -11,6 +11,7 @@ from src.dataset.functions_data import (
     TensorCollection,
     to_tensor,
     EventPFCands,
+    EventBatch,
 )
 
 
@@ -164,3 +165,33 @@ class TestEventPFCands:
         assert pfc.theta.shape == (3,)
         assert (pfc.theta > 0).all()
         assert (pfc.theta < math.pi).all()
+
+
+# ---------------------------------------------------------------------------
+# EventBatch FP16 conversion
+# ---------------------------------------------------------------------------
+
+class TestEventBatchHalfPrecision:
+    def _make_batch(self):
+        return EventBatch(
+            input_vectors=torch.randn(10, 4),
+            input_scalars=torch.randn(10, 3),
+            batch_idx=torch.zeros(10, dtype=torch.long),
+            pt=torch.rand(10),
+        )
+
+    def test_to_cpu_stays_float32(self):
+        batch = self._make_batch()
+        batch.to(torch.device("cpu"), half_precision=True)
+        assert batch.input_vectors.dtype == torch.float32
+        assert batch.input_scalars.dtype == torch.float32
+
+    def test_to_cpu_no_half(self):
+        batch = self._make_batch()
+        batch.to(torch.device("cpu"), half_precision=False)
+        assert batch.input_vectors.dtype == torch.float32
+
+    def test_batch_idx_stays_long(self):
+        batch = self._make_batch()
+        batch.to(torch.device("cpu"))
+        assert batch.batch_idx.dtype == torch.int64
