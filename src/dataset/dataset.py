@@ -307,14 +307,14 @@ class _SimpleIter(object):
         return create_jets_outputs_new(X), False
 
 class EventDatasetCollection(torch.utils.data.Dataset):
-    def __init__(self, dir_list, args, aug_soft=False, aug_collinear=False, shuffle_seed=10):
+    def __init__(self, dir_list, args, aug_soft=False, aug_collinear=False, shuffle_seed=10, irc_mode=None):
         self.event_collections_dict = OrderedDict()
         if args:
             aug_soft = args.augment_soft_particles
         else:
             aug_soft=False
         for dir in dir_list:
-            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=aug_soft or aug_soft, seed=0, aug_collinear=aug_collinear)
+            self.event_collections_dict[dir] = EventDataset.from_directory(dir, mmap=True, aug_soft=aug_soft or aug_soft, seed=0, aug_collinear=aug_collinear, irc_mode=irc_mode)
         self.n_events = sum([x.n_events for x in self.event_collections_dict.values()])
         evt_idx = np.arange(0, self.n_events) # now shuffle this using the shuffle_seed and a separate random generator
         rng = np.random.default_rng(shuffle_seed)
@@ -387,7 +387,7 @@ def filter_pfcands(pfcands):
 
 class EventDataset(torch.utils.data.Dataset):
     @staticmethod
-    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0, aug_collinear=False, pt_jet_cutoff=100):
+    def from_directory(dir, mmap=True, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0, aug_collinear=False, pt_jet_cutoff=100, irc_mode=None):
         result = {}
         for file in os.listdir(dir):
             if file == "metadata.pkl":
@@ -401,7 +401,7 @@ class EventDataset(torch.utils.data.Dataset):
                                model_output_file=model_output_file,
                                include_model_jets_unfiltered=include_model_jets_unfiltered,
                                fastjet_R=fastjet_R, parton_level=parton_level, gen_level=gen_level, aug_soft=aug_soft,
-                               seed=seed, aug_collinear=aug_collinear, pt_jet_cutoff=pt_jet_cutoff)
+                               seed=seed, aug_collinear=aug_collinear, pt_jet_cutoff=pt_jet_cutoff, irc_mode=irc_mode)
         return dataset
     def get_pfcands_key(self):
         pfcands_key = "pfcands"
@@ -439,7 +439,7 @@ class EventDataset(torch.utils.data.Dataset):
         print("Found pfcands_key=%s" % pfcands_key)
         return pfcands_key
 
-    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0, aug_collinear=False, pt_jet_cutoff=100):
+    def __init__(self, events, metadata, model_clusters_file=None, model_output_file=None, include_model_jets_unfiltered=False, fastjet_R=None, parton_level=False, gen_level=False, aug_soft=False, seed=0, aug_collinear=False, pt_jet_cutoff=100, irc_mode=None):
         # events: serialized events dict
         # metadata: dict with metadata
         self.events = events
@@ -452,6 +452,8 @@ class EventDataset(torch.utils.data.Dataset):
         self.gen_level = gen_level
         self.augment_soft_particles = aug_soft
         self.aug_collinear = aug_collinear
+        # IRC_SN (default): odd i -> split, even i -> soft.  IRC_S: parity swapped.
+        self.irc_mode = irc_mode if irc_mode is not None else "IRC_SN"
         self.seed = seed
         self.pt_jet_cutoff = pt_jet_cutoff
         #self.pfcands_key = "pfcands"
@@ -593,7 +595,8 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            if i % 2: # Every second one:
+            do_split = bool(i % 2) if self.irc_mode == "IRC_SN" else not bool(i % 2)
+            if do_split:
                 result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
                 if "final_parton_level_particles" in result:
                     result["final_parton_level_particles"] = EventDataset.pfcands_split_particles(

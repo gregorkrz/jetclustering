@@ -116,6 +116,20 @@ parser.add_argument(
     help="Number of Mask2Former decoder layers",
 )
 
+parser.add_argument(
+    "--irc-mode",
+    type=str,
+    default="IRC_SN",
+    choices=["IRC_S", "IRC_SN"],
+    help=(
+        "Which IRC-safety augmentation pattern the auxiliary loader uses. "
+        "IRC_SN (default) alternates: odd-index events get collinear splitting, "
+        "even-index events get soft-particle addition. "
+        "IRC_S swaps the parity (even -> split, odd -> soft). "
+        "Only used when --irc-safety-loss is set."
+    ),
+)
+
 ##### L-GATr-specific arguments #####
 
 parser.add_argument(

@@ -171,37 +171,157 @@ The system automatically falls back to `SVJ_RESULTS_ROOT_FALLBACK` when files ar
 
 ## Training
 
-### Base Model Training
+All training is launched through `src.train`.  The wrapper SLURM scripts under
+`jobs/` ultimately invoke the same CLI shown below; the commands here can be run
+directly inside the training container or any environment with the
+`requirements.txt` packages installed.
 
-The base clustering model is trained on m=900 GeV, r_inv=0.3 for 50k steps:
+`-train` and `-val` take dataset directory names that resolve under
+`$SVJ_PREPROCESSED_DATA_ROOT`; a typical run uses parts 0–8 for training and
+part 9 for validation.
+
+### Common arguments
+
+| Flag | Meaning |
+|---|---|
+| `-net` / `--network-config` | Path to the model module (e.g. `src/models/LGATr/lgatr.py`) |
+| `-bs` / `--batch-size` | Per-step batch size |
+| `--num-steps` | Stop after this many optimizer steps (`-1` to use `--num-epochs`) |
+| `--validation-steps` | How often to checkpoint and run validation |
+| `--gt-radius` | Cone radius for matching dark quarks to PF candidates (label) |
+| `--num-blocks` | Number of transformer / GATr blocks (encoder depth) |
+| `--no-pid` | Drop the 9-dim PID one-hot from input scalars |
+| `--load-model-weights` | Resume from / fine-tune a previous checkpoint |
+| `-irc` / `--irc-safety-loss` | Add the IRC-safety auxiliary loss (uses an extra augmented loader) |
+| `--irc-mode` | `IRC_SN` (default) or `IRC_S` — selects which augmentation pattern the IRC loader uses |
+| `--augment-soft-particles` | Add 500 ~0-pT particles to every event (separate from the IRC auxiliary stream) |
+
+### Sample commands
+
+#### L-GATr (base GP training, m=900, r_inv=0.3)
 
 ```bash
-# Training scripts are located in:
-jobs/base_training/
+python -m src.train \
+  -train Delphes_020425_train2_PU_PFfix_part{0..8}/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -val   Delphes_020425_train2_PU_PFfix_part9/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -net   src/models/LGATr/lgatr.py \
+  -bs 20 --gpus 0 \
+  --run-name LGATr_GP \
+  --num-steps 50000 --validation-steps 2000 \
+  --num-blocks 10 -mv-ch 16 -s-ch 64 \
+  --attr-loss-weight 0.1 --coord-loss-weight 0.1 \
+  --beta-type pt+bc --gt-radius 0.8 \
+  --spatial-part-only --no-pid \
+  --val-dataset-size 1000
 ```
 
-### Extended Training
-
-For models trained with additional steps (GP, GP_IRC_S, GP_IRC_SN variants with +25k steps):
+#### Transformer baseline
 
 ```bash
-jobs/base_training_different_datasets/
+python -m src.train \
+  -train Delphes_020425_train2_PU_PFfix_part{0..8}/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -val   Delphes_020425_train2_PU_PFfix_part9/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -net   src/models/transformer/transformer.py \
+  -bs 20 --gpus 0 \
+  --run-name Transformer_GP \
+  --num-steps 50000 --validation-steps 2000 \
+  --num-blocks 10 --internal-dim 128 --n-heads 4 \
+  --attr-loss-weight 0.1 --coord-loss-weight 0.1 \
+  --beta-type pt+bc --gt-radius 0.8 \
+  --no-pid --val-dataset-size 1000
 ```
 
-These scripts load the base model using `--load-model-weights` and continue training.
-
-**Important Configuration Note**: 
-- Switch between `GP_IRC_SN` and `GP_IRC_S` by modifying line `if i % 2: # Every second one:` in `dataset/dataset.py`
-- Set to `if i % 2:` for GP_IRC_SN
-- Set to `if not (i % 2):` for GP_IRC_S
-
-### Training on Different Datasets
-
-Scripts for training on various dataset combinations:
+#### GATr (Euclidean)
 
 ```bash
-jobs/base_training_different_datasets/aug/  # Augmented datasets
+python -m src.train \
+  -train Delphes_020425_train2_PU_PFfix_part{0..8}/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -val   Delphes_020425_train2_PU_PFfix_part9/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -net   src/models/GATr/Gatr.py \
+  -bs 20 --gpus 0 \
+  --run-name GATr_GP \
+  --num-steps 50000 --validation-steps 2000 \
+  --num-blocks 10 -mv-ch 16 -s-ch 64 \
+  --attr-loss-weight 0.1 --coord-loss-weight 0.1 \
+  --beta-type pt+bc --gt-radius 0.8 \
+  --no-pid --val-dataset-size 1000
 ```
+
+#### IRC-safety fine-tuning (GP_IRC_S / GP_IRC_SN)
+
+The IRC variants resume from a base GP checkpoint and add the IRC-safety
+auxiliary loss.  Switch between IRC_S and IRC_SN with `--irc-mode` — no source
+edits required.
+
+```bash
+# GP_IRC_SN (default IRC pattern): odd-index events get collinear splitting,
+# even-index events get soft-particle addition
+python -m src.train \
+  -train Delphes_020425_train2_PU_PFfix_part{0..8}/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -val   Delphes_020425_train2_PU_PFfix_part9/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -net   src/models/LGATr/lgatr.py \
+  -bs 8 --gpus 0 \
+  --run-name LGATr_GP_IRC_SN \
+  --num-steps 75000 --validation-steps 2000 \
+  --num-blocks 10 -mv-ch 16 -s-ch 64 \
+  --attr-loss-weight 0.1 --coord-loss-weight 0.1 \
+  --beta-type pt+bc --gt-radius 0.8 \
+  --spatial-part-only --no-pid \
+  --augment-soft-particles \
+  --irc-safety-loss --irc-mode IRC_SN \
+  --load-model-weights train/LGATr_GP_<timestamp>/step_50000_epoch_12.ckpt
+
+# GP_IRC_S: parity swapped (even -> split, odd -> soft)
+python -m src.train ... --irc-safety-loss --irc-mode IRC_S ...
+```
+
+#### Mask2Former (this branch)
+
+Mask2Former segments particles into jets directly via M learnable queries +
+Hungarian matching, bypassing HDBSCAN at evaluation time.  It reuses the same
+data pipeline as the other models.
+
+```bash
+python -m src.train \
+  -train Delphes_020425_train2_PU_PFfix_part{0..8}/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -val   Delphes_020425_train2_PU_PFfix_part9/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
+  -net   src/models/Mask2Former/mask2former.py \
+  -bs 20 --gpus 0 \
+  --run-name Mask2Former \
+  --num-steps 50000 --validation-steps 2000 \
+  --num-blocks 6 --internal-dim 128 --n-heads 4 \
+  --num-queries 16 --num-dec-layers 3 \
+  --gt-radius 0.8 --no-pid \
+  --val-dataset-size 1000
+```
+
+`--num-blocks` / `--internal-dim` / `--n-heads` configure the shared transformer
+encoder; `--num-queries` and `--num-dec-layers` are Mask2Former-specific.  The
+loss (`get_loss_func` inside the network module) replaces Object Condensation
+with a Hungarian-matched mask-classification loss; the OC-only flags
+(`--attr-loss-weight`, `--coord-loss-weight`, `--beta-type`, `--spatial-part-only`)
+are ignored for Mask2Former runs.
+
+To add the IRC-safety loss (with model-specific mask-consistency formulation):
+
+```bash
+python -m src.train ... \
+  -net src/models/Mask2Former/mask2former.py \
+  --irc-safety-loss --irc-mode IRC_SN  # or IRC_S
+```
+
+### Pre-built SLURM wrappers
+
+The `jobs/` tree contains thin SLURM wrappers around the commands above:
+
+- `jobs/base_training/` — base GP training (lgatr / transformer / gatr) on the
+  m=900 / r_inv=0.3 dataset.
+- `jobs/base_training_different_datasets/` — extended training on alternative
+  datasets (m=700 / r_inv=0.7, QCD, mixtures), `aug/` for soft-particle
+  augmentation, `aug_IRC_S/` and `aug_IRC_SN/` for the IRC-safety variants.
+  These scripts pass `-irc` and `--augment-soft-particles` and load a base
+  checkpoint via `--load-model-weights`; with the new `--irc-mode` flag the
+  parity toggle no longer requires a source edit.
 
 ## Evaluation
 
