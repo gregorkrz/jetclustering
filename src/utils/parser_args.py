@@ -101,6 +101,35 @@ parser.add_argument(
     default=4
 )
 
+##### Mask2Former-specific arguments #####
+
+parser.add_argument(
+    "--num-queries",
+    type=int,
+    default=16,
+    help="Number of learnable object queries for Mask2Former",
+)
+parser.add_argument(
+    "--num-dec-layers",
+    type=int,
+    default=3,
+    help="Number of Mask2Former decoder layers",
+)
+
+parser.add_argument(
+    "--irc-mode",
+    type=str,
+    default="IRC_SN",
+    choices=["IRC_S", "IRC_SN"],
+    help=(
+        "Which IRC-safety augmentation the auxiliary loader applies. "
+        "IRC_S: collinear splitting only (every event). "
+        "IRC_SN (default): both splitting and noise -- alternate per event "
+        "(odd -> split, even -> add soft particles). "
+        "Only used when --irc-safety-loss is set."
+    ),
+)
+
 ##### L-GATr-specific arguments #####
 
 parser.add_argument(

@@ -23,6 +23,7 @@ from src.jetfinder.clustering import get_clustering_labels
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
 from src.utils.train_utils import get_target_obj_score, plot_obj_score_debug # for debugging only!
 from src.layers.object_cond import loss_func_aug
+from src.models.Mask2Former.mask2former import predictions_to_cluster_labels
 
 def train_epoch(
     args,
@@ -44,6 +45,7 @@ def train_epoch(
     opt_obj_score=None,
     sched_obj_score=None,
     train_loader_aug=None, # if it's not None, it will also use the augmented events for the IRC safety loss term
+    irc_loss_func=None,   # model-specific IRC loss; falls back to loss_func_aug when None
 ):
     if obj_score_model is None:
         model.train()
@@ -92,7 +94,8 @@ def train_epoch(
         model_forward_time_end = time.time()
         loss, loss_dict = loss_func(batch, y_pred, y)
         if train_loader_aug is not None:
-            loss_aug = loss_func_aug(y_pred, y_pred_aug, batch, batch_aug, event_batch, event_batch_aug)
+            aug_func = irc_loss_func if irc_loss_func is not None else loss_func_aug
+            loss_aug = aug_func(y_pred, y_pred_aug, batch, batch_aug, event_batch, event_batch_aug)
             loss += loss_aug * 100.0
             loss_dict["loss_IRC"] = loss_aug
         loss_time_end = time.time()
@@ -268,27 +271,21 @@ def evaluate(
     total_loss_dict = {}
     plot_batches = [0, 1]
     n_batches = 0
-    if predict or True: # predict also on validation set
-        predictions = {
-            "event_idx": [],
-            "GT_cluster": [],
-            "pred": [],
-            "eta": [],
-            "phi": [],
-            "pt": [],
-            "mass": [],
-            "AK8_cluster": [],
-            #"radius_cluster_GenJets": [],
-            #"radius_cluster_FatJets": [],
-            "model_cluster": [],
-            #"event_clusters_idx": []
-        }
-        if model_obj_score is not None:
-            obj_score_predictions = []
-            obj_score_targets = []
-            predictions["event_clusters_idx"] = []
-        if args.beta_type != "pt+bc":
-            del predictions["BC_score"]
+    predictions = {
+        "event_idx": [],
+        "GT_cluster": [],
+        "pred": [],
+        "eta": [],
+        "phi": [],
+        "pt": [],
+        "mass": [],
+        "AK8_cluster": [],
+        "model_cluster": [],
+    }
+    if model_obj_score is not None:
+        obj_score_predictions = []
+        obj_score_targets = []
+        predictions["event_clusters_idx"] = []
     last_event_idx = 0
     with torch.no_grad():
         with tqdm.tqdm(eval_loader) as tq:
@@ -334,29 +331,32 @@ def evaluate(
                             "AvgLoss": "%.5f" % (total_loss / n_batches),
                         }
                     )
-                if predict or True:
-                    #print("Last event idx =", last_event_idx)
-                    #print("Batch idx =", batch.batch_idx.tolist())
-                    event_idx = batch.batch_idx + last_event_idx
-                    #print("Event idx:", event_idx)
-                    predictions["event_idx"].append(event_idx)
-                    if not model_obj_score:
-                        predictions["GT_cluster"].append(y.detach().cpu())
-                    else:
-                        predictions["GT_cluster"].append(y.labels.detach().cpu())
+                event_idx = batch.batch_idx + last_event_idx
+                predictions["event_idx"].append(event_idx)
+                if not model_obj_score:
+                    predictions["GT_cluster"].append(y.detach().cpu())
+                else:
+                    predictions["GT_cluster"].append(y.labels.detach().cpu())
+                predictions["eta"].append(pfcands.eta.detach().cpu())
+                predictions["phi"].append(pfcands.phi.detach().cpu())
+                predictions["pt"].append(pfcands.pt.detach().cpu())
+                predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
+                predictions["mass"].append(pfcands.mass.detach().cpu())
+                if isinstance(y_pred, dict):
+                    # Mask2Former: convert mask predictions directly to cluster labels
+                    clustering_labels = predictions_to_cluster_labels(
+                        y_pred, batch.batch_idx.cpu()
+                    )
+                    # Store a placeholder so predictions["pred"] keeps a consistent shape
+                    predictions["pred"].append(
+                        clustering_labels.unsqueeze(1).float()
+                    )
+                else:
                     predictions["pred"].append(y_pred.detach().cpu())
-                    predictions["eta"].append(pfcands.eta.detach().cpu())
-                    predictions["phi"].append(pfcands.phi.detach().cpu())
-                    predictions["pt"].append(pfcands.pt.detach().cpu())
-                    predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
-                    #predictions["radius_cluster_GenJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.genjets).detach().cpu())
-                    #predictions["radius_cluster_FatJets"].append(get_labels_jets(event_batch, event_batch.pfcands, event_batch.fatjets).detach().cpu())
-                    predictions["mass"].append(pfcands.mass.detach().cpu())
                     if predictions["pred"][-1].shape[1] == 4:
                         coords = predictions["pred"][-1][:, :3]
                     else:
                         coords = predictions["pred"][-1][:, 1:4]
-                    #if model_obj_score is None:
                     clustering_labels = torch.tensor(
                         get_clustering_labels(
                                 coords.detach().cpu().numpy(),
@@ -366,64 +366,54 @@ def evaluate(
                                 epsilon=args.epsilon,
                                 return_labels_event_idx=False)
                             )
-                    if model_obj_score is not None:
-                        _, clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
-                                                                             batch.batch_idx.detach().cpu().numpy(),
-                                                                             min_cluster_size=args.min_cluster_size,
-                                                                             min_samples=args.min_samples,
-                                                                             epsilon=args.epsilon,
-                                                                             return_labels_event_idx=True)
-                        assert len(event_idx_clusters) == clusters.max() + 1
-                        batch_corr = get_corrected_batch(batch, clusters, test=predict)
-                        input_pxyz = pfcands.pxyz[batch.filter.cpu()]
-                        clusters_pxyz = scatter_sum(input_pxyz, torch.tensor(clusters) + 1, dim=0)[1:]
-                        clusters_eta, clusters_phi = calc_eta_phi(clusters_pxyz, return_stacked=False)
-                        # pfcands_eta, pfcands_phi = calc_eta_phi(input_pxyz, return_stacked=False)
-                        clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
-                        filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
-                        if not args.global_features_obj_score:
-                            objectness_score = model_obj_score(batch_corr)
-                        else:
-                            objectness_score = model_obj_score(batch_corr, batch, clusters)
-                        obj_score_predictions.append(objectness_score.detach().cpu())
-                        target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter],
-                                                                clusters_pt[filter],
-                                                                torch.tensor(event_idx_clusters)[filter], y.dq_eta,
-                                                                y.dq_phi, y.dq_coords_batch_idx, gt_mode=args.objectness_score_gt_mode)  # [filter]
-                        n_positive, n_negative = target_obj_score.sum(), (1 - target_obj_score.float()).sum()
-                        # set weights for the loss according to the class imbalance
-                        # pos_weight = n_negative / (n_positive + n_negative)
-                        # neg_weight = n_positive / (n_positive + n_negative)
-                        n_all = n_positive + n_negative
-                        pos_weight = n_all / n_positive if n_positive > 0 else 0
-                        neg_weight = n_all / n_negative if n_negative > 0 else 0
-
-                        # Weights for BCELoss: per-element weight
-                        weights = torch.where(target_obj_score == 1, pos_weight, neg_weight)
-                        print("N positive (eval):", n_positive.item(), "N negative (eval):", n_negative.item())
-                        print("First 10 predictions (eval):", objectness_score[:20], "First 10 targets (eval):",
-                              target_obj_score[:20])
-                        objectness_score = objectness_score.clamp(min=-10, max=10)
-                        target_obj_score = target_obj_score.to(objectness_score.device)
-                        #print(target_obj_score.device, filter.device, objectness_score.device, weights.device)
-                        weights = weights.to(objectness_score.device)
-                        filter = filter.to(objectness_score.device)
-                        loss_obj_score = torch.nn.BCEWithLogitsLoss(weight=weights)(objectness_score.flatten()[filter], target_obj_score.flatten()).cpu().item()
-                        # compute ROC AUC
-                        obj_score_targets.append(target_obj_score)
-                        k = "val_loss_obj_score"
-                        if k not in total_loss_dict:
-                            total_loss_dict[k] = 0
-                        total_loss_dict[k] += loss_obj_score
-                        predictions["event_clusters_idx"].append(torch.tensor(event_idx_clusters) + last_event_idx)
-                        # loss_obj_score = torch.mean(weights * (objectness_score - target_obj_score) ** 2)
-                    predictions["model_cluster"].append(
-                        torch.tensor(clustering_labels)
-                    )
-                    last_event_idx = count
-                    if event_idx.max().item() + 1 != last_event_idx:
-                        print(f"event_idx.max() = {event_idx.max().item()}, last_event_idx = {last_event_idx} - the eval would have failed here before the update")
-                    #print("Setting new last_event_idx to", last_event_idx)
+                if model_obj_score is not None:
+                    _, clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
+                                                                         batch.batch_idx.detach().cpu().numpy(),
+                                                                         min_cluster_size=args.min_cluster_size,
+                                                                         min_samples=args.min_samples,
+                                                                         epsilon=args.epsilon,
+                                                                         return_labels_event_idx=True)
+                    assert len(event_idx_clusters) == clusters.max() + 1
+                    batch_corr = get_corrected_batch(batch, clusters, test=predict)
+                    input_pxyz = pfcands.pxyz[batch.filter.cpu()]
+                    clusters_pxyz = scatter_sum(input_pxyz, torch.tensor(clusters) + 1, dim=0)[1:]
+                    clusters_eta, clusters_phi = calc_eta_phi(clusters_pxyz, return_stacked=False)
+                    clusters_pt = torch.norm(clusters_pxyz[:, :2], dim=-1)
+                    filter = clusters_pt >= 100  # Don't train on the clusters that eventually get cut off
+                    if not args.global_features_obj_score:
+                        objectness_score = model_obj_score(batch_corr)
+                    else:
+                        objectness_score = model_obj_score(batch_corr, batch, clusters)
+                    obj_score_predictions.append(objectness_score.detach().cpu())
+                    target_obj_score = get_target_obj_score(clusters_eta[filter], clusters_phi[filter],
+                                                            clusters_pt[filter],
+                                                            torch.tensor(event_idx_clusters)[filter], y.dq_eta,
+                                                            y.dq_phi, y.dq_coords_batch_idx, gt_mode=args.objectness_score_gt_mode)
+                    n_positive, n_negative = target_obj_score.sum(), (1 - target_obj_score.float()).sum()
+                    n_all = n_positive + n_negative
+                    pos_weight = n_all / n_positive if n_positive > 0 else 0
+                    neg_weight = n_all / n_negative if n_negative > 0 else 0
+                    weights = torch.where(target_obj_score == 1, pos_weight, neg_weight)
+                    print("N positive (eval):", n_positive.item(), "N negative (eval):", n_negative.item())
+                    print("First 10 predictions (eval):", objectness_score[:20], "First 10 targets (eval):",
+                          target_obj_score[:20])
+                    objectness_score = objectness_score.clamp(min=-10, max=10)
+                    target_obj_score = target_obj_score.to(objectness_score.device)
+                    weights = weights.to(objectness_score.device)
+                    filter = filter.to(objectness_score.device)
+                    loss_obj_score = torch.nn.BCEWithLogitsLoss(weight=weights)(objectness_score.flatten()[filter], target_obj_score.flatten()).cpu().item()
+                    obj_score_targets.append(target_obj_score)
+                    k = "val_loss_obj_score"
+                    if k not in total_loss_dict:
+                        total_loss_dict[k] = 0
+                    total_loss_dict[k] += loss_obj_score
+                    predictions["event_clusters_idx"].append(torch.tensor(event_idx_clusters) + last_event_idx)
+                predictions["model_cluster"].append(
+                    torch.tensor(clustering_labels)
+                )
+                last_event_idx = count
+                if event_idx.max().item() + 1 != last_event_idx:
+                    print(f"event_idx.max() = {event_idx.max().item()}, last_event_idx = {last_event_idx} - the eval would have failed here before the update")
     if local_rank == 0 and not predict:
         wandb.log({"val_loss": total_loss / n_batches}, step=step)
         wandb.log({"val_" + key: value / n_batches for key, value in total_loss_dict.items()}, step=step)
@@ -433,27 +423,7 @@ def evaluate(
         "Evaluated on %d samples in total (avg. speed %.1f samples/s)"
         % (count, count / time_diff)
     )
-    if predict or True:
-        #for key in predictions:
-        #    predictions[key] = torch.cat(predictions[key], dim=0)
-        #predictions = {key: torch.cat(predictions[key], dim=0) for key in predictions}
-        predictions_1 = {}
-        for key in predictions:
-            #print("key", key, predictions[key])
-            predictions_1[key] = torch.cat(predictions[key], dim=0)
-        predictions = predictions_1
-        #predictions["event_idx"] = torch.cat(predictions["event_idx"], dim=0)
-        #predictions["GT_cluster"] = torch.cat(predictions["GT_cluster"], dim=0)
-        #predictions["pred"] = torch.cat(predictions["pred"], dim=0)
-        #predictions["eta"] = torch.cat(predictions["eta"], dim=0)
-        #predictions["phi"] = torch.cat(predictions["phi"], dim=0)
-        #predictions["pt"] = torch.cat(predictions["pt"], dim=0)
-        #predictions["AK8_cluster"] = torch.cat(predictions["AK8_cluster"], dim=0)
-        #predictions["radius_cluster_GenJets"] = torch.cat(predictions["radius_cluster_GenJets"], dim=0)
-        #predictions["radius_cluster_FatJets"] = torch.cat(predictions["radius_cluster_FatJets"], dim=0)
-        #predictions["mass"] = torch.cat(predictions["mass"], dim=0)
-        #predictions["model_cluster"] = torch.cat(predictions["model_cluster"], dim=0)
-        if model_obj_score is not None:
-            return predictions, torch.cat(obj_score_predictions), torch.cat(obj_score_targets)
-        return predictions
-    return total_loss / count # Average loss is the validation metric here
+    predictions = {key: torch.cat(predictions[key], dim=0) for key in predictions}
+    if model_obj_score is not None:
+        return predictions, torch.cat(obj_score_predictions), torch.cat(obj_score_targets)
+    return predictions
