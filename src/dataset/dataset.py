@@ -595,7 +595,12 @@ class EventDataset(torch.utils.data.Dataset):
             result["pfcands"].original_particle_mapping = torch.arange(len(result["pfcands"].pt))
         if self.aug_collinear:
             random_generator = np.random.RandomState(seed=i + self.seed)
-            do_split = bool(i % 2) if self.irc_mode == "IRC_SN" else not bool(i % 2)
+            # IRC_S:  every event uses collinear splitting only.
+            # IRC_SN: alternate per event (odd -> split, even -> add soft particles).
+            if self.irc_mode == "IRC_S":
+                do_split = True
+            else:  # IRC_SN
+                do_split = bool(i % 2)
             if do_split:
                 result["pfcands"] = EventDataset.pfcands_split_particles(result["pfcands"], random_generator)
                 if "final_parton_level_particles" in result:

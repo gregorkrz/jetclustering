@@ -193,7 +193,7 @@ part 9 for validation.
 | `--no-pid` | Drop the 9-dim PID one-hot from input scalars |
 | `--load-model-weights` | Resume from / fine-tune a previous checkpoint |
 | `-irc` / `--irc-safety-loss` | Add the IRC-safety auxiliary loss (uses an extra augmented loader) |
-| `--irc-mode` | `IRC_SN` (default) or `IRC_S` — selects which augmentation pattern the IRC loader uses |
+| `--irc-mode` | `IRC_S` (collinear splitting only) or `IRC_SN` (default — splitting + noise, alternated per event) |
 | `--augment-soft-particles` | Add 500 ~0-pT particles to every event (separate from the IRC auxiliary stream) |
 
 ### Sample commands
@@ -254,8 +254,8 @@ auxiliary loss.  Switch between IRC_S and IRC_SN with `--irc-mode` — no source
 edits required.
 
 ```bash
-# GP_IRC_SN (default IRC pattern): odd-index events get collinear splitting,
-# even-index events get soft-particle addition
+# GP_IRC_SN: alternating per event -- odd-index events get collinear splitting,
+# even-index events get soft-particle addition (i.e. both S and N are used)
 python -m src.train \
   -train Delphes_020425_train2_PU_PFfix_part{0..8}/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
   -val   Delphes_020425_train2_PU_PFfix_part9/SVJ_mZprime-900_mDark-20_rinv-0.3_alpha-peak \
@@ -271,7 +271,7 @@ python -m src.train \
   --irc-safety-loss --irc-mode IRC_SN \
   --load-model-weights train/LGATr_GP_<timestamp>/step_50000_epoch_12.ckpt
 
-# GP_IRC_S: parity swapped (even -> split, odd -> soft)
+# GP_IRC_S: collinear splitting only (no soft-particle addition in the IRC stream)
 python -m src.train ... --irc-safety-loss --irc-mode IRC_S ...
 ```
 

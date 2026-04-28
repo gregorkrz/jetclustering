@@ -122,10 +122,10 @@ parser.add_argument(
     default="IRC_SN",
     choices=["IRC_S", "IRC_SN"],
     help=(
-        "Which IRC-safety augmentation pattern the auxiliary loader uses. "
-        "IRC_SN (default) alternates: odd-index events get collinear splitting, "
-        "even-index events get soft-particle addition. "
-        "IRC_S swaps the parity (even -> split, odd -> soft). "
+        "Which IRC-safety augmentation the auxiliary loader applies. "
+        "IRC_S: collinear splitting only (every event). "
+        "IRC_SN (default): both splitting and noise -- alternate per event "
+        "(odd -> split, even -> add soft particles). "
         "Only used when --irc-safety-loss is set."
     ),
 )
