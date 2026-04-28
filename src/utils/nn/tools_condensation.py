@@ -23,6 +23,7 @@ from src.jetfinder.clustering import get_clustering_labels
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
 from src.utils.train_utils import get_target_obj_score, plot_obj_score_debug # for debugging only!
 from src.layers.object_cond import loss_func_aug
+from src.models.Mask2Former.mask2former import predictions_to_cluster_labels
 
 def train_epoch(
     args,
@@ -44,6 +45,7 @@ def train_epoch(
     opt_obj_score=None,
     sched_obj_score=None,
     train_loader_aug=None, # if it's not None, it will also use the augmented events for the IRC safety loss term
+    irc_loss_func=None,   # model-specific IRC loss; falls back to loss_func_aug when None
 ):
     if obj_score_model is None:
         model.train()
@@ -92,7 +94,8 @@ def train_epoch(
         model_forward_time_end = time.time()
         loss, loss_dict = loss_func(batch, y_pred, y)
         if train_loader_aug is not None:
-            loss_aug = loss_func_aug(y_pred, y_pred_aug, batch, batch_aug, event_batch, event_batch_aug)
+            aug_func = irc_loss_func if irc_loss_func is not None else loss_func_aug
+            loss_aug = aug_func(y_pred, y_pred_aug, batch, batch_aug, event_batch, event_batch_aug)
             loss += loss_aug * 100.0
             loss_dict["loss_IRC"] = loss_aug
         loss_time_end = time.time()
@@ -334,25 +337,35 @@ def evaluate(
                     predictions["GT_cluster"].append(y.detach().cpu())
                 else:
                     predictions["GT_cluster"].append(y.labels.detach().cpu())
-                predictions["pred"].append(y_pred.detach().cpu())
                 predictions["eta"].append(pfcands.eta.detach().cpu())
                 predictions["phi"].append(pfcands.phi.detach().cpu())
                 predictions["pt"].append(pfcands.pt.detach().cpu())
                 predictions["AK8_cluster"].append(event_batch.pfcands.pf_cand_jet_idx.detach().cpu())
                 predictions["mass"].append(pfcands.mass.detach().cpu())
-                if predictions["pred"][-1].shape[1] == 4:
-                    coords = predictions["pred"][-1][:, :3]
+                if isinstance(y_pred, dict):
+                    # Mask2Former: convert mask predictions directly to cluster labels
+                    clustering_labels = predictions_to_cluster_labels(
+                        y_pred, batch.batch_idx.cpu()
+                    )
+                    # Store a placeholder so predictions["pred"] keeps a consistent shape
+                    predictions["pred"].append(
+                        clustering_labels.unsqueeze(1).float()
+                    )
                 else:
-                    coords = predictions["pred"][-1][:, 1:4]
-                clustering_labels = torch.tensor(
-                    get_clustering_labels(
-                            coords.detach().cpu().numpy(),
-                            event_idx.detach().cpu().numpy(),
-                            min_cluster_size=args.min_cluster_size,
-                            min_samples=args.min_samples,
-                            epsilon=args.epsilon,
-                            return_labels_event_idx=False)
-                        )
+                    predictions["pred"].append(y_pred.detach().cpu())
+                    if predictions["pred"][-1].shape[1] == 4:
+                        coords = predictions["pred"][-1][:, :3]
+                    else:
+                        coords = predictions["pred"][-1][:, 1:4]
+                    clustering_labels = torch.tensor(
+                        get_clustering_labels(
+                                coords.detach().cpu().numpy(),
+                                event_idx.detach().cpu().numpy(),
+                                min_cluster_size=args.min_cluster_size,
+                                min_samples=args.min_samples,
+                                epsilon=args.epsilon,
+                                return_labels_event_idx=False)
+                            )
                 if model_obj_score is not None:
                     _, clusters, event_idx_clusters = get_clustering_labels(coords.detach().cpu().numpy(),
                                                                          batch.batch_idx.detach().cpu().numpy(),

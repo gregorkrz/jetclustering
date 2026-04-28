@@ -101,6 +101,21 @@ parser.add_argument(
     default=4
 )
 
+##### Mask2Former-specific arguments #####
+
+parser.add_argument(
+    "--num-queries",
+    type=int,
+    default=16,
+    help="Number of learnable object queries for Mask2Former",
+)
+parser.add_argument(
+    "--num-dec-layers",
+    type=int,
+    default=3,
+    help="Number of Mask2Former decoder layers",
+)
+
 ##### L-GATr-specific arguments #####
 
 parser.add_argument(

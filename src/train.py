@@ -27,7 +27,8 @@ from src.utils.train_utils import (
     test_load,
     get_model,
     get_optimizer_and_scheduler,
-    get_model_obj_score
+    get_model_obj_score,
+    get_irc_loss_func,
 )
 from src.evaluation.clustering_metrics import compute_f1_score_from_result
 from src.dataset.functions_graph import graph_batch_func
@@ -59,7 +60,11 @@ if args.load_from_run:
 timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
 random_number = str(np.random.randint(0, 1000)) # to avoid overwriting in case two jobs are started at the same time
 args.run_name = f"{args.run_name}_{timestamp}_{random_number}"
-if "transformer" in args.network_config.lower() or args.network_config == "src/models/GATr/Gatr.py":
+if (
+    "transformer"  in args.network_config.lower()
+    or "mask2former" in args.network_config.lower()
+    or args.network_config == "src/models/GATr/Gatr.py"
+):
     args.spatial_part_only = False
 
 
@@ -150,6 +155,7 @@ wandb.config.num_parameters = num_parameters_counted
 
 orig_model = model
 loss = get_loss_func(args)
+irc_loss_func = get_irc_loss_func(args)  # None for OC models, model-specific for Mask2Former
 gt = get_gt_func(args)
 batch_config = {"use_p_xyz": True, "use_four_momenta": False}
 
@@ -251,7 +257,8 @@ if training_mode:
             obj_score_model=model_obj_score,
             opt_obj_score=opt_os,
             sched_obj_score=scheduler_os,
-            train_loader_aug=train_loader_aug
+            train_loader_aug=train_loader_aug,
+            irc_loss_func=irc_loss_func,
         )
         if steps == "quit_training":
             break

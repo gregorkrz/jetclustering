@@ -384,7 +384,12 @@ def plot_obj_score_debug(dq_eta, dq_phi, dq_batch_idx, clusters_eta, clusters_ph
 
 
 def get_loss_func(args):
-    # Loss function  takes in the output of a model and the output of GT (the GT labels) and returns the loss.
+    # If the network module exposes its own loss (e.g. Mask2Former), use that.
+    network_module = import_module(args.network_config, name="_network_module")
+    if hasattr(network_module, "get_loss_func"):
+        return network_module.get_loss_func(args)
+
+    # Default: Object Condensation loss.
     def loss(model_input, model_output, gt_labels):
             batch_numbers = model_input.batch_idx
             if not (args.loss == "quark_distance" or args.train_objectness_score):
@@ -402,6 +407,14 @@ def get_loss_func(args):
                                             oc_scalars=args.scalars_oc,
                                             loss_obj_score=args.train_objectness_score)
     return loss
+
+
+def get_irc_loss_func(args):
+    """Return a model-specific IRC safety loss, or None to use the default OC one."""
+    network_module = import_module(args.network_config, name="_network_module")
+    if hasattr(network_module, "get_irc_loss_func"):
+        return network_module.get_irc_loss_func()
+    return None
 
 
 def renumber_clusters(tensor):

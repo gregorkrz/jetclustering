@@ -1,2 +1,3 @@
-models/
+# Hugging Face cached model weights (top-level only, not src/models/)
+/models/
 demo_datasets/
