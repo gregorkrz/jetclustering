@@ -98,7 +98,7 @@ RUN ls /usr/local/lib/python3.10/dist-packages/lgatr/layers
 # Install torch_cmspepr
 
 RUN cd $HOME/opt/pepr && git clone https://github.com/cms-pepr/pytorch_cmspepr
-RUN cd $HOME/opt/pepr/pytorch_cmspepr/ && python3 -m pip install .
+RUN cd $HOME/opt/pepr/pytorch_cmspepr/ && python3 -m pip install --no-build-isolation .
 
 COPY --chown=user .  $HOME/app
 
