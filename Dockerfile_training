@@ -74,4 +74,4 @@ RUN cd /opt/pepr/geometric-algebra-transformer1/ && python3 -m pip install .
 # Install torch_cmspepr
 
 RUN cd /opt/pepr && git clone https://github.com/cms-pepr/pytorch_cmspepr
-RUN cd /opt/pepr/pytorch_cmspepr/ && python3 -m pip install .
+RUN cd /opt/pepr/pytorch_cmspepr/ && python3 -m pip install --no-build-isolation .
